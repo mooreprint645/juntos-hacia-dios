@@ -515,3 +515,13 @@ body.light-mode .quick-card:visited{
     font-size:2.3rem;
   }
 }
+/* CATEGORIAS */
+
+.category-card{
+  text-align:center;
+}
+
+.category-icon{
+  font-size:3rem;
+  margin-bottom:18px;
+}
