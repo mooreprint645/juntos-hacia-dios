@@ -1,0 +1,70 @@
+:root{
+  --bg:#111;
+  --card:#1b1b1b;
+  --gold:#f6c453;
+  --text:#ffffff;
+  --secondary:#bdbdbd;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial, sans-serif;
+}
+
+header{
+  padding:80px 20px;
+  text-align:center;
+}
+
+h1{
+  font-size:3rem;
+  color:var(--gold);
+}
+
+.subtitle{
+  margin-top:15px;
+  color:var(--secondary);
+  font-size:1.2rem;
+}
+
+.buttons{
+  margin-top:40px;
+  display:flex;
+  justify-content:center;
+  gap:20px;
+  flex-wrap:wrap;
+}
+
+button{
+  padding:15px 30px;
+  border:none;
+  border-radius:40px;
+  background:var(--gold);
+  font-weight:bold;
+  cursor:pointer;
+  transition:.3s;
+}
+
+button:hover{
+  transform:scale(1.05);
+}
+
+main{
+  padding:40px;
+}
+
+.card{
+  background:var(--card);
+  padding:25px;
+  border-radius:20px;
+  margin:auto;
+  max-width:700px;
+  text-align:center;
+}
