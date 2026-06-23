@@ -468,3 +468,33 @@ if (artistName && artistSongsList) {
     }
   }
 }
+/* =========================
+   BUSCADOR DE CATEGORIAS
+========================= */
+
+const categorySearch = document.getElementById("categorySearch");
+
+if (categorySearch) {
+  categorySearch.addEventListener("keyup", () => {
+    const value = categorySearch.value.toLowerCase().trim();
+    const cards = document.querySelectorAll("#categoryList .song-card");
+    const noResults = document.getElementById("noCategoryResults");
+
+    let found = 0;
+
+    cards.forEach(card => {
+      const title = card.dataset.title || "";
+
+      if (title.includes(value)) {
+        card.style.display = "block";
+        found++;
+      } else {
+        card.style.display = "none";
+      }
+    });
+
+    if (noResults) {
+      noResults.style.display = found === 0 ? "block" : "none";
+    }
+  });
+}
