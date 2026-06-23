@@ -249,3 +249,40 @@ function filterSongs(category){
     }
   });
 }
+// BUSCADOR DESDE INICIO
+
+function goToSearch(){
+  const input = document.getElementById("homeSearch");
+
+  if(!input){
+    window.location.href = "canciones.html";
+    return;
+  }
+
+  const query = input.value.trim();
+
+  if(query === ""){
+    window.location.href = "canciones.html";
+  }else{
+    window.location.href = "canciones.html?buscar=" + encodeURIComponent(query);
+  }
+}
+
+const homeSearch = document.getElementById("homeSearch");
+
+if(homeSearch){
+  homeSearch.addEventListener("keydown", function(event){
+    if(event.key === "Enter"){
+      goToSearch();
+    }
+  });
+}
+
+// RECIBIR BUSQUEDA EN canciones.html
+
+const initialQuery = new URLSearchParams(window.location.search).get("buscar");
+
+if(search && initialQuery){
+  search.value = initialQuery.toLowerCase();
+  search.dispatchEvent(new Event("keyup"));
+}
