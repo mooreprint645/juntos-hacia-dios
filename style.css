@@ -250,7 +250,7 @@ body{
 }
 /* MODO CLARO */
 
-.light-mode{
+body.light-mode{
 
   --bg:#f8f5ef;
 
