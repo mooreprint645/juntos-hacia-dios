@@ -9,70 +9,67 @@
 
 <body>
 
-<header class="hero">
+<header class="hero small-hero">
   <nav class="navbar">
-    <a href="index.html" class="quick-card" style="width:auto; padding:12px 20px;">← Inicio</a>
+    <a href="index.html" class="nav-link">← Inicio</a>
     <h2>JHD</h2>
     <button id="themeToggle">🌙</button>
   </nav>
 
   <div class="hero-content">
     <h1>Canciones</h1>
-    <p>Busca cantos cristianos y católicos con acordes, tutoriales y transposición</p>
+    <p>Busca cantos por nombre, artista o categoría</p>
 
     <div class="search-box">
-      <input id="songSearch" type="text" placeholder="Buscar canción, artista o categoría...">
+      <input id="songSearch" type="text" placeholder="Buscar canto, artista o categoría...">
     </div>
   </div>
 </header>
+
+<section class="section">
+  <div class="filters">
+    <button onclick="filterSongs('todos')">Todos</button>
+    <button onclick="filterSongs('catolica')">Católicos</button>
+    <button onclick="filterSongs('cristiana')">Cristianos</button>
+    <button onclick="filterSongs('adoracion')">Adoración</button>
+    <button onclick="filterSongs('alabanza')">Alabanza</button>
+    <button onclick="filterSongs('maria')">María</button>
+    <button onclick="filterSongs('espiritu')">Espíritu Santo</button>
+  </div>
+</section>
 
 <section class="section">
   <h2>Cantos de ejemplo</h2>
 
   <div class="song-grid" id="songList">
 
-    <article class="song-card" data-title="quiero caminar contigo maria athenas catolica">
-      <h3>Quiero caminar contigo María</h3>
-      <p>Athenas · Católica · María</p>
-      <span>Tono: G</span>
-      <button onclick="openSong('maria')">Ver canto</button>
+    <article class="song-card" data-category="catolica maria" data-title="quiero caminar contigo maria athenas catolica">
+      <h3>🎵 Quiero caminar contigo María</h3>
+      <p>👤 Athenas</p>
+      <p>✝ Católica · María</p>
+      <p>🎸 Tono: G</p>
+      <p>⭐ Fácil</p>
+      <a class="song-btn" href="canto.html?id=maria">Ver canto</a>
     </article>
 
-    <article class="song-card" data-title="ven espiritu santo adoracion cristiana">
-      <h3>Ven Espíritu Santo</h3>
-      <p>Adoración · Cristiana</p>
-      <span>Tono: D</span>
-      <button onclick="openSong('espiritu')">Ver canto</button>
+    <article class="song-card" data-category="cristiana adoracion espiritu" data-title="ven espiritu santo adoracion cristiana">
+      <h3>🎵 Ven Espíritu Santo</h3>
+      <p>👤 Adoración</p>
+      <p>✝ Cristiana · Espíritu Santo</p>
+      <p>🎸 Tono: D</p>
+      <p>⭐ Fácil</p>
+      <a class="song-btn" href="canto.html?id=espiritu">Ver canto</a>
     </article>
 
-    <article class="song-card" data-title="digno y santo alabanza cristiana">
-      <h3>Digno y Santo</h3>
-      <p>Alabanza · Cristiana</p>
-      <span>Tono: A</span>
-      <button onclick="openSong('digno')">Ver canto</button>
+    <article class="song-card" data-category="cristiana alabanza" data-title="digno y santo alabanza cristiana">
+      <h3>🎵 Digno y Santo</h3>
+      <p>👤 Alabanza</p>
+      <p>✝ Cristiana · Alabanza</p>
+      <p>🎸 Tono: A</p>
+      <p>⭐ Medio</p>
+      <a class="song-btn" href="canto.html?id=digno">Ver canto</a>
     </article>
 
-  </div>
-</section>
-
-<section class="section" id="songViewer" style="display:none;">
-  <h2 id="songTitle"></h2>
-
-  <div class="features">
-    <button onclick="transposeSong(-1)">-1</button>
-    <button onclick="resetTranspose()">Original</button>
-    <button onclick="transposeSong(1)">+1</button>
-  </div>
-
-  <div class="song-card" style="margin-top:25px;">
-    <pre id="songLyrics" style="white-space:pre-wrap; line-height:2; font-size:1.1rem;"></pre>
-  </div>
-
-  <div class="song-card" style="margin-top:25px;">
-    <h3>▶ Tutoriales</h3>
-    <p><a href="#" target="_blank">🎸 Tutorial guitarra</a></p>
-    <p><a href="#" target="_blank">🎹 Tutorial piano</a></p>
-    <p><a href="#" target="_blank">🎤 Karaoke / pista</a></p>
   </div>
 </section>
 
