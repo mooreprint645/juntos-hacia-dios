@@ -276,3 +276,130 @@ body.light-mode .quick-card,
 body.light-mode .quick-card:visited{
   color:#151515 !important;
 }
+/* FILTROS */
+
+.filters{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:40px;
+}
+
+.filters button{
+
+    background:var(--card);
+
+    color:var(--text);
+
+    border:none;
+
+    padding:12px 20px;
+
+    border-radius:30px;
+
+    cursor:pointer;
+
+    font-weight:bold;
+
+    transition:.3s;
+
+}
+
+.filters button:hover{
+
+    background:var(--gold);
+
+    color:#000;
+
+}
+
+
+/* BOTONES DE CANCIONES */
+
+.song-btn{
+
+    display:inline-block;
+
+    margin-top:15px;
+
+    background:var(--gold);
+
+    color:#000 !important;
+
+    text-decoration:none;
+
+    padding:12px 22px;
+
+    border-radius:30px;
+
+    font-weight:bold;
+
+    transition:.3s;
+
+}
+
+.song-btn:hover{
+
+    transform:scale(1.05);
+
+    box-shadow:0 0 20px rgba(246,196,83,.4);
+
+}
+
+
+/* TARJETAS DE CANCIONES */
+
+.song-card h3{
+
+    margin-bottom:15px;
+
+}
+
+.song-card p{
+
+    color:var(--secondary);
+
+    margin-bottom:8px;
+
+}
+
+
+/* HERO PEQUEÑO */
+
+.small-hero{
+
+    min-height:350px;
+
+}
+
+
+/* CONTROLES DE TRANSPOSICION */
+
+.transpose-controls{
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:15px;
+
+    margin-bottom:30px;
+
+}
+
+.transpose-controls button{
+
+    background:var(--gold);
+
+    border:none;
+
+    padding:12px 25px;
+
+    border-radius:30px;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+}
