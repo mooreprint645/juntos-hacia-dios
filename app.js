@@ -174,6 +174,9 @@ async function loadHomeSongs() {
     homeSongList.innerHTML = `
       <div class="song-card">
         <h3>No se pudo conectar con Supabase</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Intenta actualizar la página más tarde.
+        </p>
       </div>
     `;
     return;
@@ -189,7 +192,9 @@ async function loadHomeSongs() {
     homeSongList.innerHTML = `
       <div class="song-card">
         <h3>Error cargando canciones</h3>
-        <p>${error.message}</p>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Intenta actualizar la página más tarde.
+        </p>
       </div>
     `;
     return;
@@ -202,9 +207,8 @@ async function loadHomeSongs() {
       <div class="song-card">
         <h3>No hay canciones todavía</h3>
         <p style="color:var(--secondary); margin-top:15px;">
-          Agrega canciones desde el panel de administración.
+          Muy pronto se agregarán cantos, letras y acordes.
         </p>
-        <a class="song-btn" href="admin.html">Ir al admin</a>
       </div>
     `;
     return;
@@ -277,6 +281,9 @@ async function loadPublicSongs() {
     songList.innerHTML = `
       <div class="song-card">
         <h3>No se pudo conectar con Supabase</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Intenta actualizar la página más tarde.
+        </p>
       </div>
     `;
     return;
@@ -291,7 +298,9 @@ async function loadPublicSongs() {
     songList.innerHTML = `
       <div class="song-card">
         <h3>Error cargando canciones</h3>
-        <p>${error.message}</p>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Intenta actualizar la página más tarde.
+        </p>
       </div>
     `;
     return;
@@ -304,7 +313,7 @@ async function loadPublicSongs() {
       <div class="song-card">
         <h3>No hay canciones todavía</h3>
         <p style="color:var(--secondary); margin-top:15px;">
-          Agrega canciones desde el panel de administración.
+          Muy pronto se agregarán cantos, letras y acordes.
         </p>
       </div>
     `;
@@ -463,6 +472,9 @@ async function loadPublicArtists() {
     artistList.innerHTML = `
       <div class="song-card">
         <h3>No se pudo conectar con Supabase</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Intenta actualizar la página más tarde.
+        </p>
       </div>
     `;
     return;
@@ -477,7 +489,9 @@ async function loadPublicArtists() {
     artistList.innerHTML = `
       <div class="song-card">
         <h3>Error cargando artistas</h3>
-        <p>${error.message}</p>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Intenta actualizar la página más tarde.
+        </p>
       </div>
     `;
     return;
@@ -490,7 +504,7 @@ async function loadPublicArtists() {
       <div class="song-card">
         <h3>No hay artistas todavía</h3>
         <p style="color:var(--secondary); margin-top:15px;">
-          Agrega artistas desde el panel de administración.
+          Muy pronto se agregarán artistas y ministerios.
         </p>
       </div>
     `;
@@ -598,7 +612,7 @@ async function loadArtistProfile() {
       <div class="song-card">
         <h3>No hay canciones todavía</h3>
         <p style="color:var(--secondary); margin-top:15px;">
-          Agrega canciones para este artista desde el panel de administración.
+          Muy pronto se agregarán cantos para este artista.
         </p>
       </div>
     `;
@@ -636,6 +650,9 @@ async function loadPublicCategories() {
     categoryList.innerHTML = `
       <div class="song-card">
         <h3>No se pudo conectar con Supabase</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Intenta actualizar la página más tarde.
+        </p>
       </div>
     `;
     return;
@@ -650,7 +667,9 @@ async function loadPublicCategories() {
     categoryList.innerHTML = `
       <div class="song-card">
         <h3>Error cargando categorías</h3>
-        <p>${error.message}</p>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Intenta actualizar la página más tarde.
+        </p>
       </div>
     `;
     return;
@@ -663,7 +682,7 @@ async function loadPublicCategories() {
       <div class="song-card">
         <h3>No hay categorías todavía</h3>
         <p style="color:var(--secondary); margin-top:15px;">
-          Agrega categorías desde el panel de administración.
+          Muy pronto se agregarán categorías.
         </p>
       </div>
     `;
