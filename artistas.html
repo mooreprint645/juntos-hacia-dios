@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artistas | Juntos Hacia Dios</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="hero small-hero">
+  <nav class="navbar">
+    <a href="index.html" class="nav-link">← Inicio</a>
+    <h2>JHD</h2>
+    <button id="themeToggle">🌙</button>
+  </nav>
+
+  <div class="hero-content">
+    <h1>Artistas</h1>
+    <p>Explora cantos por artista o ministerio</p>
+
+    <div class="search-box">
+      <input id="artistSearch" type="text" placeholder="Buscar artista o ministerio...">
+    </div>
+  </div>
+</header>
+
+<section class="section">
+  <h2>Artistas de ejemplo</h2>
+
+  <div class="song-grid" id="artistList">
+
+    <article class="song-card artist-card" data-title="athenas catolica maria adoracion">
+      <div class="artist-avatar">A</div>
+      <h3>Athenas</h3>
+      <p>Católica · Adoración · María</p>
+      <p>🎵 Cantos disponibles: 1</p>
+      <a class="song-btn" href="canciones.html?buscar=athenas">Ver cantos</a>
+    </article>
+
+    <article class="song-card artist-card" data-title="adoracion cristiana espiritu santo">
+      <div class="artist-avatar">AD</div>
+      <h3>Adoración</h3>
+      <p>Cristiana · Espíritu Santo</p>
+      <p>🎵 Cantos disponibles: 1</p>
+      <a class="song-btn" href="canciones.html?buscar=adoracion">Ver cantos</a>
+    </article>
+
+    <article class="song-card artist-card" data-title="alabanza cristiana digno y santo">
+      <div class="artist-avatar">AL</div>
+      <h3>Alabanza</h3>
+      <p>Cristiana · Alabanza</p>
+      <p>🎵 Cantos disponibles: 1</p>
+      <a class="song-btn" href="canciones.html?buscar=alabanza">Ver cantos</a>
+    </article>
+
+  </div>
+
+  <p id="noArtistResults" style="display:none; color:var(--secondary); margin-top:25px;">
+    No se encontraron artistas con esa búsqueda.
+  </p>
+</section>
+
+<section class="section">
+  <div class="song-card">
+    <h2>Nota</h2>
+    <p style="margin-top:15px; line-height:1.8;">
+      Estos artistas son solo ejemplos temporales. Cuando conectemos Supabase, podrás borrar todos
+      y agregar tus propios artistas, ministerios, imágenes y cantos desde el panel de administración.
+    </p>
+  </div>
+</section>
+
+<script src="app.js"></script>
+
+</body>
+</html>
