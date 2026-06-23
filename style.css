@@ -265,3 +265,10 @@ body.light-mode{
   --hover:#f0eadf;
 
 }
+body.light-mode .quick-card{
+  color:#151515;
+}
+
+body.light-mode #themeToggle{
+  color:#151515;
+}
