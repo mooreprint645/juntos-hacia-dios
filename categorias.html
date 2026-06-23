@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Categorías | Juntos Hacia Dios</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="hero small-hero">
+  <nav class="navbar">
+    <h2>JHD</h2>
+
+    <div class="nav-menu">
+      <a href="index.html" class="nav-link">Inicio</a>
+      <a href="canciones.html" class="nav-link">Canciones</a>
+      <a href="artistas.html" class="nav-link">Artistas</a>
+      <a href="categorias.html" class="nav-link">Categorías</a>
+      <a href="donaciones.html" class="nav-link">Donaciones</a>
+    </div>
+
+    <button id="themeToggle">🌙</button>
+  </nav>
+
+  <div class="hero-content">
+    <h1>Categorías</h1>
+    <p>Explora cantos por tema, uso o estilo</p>
+
+    <div class="search-box">
+      <input id="categorySearch" type="text" placeholder="Buscar categoría...">
+    </div>
+  </div>
+</header>
+
+<section class="section">
+  <h2>Categorías de ejemplo</h2>
+
+  <div class="song-grid" id="categoryList">
+
+    <article class="song-card category-card" data-title="catolica catolicos misa maria adoracion">
+      <div class="category-icon">✝️</div>
+      <h3>Católicos</h3>
+      <p>Cantos para misa, adoración, María y oración.</p>
+      <a class="song-btn" href="canciones.html?buscar=catolica">Ver cantos</a>
+    </article>
+
+    <article class="song-card category-card" data-title="cristiana cristianos alabanza adoracion">
+      <div class="category-icon">🎶</div>
+      <h3>Cristianos</h3>
+      <p>Cantos de alabanza, adoración y congregación.</p>
+      <a class="song-btn" href="canciones.html?buscar=cristiana">Ver cantos</a>
+    </article>
+
+    <article class="song-card category-card" data-title="adoracion oracion intimidad dios">
+      <div class="category-icon">🙏</div>
+      <h3>Adoración</h3>
+      <p>Cantos tranquilos para oración e intimidad con Dios.</p>
+      <a class="song-btn" href="canciones.html?buscar=adoracion">Ver cantos</a>
+    </article>
+
+    <article class="song-card category-card" data-title="alabanza gozo celebracion">
+      <div class="category-icon">🙌</div>
+      <h3>Alabanza</h3>
+      <p>Cantos alegres para celebrar y exaltar a Dios.</p>
+      <a class="song-btn" href="canciones.html?buscar=alabanza">Ver cantos</a>
+    </article>
+
+    <article class="song-card category-card" data-title="maria virgen mariano catolica">
+      <div class="category-icon">💙</div>
+      <h3>María</h3>
+      <p>Cantos marianos y canciones dedicadas a la Virgen María.</p>
+      <a class="song-btn" href="canciones.html?buscar=maria">Ver cantos</a>
+    </article>
+
+    <article class="song-card category-card" data-title="espiritu santo pentecostes adoracion">
+      <div class="category-icon">🔥</div>
+      <h3>Espíritu Santo</h3>
+      <p>Cantos de invocación, oración y adoración al Espíritu Santo.</p>
+      <a class="song-btn" href="canciones.html?buscar=espiritu">Ver cantos</a>
+    </article>
+
+  </div>
+
+  <p id="noCategoryResults" style="display:none; color:var(--secondary); margin-top:25px;">
+    No se encontraron categorías con esa búsqueda.
+  </p>
+</section>
+
+<section class="section">
+  <div class="song-card">
+    <h2>Nota</h2>
+    <p style="margin-top:15px; line-height:1.8;">
+      Estas categorías son ejemplos temporales. Cuando conectemos Supabase, podrás borrar todas
+      y crear tus propias categorías desde el panel de administración.
+    </p>
+  </div>
+</section>
+
+<script src="app.js"></script>
+
+</body>
+</html>
