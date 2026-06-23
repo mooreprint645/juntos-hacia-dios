@@ -327,3 +327,31 @@ if(mainSearchInput){
     }
   });
 }
+// BUSCADOR DE ARTISTAS
+
+const artistSearch = document.getElementById("artistSearch");
+
+if(artistSearch){
+  artistSearch.addEventListener("keyup", () => {
+    const value = artistSearch.value.toLowerCase().trim();
+    const cards = document.querySelectorAll("#artistList .song-card");
+    const noResults = document.getElementById("noArtistResults");
+
+    let found = 0;
+
+    cards.forEach(card => {
+      const title = card.dataset.title || "";
+
+      if(title.includes(value)){
+        card.style.display = "block";
+        found++;
+      }else{
+        card.style.display = "none";
+      }
+    });
+
+    if(noResults){
+      noResults.style.display = found === 0 ? "block" : "none";
+    }
+  });
+}
