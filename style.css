@@ -412,3 +412,20 @@ body.light-mode .quick-card:visited{
 .nav-link:hover{
   text-decoration:underline;
 }
+.artist-card{
+  text-align:center;
+}
+
+.artist-avatar{
+  width:80px;
+  height:80px;
+  border-radius:50%;
+  background:var(--gold);
+  color:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  font-size:1.5rem;
+  margin:0 auto 20px;
+}
