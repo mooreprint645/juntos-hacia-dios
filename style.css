@@ -544,3 +544,43 @@ body.light-mode .quick-card:visited{
   box-shadow:0 0 18px rgba(246,196,83,.35);
   text-decoration:none !important;
 }
+/* CORRECCIÓN VISUAL ADMIN FINAL */
+
+#adminPanel .song-card input,
+#adminPanel .song-card textarea,
+#adminPanel .song-card select,
+#loginSection .song-card input{
+  width:100% !important;
+  display:block !important;
+  padding:14px !important;
+  margin-top:15px !important;
+  border-radius:12px !important;
+  border:none !important;
+  outline:none !important;
+  font-size:1rem !important;
+  background:#ffffff !important;
+  color:#111111 !important;
+}
+
+#adminPanel .song-card textarea{
+  min-height:120px !important;
+  resize:vertical !important;
+}
+
+#songLyricsInput{
+  min-height:260px !important;
+  font-family:monospace !important;
+}
+
+#adminPanel .song-card .song-btn,
+#loginSection .song-card .song-btn{
+  margin-top:18px !important;
+}
+
+#adminPanel .song-card{
+  overflow:hidden;
+}
+
+#adminPanel .song-grid{
+  align-items:start;
+}
