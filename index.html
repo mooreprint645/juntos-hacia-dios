@@ -1,159 +1,81 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Juntos Hacia Dios</title>
-
-<style>
-
-:root{
---bg:#111;
---card:#1b1b1b;
---gold:#f6c453;
---text:#ffffff;
---secondary:#bdbdbd;
-}
-
-*{
-margin:0;
-padding:0;
-box-sizing:border-box;
-}
-
-body{
-background:var(--bg);
-color:var(--text);
-font-family:Arial,sans-serif;
-}
-
-header{
-padding:80px 20px;
-text-align:center;
-}
-
-h1{
-font-size:3rem;
-color:var(--gold);
-}
-
-.subtitle{
-margin-top:15px;
-color:var(--secondary);
-font-size:1.2rem;
-}
-
-.buttons{
-margin-top:40px;
-display:flex;
-justify-content:center;
-gap:20px;
-flex-wrap:wrap;
-}
-
-button{
-
-padding:15px 30px;
-
-border:none;
-
-border-radius:40px;
-
-background:var(--gold);
-
-font-weight:bold;
-
-cursor:pointer;
-
-transition:.3s;
-}
-
-button:hover{
-
-transform:scale(1.05);
-
-}
-
-main{
-
-padding:40px;
-
-}
-
-.card{
-
-background:var(--card);
-
-padding:25px;
-
-border-radius:20px;
-
-margin:auto;
-
-max-width:700px;
-
-text-align:center;
-
-}
-
-</style>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juntos Hacia Dios</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<header>
+<header class="hero">
+  <nav class="navbar">
+    <h2>JHD</h2>
+    <button id="themeToggle">🌙</button>
+  </nav>
 
-<h1>Juntos Hacia Dios</h1>
+  <div class="hero-content">
+    <h1>Juntos Hacia Dios</h1>
+    <p>Cantos, letras y acordes cristianos y católicos</p>
 
-<p class="subtitle">
-
-Cantos y acordes cristianos y católicos
-
-</p>
-
-<div class="buttons">
-
-<button>Buscar canciones</button>
-
-<button>Artistas</button>
-
-<button>Categorías</button>
-
-<button>Donaciones</button>
-
-</div>
-
+    <div class="search-box">
+      <input type="text" placeholder="Buscar canción, artista o categoría...">
+      <button>Buscar</button>
+    </div>
+  </div>
 </header>
 
-<main>
+<section class="quick-cards">
+  <a href="canciones.html" class="quick-card">🎵 Canciones</a>
+  <a href="artistas.html" class="quick-card">👤 Artistas</a>
+  <a href="categorias.html" class="quick-card">📚 Categorías</a>
+  <a href="donaciones.html" class="quick-card">❤️ Donaciones</a>
+</section>
 
-<div class="card">
+<section class="section">
+  <h2>Canciones recientes</h2>
 
-<h2>Próximamente</h2>
+  <div class="song-grid">
 
-<p style="margin-top:20px">
+    <article class="song-card">
+      <h3>Quiero caminar contigo María</h3>
+      <p>Athenas · Católica</p>
+      <span>Tono: G</span>
+      <button>Ver canto</button>
+    </article>
 
-🎵 Tutoriales<br><br>
+    <article class="song-card">
+      <h3>Ven Espíritu Santo</h3>
+      <p>Adoración · Cristiana</p>
+      <span>Tono: D</span>
+      <button>Ver canto</button>
+    </article>
 
-🎸 Diagramas de guitarra<br><br>
+    <article class="song-card">
+      <h3>Digno y Santo</h3>
+      <p>Alabanza · Cristiana</p>
+      <span>Tono: A</span>
+      <button>Ver canto</button>
+    </article>
 
-🎹 Piano<br><br>
+  </div>
+</section>
 
-🌙 Modo noche<br><br>
+<section class="section">
+  <h2>Funciones disponibles</h2>
 
-🔄 Transposición automática<br><br>
+  <div class="features">
+    <div>🎸 Diagramas de guitarra</div>
+    <div>🎹 Piano</div>
+    <div>🔄 Transposición automática</div>
+    <div>▶ Tutoriales</div>
+    <div>🌙 Modo noche</div>
+    <div>🔒 Panel administrador</div>
+  </div>
+</section>
 
-❤️ Favoritos<br><br>
-
-🔒 Panel administrador
-
-</p>
-
-</div>
-
-</main>
+<script src="app.js"></script>
 
 </body>
-
 </html>
