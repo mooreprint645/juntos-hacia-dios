@@ -1,9 +1,10 @@
 :root{
-  --bg:#111;
-  --card:#1b1b1b;
+  --bg:#0f1117;
+  --card:#1a1d27;
   --gold:#f6c453;
   --text:#ffffff;
-  --secondary:#bdbdbd;
+  --secondary:#b8b8b8;
+  --hover:#242938;
 }
 
 *{
@@ -15,56 +16,235 @@
 body{
   background:var(--bg);
   color:var(--text);
-  font-family:Arial, sans-serif;
+  font-family:Arial,sans-serif;
 }
 
-header{
-  padding:80px 20px;
+/* ENCABEZADO */
+
+.hero{
+  padding:40px 20px 80px;
   text-align:center;
 }
 
-h1{
-  font-size:3rem;
+.navbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  max-width:1200px;
+  margin:auto;
+}
+
+.navbar h2{
   color:var(--gold);
 }
 
-.subtitle{
-  margin-top:15px;
+#themeToggle{
+  background:none;
+  border:none;
+  font-size:1.5rem;
+  cursor:pointer;
+  color:white;
+}
+
+.hero-content h1{
+  margin-top:50px;
+  font-size:4rem;
+  color:var(--gold);
+}
+
+.hero-content p{
+  margin-top:20px;
   color:var(--secondary);
   font-size:1.2rem;
 }
 
-.buttons{
+/* BUSCADOR */
+
+.search-box{
   margin-top:40px;
   display:flex;
   justify-content:center;
-  gap:20px;
+  gap:10px;
   flex-wrap:wrap;
 }
 
-button{
-  padding:15px 30px;
+.search-box input{
+
+  width:500px;
+  max-width:90%;
+
+  padding:16px;
+
   border:none;
+
   border-radius:40px;
-  background:var(--gold);
-  font-weight:bold;
-  cursor:pointer;
-  transition:.3s;
-}
 
-button:hover{
-  transform:scale(1.05);
-}
-
-main{
-  padding:40px;
-}
-
-.card{
   background:var(--card);
+
+  color:white;
+
+  font-size:1rem;
+
+}
+
+.search-box button{
+
+  padding:16px 28px;
+
+  border:none;
+
+  border-radius:40px;
+
+  background:var(--gold);
+
+  font-weight:bold;
+
+  cursor:pointer;
+
+}
+
+/* TARJETAS RAPIDAS */
+
+.quick-cards{
+
+  display:flex;
+
+  justify-content:center;
+
+  gap:20px;
+
+  flex-wrap:wrap;
+
+  margin-bottom:60px;
+
+}
+
+.quick-card{
+
+  background:var(--card);
+
+  color:white;
+
+  text-decoration:none;
+
   padding:25px;
-  border-radius:20px;
-  margin:auto;
-  max-width:700px;
+
+  width:220px;
+
   text-align:center;
+
+  border-radius:20px;
+
+  transition:.3s;
+
+}
+
+.quick-card:hover{
+
+  transform:translateY(-5px);
+
+  background:var(--hover);
+
+}
+
+/* SECCIONES */
+
+.section{
+
+  max-width:1200px;
+
+  margin:auto;
+
+  padding:40px 20px;
+
+}
+
+.section h2{
+
+  margin-bottom:30px;
+
+  color:var(--gold);
+
+}
+
+/* CANCIONES */
+
+.song-grid{
+
+  display:grid;
+
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+
+  gap:20px;
+
+}
+
+.song-card{
+
+  background:var(--card);
+
+  padding:25px;
+
+  border-radius:20px;
+
+}
+
+.song-card h3{
+
+  margin-bottom:15px;
+
+}
+
+.song-card p{
+
+  color:var(--secondary);
+
+}
+
+.song-card span{
+
+  display:block;
+
+  margin-top:15px;
+
+}
+
+.song-card button{
+
+  margin-top:20px;
+
+  background:var(--gold);
+
+  border:none;
+
+  padding:12px 20px;
+
+  border-radius:30px;
+
+  cursor:pointer;
+
+}
+
+/* FUNCIONES */
+
+.features{
+
+  display:grid;
+
+  grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+
+  gap:20px;
+
+}
+
+.features div{
+
+  background:var(--card);
+
+  padding:25px;
+
+  border-radius:20px;
+
+  text-align:center;
+
 }
