@@ -248,3 +248,20 @@ body{
   text-align:center;
 
 }
+/* MODO CLARO */
+
+.light-mode{
+
+  --bg:#f8f5ef;
+
+  --card:#ffffff;
+
+  --gold:#c9972b;
+
+  --text:#151515;
+
+  --secondary:#555555;
+
+  --hover:#f0eadf;
+
+}
