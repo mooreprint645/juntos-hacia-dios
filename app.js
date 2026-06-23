@@ -286,3 +286,44 @@ if(search && initialQuery){
   search.value = initialQuery.toLowerCase();
   search.dispatchEvent(new Event("keyup"));
 }
+// BUSCADOR EN PÁGINA PRINCIPAL
+
+function searchHomeSongs(){
+  const input = document.getElementById("homeSearch");
+  const cards = document.querySelectorAll("#homeSongList .song-card");
+  const noResults = document.getElementById("noHomeResults");
+
+  if(!input || cards.length === 0){
+    return;
+  }
+
+  const value = input.value.toLowerCase().trim();
+  let found = 0;
+
+  cards.forEach(card => {
+    const title = card.dataset.title || "";
+
+    if(title.includes(value)){
+      card.style.display = "block";
+      found++;
+    }else{
+      card.style.display = "none";
+    }
+  });
+
+  if(noResults){
+    noResults.style.display = found === 0 ? "block" : "none";
+  }
+}
+
+const mainSearchInput = document.getElementById("homeSearch");
+
+if(mainSearchInput){
+  mainSearchInput.addEventListener("keyup", function(event){
+    searchHomeSongs();
+
+    if(event.key === "Enter"){
+      searchHomeSongs();
+    }
+  });
+}
