@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canto | Juntos Hacia Dios</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="hero small-hero">
+  <nav class="navbar">
+    <a href="canciones.html" class="nav-link">← Canciones</a>
+    <h2>JHD</h2>
+    <button id="themeToggle">🌙</button>
+  </nav>
+
+  <div class="hero-content">
+    <h1 id="songTitle">Cargando canto...</h1>
+    <p id="songInfo"></p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="transpose-controls">
+    <button onclick="transposeSong(-1)">-1</button>
+    <button onclick="resetTranspose()">Original</button>
+    <button onclick="transposeSong(1)">+1</button>
+  </div>
+
+  <div class="song-card lyrics-card">
+    <pre id="songLyrics"></pre>
+  </div>
+</section>
+
+<section class="section">
+  <h2>▶ Tutoriales</h2>
+
+  <div class="features">
+    <a class="song-btn" id="tutorialGuitar" href="#" target="_blank">🎸 Tutorial guitarra</a>
+    <a class="song-btn" id="tutorialPiano" href="#" target="_blank">🎹 Tutorial piano</a>
+    <a class="song-btn" id="tutorialKaraoke" href="#" target="_blank">🎤 Karaoke / pista</a>
+  </div>
+</section>
+
+<section class="section">
+  <h2>🎸 Acordes de guitarra</h2>
+  <p style="color:var(--secondary); margin-bottom:20px;">
+    Toca un acorde en la letra para ver su posición.
+  </p>
+
+  <div class="song-card" id="chordBox">
+    Selecciona un acorde.
+  </div>
+</section>
+
+<script src="app.js"></script>
+
+</body>
+</html>
