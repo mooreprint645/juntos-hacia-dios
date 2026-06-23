@@ -355,3 +355,109 @@ if(artistSearch){
     }
   });
 }
+// BUSCADOR DE ARTISTAS
+
+const artistSearch = document.getElementById("artistSearch");
+
+if(artistSearch){
+  artistSearch.addEventListener("keyup", () => {
+    const value = artistSearch.value.toLowerCase().trim();
+    const cards = document.querySelectorAll("#artistList .song-card");
+    const noResults = document.getElementById("noArtistResults");
+
+    let found = 0;
+
+    cards.forEach(card => {
+      const title = card.dataset.title || "";
+
+      if(title.includes(value)){
+        card.style.display = "block";
+        found++;
+      }else{
+        card.style.display = "none";
+      }
+    });
+
+    if(noResults){
+      noResults.style.display = found === 0 ? "block" : "none";
+    }
+  });
+}
+
+
+// PERFIL INDIVIDUAL DE ARTISTA
+
+const artists = {
+  athenas: {
+    name: "Athenas",
+    avatar: "A",
+    description: "Cantante católica de adoración y música espiritual.",
+    tags: "Católica · María · Adoración",
+    songs: ["maria"]
+  },
+
+  adoracion: {
+    name: "Adoración",
+    avatar: "AD",
+    description: "Cantos cristianos de adoración y oración.",
+    tags: "Cristiana · Espíritu Santo · Adoración",
+    songs: ["espiritu"]
+  },
+
+  alabanza: {
+    name: "Alabanza",
+    avatar: "AL",
+    description: "Cantos cristianos de alabanza congregacional.",
+    tags: "Cristiana · Alabanza",
+    songs: ["digno"]
+  }
+};
+
+const artistName = document.getElementById("artistName");
+const artistDescription = document.getElementById("artistDescription");
+const artistTags = document.getElementById("artistTags");
+const artistAvatar = document.getElementById("artistAvatar");
+const artistSongsList = document.getElementById("artistSongsList");
+const noArtistSongs = document.getElementById("noArtistSongs");
+
+if(artistName && artistSongsList){
+  const artistId = new URLSearchParams(window.location.search).get("id");
+  const artist = artists[artistId];
+
+  if(artist){
+    artistName.innerText = artist.name;
+    artistDescription.innerText = artist.description;
+    artistTags.innerText = artist.tags;
+    artistAvatar.innerText = artist.avatar;
+
+    artistSongsList.innerHTML = "";
+
+    artist.songs.forEach(songId => {
+      const song = songs[songId];
+
+      if(song){
+        artistSongsList.innerHTML += `
+          <article class="song-card">
+            <h3>🎵 ${song.title}</h3>
+            <p>${song.info}</p>
+            <a class="song-btn" href="canto.html?id=${songId}">Ver canto</a>
+          </article>
+        `;
+      }
+    });
+
+    if(artist.songs.length === 0 && noArtistSongs){
+      noArtistSongs.style.display = "block";
+    }
+
+  }else{
+    artistName.innerText = "Artista no encontrado";
+    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
+    artistTags.innerText = "";
+    artistAvatar.innerText = "?";
+
+    if(noArtistSongs){
+      noArtistSongs.style.display = "block";
+    }
+  }
+}
