@@ -498,3 +498,60 @@ if (categorySearch) {
     }
   });
 }
+/* =========================
+   ARTISTAS DESDE SUPABASE
+========================= */
+
+async function loadPublicArtists(){
+  const artistList = document.getElementById("artistList");
+
+  if(!artistList){
+    return;
+  }
+
+  if(typeof supabaseClient === "undefined"){
+    artistList.innerHTML = "<p>No se pudo conectar con Supabase.</p>";
+    return;
+  }
+
+  const { data: artistsData, error } = await supabaseClient
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if(error){
+    artistList.innerHTML = "<p>Error cargando artistas.</p>";
+    return;
+  }
+
+  artistList.innerHTML = "";
+
+  if(!artistsData || artistsData.length === 0){
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay artistas todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Agrega artistas desde el panel de administración.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  artistsData.forEach(artist => {
+    const avatarContent = artist.avatar_url
+      ? `<img src="${artist.avatar_url}" alt="${artist.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+      : artist.name.charAt(0).toUpperCase();
+
+    artistList.innerHTML += `
+      <article class="song-card artist-card" data-title="${artist.name.toLowerCase()} ${(artist.description || "").toLowerCase()}">
+        <div class="artist-avatar">${avatarContent}</div>
+        <h3>${artist.name}</h3>
+        <p>${artist.description || "Sin descripción todavía."}</p>
+        <a class="song-btn" href="artista.html?id=${artist.slug}">Ver perfil</a>
+      </article>
+    `;
+  });
+}
+
+loadPublicArtists();
