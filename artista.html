@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artista | Juntos Hacia Dios</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header class="artist-profile-hero">
+  <nav class="navbar">
+    <a href="artistas.html" class="nav-link">← Artistas</a>
+    <h2>JHD</h2>
+    <button id="themeToggle">🌙</button>
+  </nav>
+
+  <div class="artist-profile-content">
+    <div class="artist-profile-avatar" id="artistAvatar">A</div>
+
+    <div>
+      <p class="profile-label">Artista / Ministerio</p>
+      <h1 id="artistName">Cargando artista...</h1>
+      <p id="artistDescription"></p>
+      <p id="artistTags" class="artist-tags"></p>
+    </div>
+  </div>
+</header>
+
+<section class="section">
+  <h2>Cantos del artista</h2>
+
+  <div class="song-grid" id="artistSongsList">
+  </div>
+
+  <p id="noArtistSongs" style="display:none; color:var(--secondary); margin-top:25px;">
+    Este artista todavía no tiene cantos agregados.
+  </p>
+</section>
+
+<script src="app.js"></script>
+
+</body>
+</html>
