@@ -1,110 +1,4 @@
 /* =========================
-   DATOS TEMPORALES
-   Luego esto vendrá desde Supabase
-========================= */
-
-const songs = {
-  maria: {
-    title: "Quiero caminar contigo María",
-    artist: "Athenas",
-    category: "Católica · María",
-    tone: "G",
-    difficulty: "Fácil",
-    info: "Athenas · Católica · María · Tono G",
-    lyrics: `
-      G
-Quiero caminar contigo María
-
-      Em
-Por el sendero de la fe
-
-      C
-Quiero sentir tu compañía
-
-      D
-Y caminar hacia Dios
-`,
-    tutorialGuitar: "#",
-    tutorialPiano: "#"
-  },
-
-  espiritu: {
-    title: "Ven Espíritu Santo",
-    artist: "Adoración",
-    category: "Cristiana · Espíritu Santo",
-    tone: "D",
-    difficulty: "Fácil",
-    info: "Adoración · Cristiana · Espíritu Santo · Tono D",
-    lyrics: `
-      D
-Ven Espíritu Santo
-
-      Bm
-Llena mi vida
-
-      G
-Quiero adorarte
-
-      A
-Con todo mi ser
-`,
-    tutorialGuitar: "#",
-    tutorialPiano: "#"
-  },
-
-  digno: {
-    title: "Digno y Santo",
-    artist: "Alabanza",
-    category: "Cristiana · Alabanza",
-    tone: "A",
-    difficulty: "Medio",
-    info: "Alabanza · Cristiana · Alabanza · Tono A",
-    lyrics: `
-      A
-Digno y Santo
-
-      E
-El Cordero inmolado
-
-      F#m
-Te exaltamos Señor
-
-      D
-Rey de gloria
-`,
-    tutorialGuitar: "#",
-    tutorialPiano: "#"
-  }
-};
-
-const artists = {
-  athenas: {
-    name: "Athenas",
-    avatar: "A",
-    description: "Cantante católica de adoración y música espiritual.",
-    tags: "Católica · María · Adoración",
-    songs: ["maria"]
-  },
-
-  adoracion: {
-    name: "Adoración",
-    avatar: "AD",
-    description: "Ministerio de cantos cristianos de adoración y oración.",
-    tags: "Cristiana · Espíritu Santo · Adoración",
-    songs: ["espiritu"]
-  },
-
-  alabanza: {
-    name: "Alabanza",
-    avatar: "AL",
-    description: "Cantos cristianos de alabanza congregacional.",
-    tags: "Cristiana · Alabanza",
-    songs: ["digno"]
-  }
-};
-
-
-/* =========================
    MODO CLARO / OSCURO
 ========================= */
 
@@ -244,41 +138,94 @@ function setChordLanguage(language) {
 
 
 /* =========================
-   CANTO INDIVIDUAL
+   FUNCIONES AUXILIARES
 ========================= */
 
-const params = new URLSearchParams(window.location.search);
-const id = params.get("id");
-
-const songTitle = document.getElementById("songTitle");
-const songInfo = document.getElementById("songInfo");
-
-if (songTitle && songInfo) {
-  if (id && songs[id]) {
-    const song = songs[id];
-
-    songTitle.innerText = song.title;
-    songInfo.innerText = song.info;
-
-    originalLyrics = song.lyrics;
-    showLyrics();
-
-    const tutorialGuitar = document.getElementById("tutorialGuitar");
-    const tutorialPiano = document.getElementById("tutorialPiano");
-
-    if (tutorialGuitar) tutorialGuitar.href = song.tutorialGuitar;
-    if (tutorialPiano) tutorialPiano.href = song.tutorialPiano;
-
-  } else {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
+function getSupabase() {
+  if (typeof supabaseClient === "undefined") {
+    return null;
   }
+
+  return supabaseClient;
+}
+
+function getInitial(text) {
+  if (!text) return "?";
+  return text.charAt(0).toUpperCase();
+}
+
+function safeText(text, fallback = "") {
+  return text || fallback;
 }
 
 
 /* =========================
-   BUSCADOR EN PÁGINA PRINCIPAL
+   INICIO: CANCIONES RECIENTES
 ========================= */
+
+async function loadHomeSongs() {
+  const homeSongList = document.getElementById("homeSongList");
+
+  if (!homeSongList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    homeSongList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar con Supabase</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("songs")
+    .select("*, artists(name, slug), categories(name, slug)")
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  if (error) {
+    homeSongList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando canciones</h3>
+        <p>${error.message}</p>
+      </div>
+    `;
+    return;
+  }
+
+  homeSongList.innerHTML = "";
+
+  if (!data || data.length === 0) {
+    homeSongList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Agrega canciones desde el panel de administración.
+        </p>
+        <a class="song-btn" href="admin.html">Ir al admin</a>
+      </div>
+    `;
+    return;
+  }
+
+  data.forEach(song => {
+    const artistName = song.artists ? song.artists.name : "Sin artista";
+    const categoryName = song.categories ? song.categories.name : "Sin categoría";
+
+    homeSongList.innerHTML += `
+      <article class="song-card" data-title="${song.title.toLowerCase()} ${artistName.toLowerCase()} ${categoryName.toLowerCase()}">
+        <h3>🎵 ${song.title}</h3>
+        <p>👤 ${artistName}</p>
+        <p>✝ ${categoryName}</p>
+        <p>🎸 Tono: ${safeText(song.tone, "No definido")}</p>
+        <p>⭐ ${safeText(song.difficulty, "Sin dificultad")}</p>
+        <a class="song-btn" href="canto.html?id=${song.slug}">Ver canto</a>
+      </article>
+    `;
+  });
+}
 
 function searchHomeSongs() {
   const input = document.getElementById("homeSearch");
@@ -316,47 +263,112 @@ if (homeSearch) {
 
 
 /* =========================
-   BUSCADOR DE CANCIONES
+   CANCIONES DESDE SUPABASE
 ========================= */
+
+async function loadPublicSongs() {
+  const songList = document.getElementById("songList");
+
+  if (!songList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar con Supabase</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("songs")
+    .select("*, artists(name, slug), categories(name, slug)")
+    .order("title");
+
+  if (error) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando canciones</h3>
+        <p>${error.message}</p>
+      </div>
+    `;
+    return;
+  }
+
+  songList.innerHTML = "";
+
+  if (!data || data.length === 0) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Agrega canciones desde el panel de administración.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  data.forEach(song => {
+    const artistName = song.artists ? song.artists.name : "Sin artista";
+    const categoryName = song.categories ? song.categories.name : "Sin categoría";
+
+    songList.innerHTML += `
+      <article class="song-card"
+        data-category="${categoryName.toLowerCase()}"
+        data-title="${song.title.toLowerCase()} ${artistName.toLowerCase()} ${categoryName.toLowerCase()}">
+        <h3>🎵 ${song.title}</h3>
+        <p>👤 ${artistName}</p>
+        <p>✝ ${categoryName}</p>
+        <p>🎸 Tono: ${safeText(song.tone, "No definido")}</p>
+        <p>⭐ ${safeText(song.difficulty, "Sin dificultad")}</p>
+        <a class="song-btn" href="canto.html?id=${song.slug}">Ver canto</a>
+      </article>
+    `;
+  });
+
+  const songSearch = document.getElementById("songSearch");
+  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
+
+  if (songSearch && initialQuery) {
+    songSearch.value = initialQuery.toLowerCase();
+    filterSongCards();
+  }
+}
+
+function filterSongCards() {
+  const songSearch = document.getElementById("songSearch");
+  const cards = document.querySelectorAll("#songList .song-card");
+  const noResults = document.getElementById("noResults");
+
+  if (!songSearch) return;
+
+  const value = songSearch.value.toLowerCase().trim();
+  let found = 0;
+
+  cards.forEach(card => {
+    const title = card.dataset.title || "";
+
+    if (title.includes(value)) {
+      card.style.display = "block";
+      found++;
+    } else {
+      card.style.display = "none";
+    }
+  });
+
+  if (noResults) {
+    noResults.style.display = found === 0 ? "block" : "none";
+  }
+}
 
 const songSearch = document.getElementById("songSearch");
 
 if (songSearch) {
-  songSearch.addEventListener("keyup", () => {
-    const value = songSearch.value.toLowerCase().trim();
-    const cards = document.querySelectorAll("#songList .song-card");
-    const noResults = document.getElementById("noResults");
-
-    let found = 0;
-
-    cards.forEach(card => {
-      const title = card.dataset.title || "";
-
-      if (title.includes(value)) {
-        card.style.display = "block";
-        found++;
-      } else {
-        card.style.display = "none";
-      }
-    });
-
-    if (noResults) {
-      noResults.style.display = found === 0 ? "block" : "none";
-    }
-  });
-
-  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
-
-  if (initialQuery) {
-    songSearch.value = initialQuery.toLowerCase();
-    songSearch.dispatchEvent(new Event("keyup"));
-  }
+  songSearch.addEventListener("keyup", filterSongCards);
 }
-
-
-/* =========================
-   FILTROS DE CANCIONES
-========================= */
 
 function filterSongs(category) {
   const cards = document.querySelectorAll("#songList .song-card");
@@ -382,8 +394,124 @@ function filterSongs(category) {
 
 
 /* =========================
-   BUSCADOR DE ARTISTAS
+   CANTO INDIVIDUAL DESDE SUPABASE
 ========================= */
+
+async function loadSingleSong() {
+  const songTitle = document.getElementById("songTitle");
+  const songInfo = document.getElementById("songInfo");
+
+  if (!songTitle || !songInfo) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    songTitle.innerText = "No se pudo conectar con Supabase";
+    return;
+  }
+
+  const slug = new URLSearchParams(window.location.search).get("id");
+
+  if (!slug) {
+    songTitle.innerText = "Canto no encontrado";
+    songInfo.innerText = "No se especificó ningún canto.";
+    return;
+  }
+
+  const { data, error } = await client
+    .from("songs")
+    .select("*, artists(name, slug), categories(name, slug)")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !data) {
+    songTitle.innerText = "Canto no encontrado";
+    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
+    return;
+  }
+
+  const artistName = data.artists ? data.artists.name : "Sin artista";
+  const categoryName = data.categories ? data.categories.name : "Sin categoría";
+
+  songTitle.innerText = data.title;
+  songInfo.innerText = `${artistName} · ${categoryName} · Tono ${safeText(data.tone, "No definido")}`;
+
+  originalLyrics = data.lyrics || "";
+  transposeAmount = 0;
+  showLyrics();
+
+  const tutorialGuitar = document.getElementById("tutorialGuitar");
+  const tutorialPiano = document.getElementById("tutorialPiano");
+
+  if (tutorialGuitar) tutorialGuitar.href = data.tutorial_guitar || "#";
+  if (tutorialPiano) tutorialPiano.href = data.tutorial_piano || "#";
+}
+
+
+/* =========================
+   ARTISTAS DESDE SUPABASE
+========================= */
+
+async function loadPublicArtists() {
+  const artistList = document.getElementById("artistList");
+
+  if (!artistList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar con Supabase</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando artistas</h3>
+        <p>${error.message}</p>
+      </div>
+    `;
+    return;
+  }
+
+  artistList.innerHTML = "";
+
+  if (!data || data.length === 0) {
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay artistas todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Agrega artistas desde el panel de administración.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  data.forEach(artist => {
+    const avatarContent = artist.avatar_url
+      ? `<img src="${artist.avatar_url}" alt="${artist.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
+      : getInitial(artist.name);
+
+    artistList.innerHTML += `
+      <article class="song-card artist-card" data-title="${artist.name.toLowerCase()} ${(artist.description || "").toLowerCase()}">
+        <div class="artist-avatar">${avatarContent}</div>
+        <h3>${artist.name}</h3>
+        <p>${artist.description || "Sin descripción todavía."}</p>
+        <a class="song-btn" href="artista.html?id=${artist.slug}">Ver perfil</a>
+      </article>
+    `;
+  });
+}
 
 const artistSearch = document.getElementById("artistSearch");
 
@@ -414,63 +542,145 @@ if (artistSearch) {
 
 
 /* =========================
-   PERFIL INDIVIDUAL DE ARTISTA
+   PERFIL DE ARTISTA DESDE SUPABASE
 ========================= */
 
-const artistName = document.getElementById("artistName");
-const artistDescription = document.getElementById("artistDescription");
-const artistTags = document.getElementById("artistTags");
-const artistAvatar = document.getElementById("artistAvatar");
-const artistSongsList = document.getElementById("artistSongsList");
-const noArtistSongs = document.getElementById("noArtistSongs");
+async function loadArtistProfile() {
+  const artistName = document.getElementById("artistName");
+  const artistDescription = document.getElementById("artistDescription");
+  const artistTags = document.getElementById("artistTags");
+  const artistAvatar = document.getElementById("artistAvatar");
+  const artistSongsList = document.getElementById("artistSongsList");
 
-if (artistName && artistSongsList) {
-  const artistId = new URLSearchParams(window.location.search).get("id");
-  const artist = artists[artistId];
+  if (!artistName || !artistSongsList) return;
 
-  if (artist) {
-    artistName.innerText = artist.name;
-    artistDescription.innerText = artist.description;
-    artistTags.innerText = artist.tags;
-    artistAvatar.innerText = artist.avatar;
+  const client = getSupabase();
 
-    artistSongsList.innerHTML = "";
+  if (!client) {
+    artistName.innerText = "No se pudo conectar con Supabase";
+    return;
+  }
 
-    artist.songs.forEach(songId => {
-      const song = songs[songId];
+  const slug = new URLSearchParams(window.location.search).get("id");
 
-      if (song) {
-        artistSongsList.innerHTML += `
-          <article class="song-card">
-            <h3>🎵 ${song.title}</h3>
-            <p>👤 ${song.artist}</p>
-            <p>✝ ${song.category}</p>
-            <p>🎸 Tono: ${song.tone}</p>
-            <p>⭐ ${song.difficulty}</p>
-            <a class="song-btn" href="canto.html?id=${songId}">Ver canto</a>
-          </article>
-        `;
-      }
-    });
+  const { data: artist, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .single();
 
-    if (artist.songs.length === 0 && noArtistSongs) {
-      noArtistSongs.style.display = "block";
-    }
-
-  } else {
+  if (error || !artist) {
     artistName.innerText = "Artista no encontrado";
     artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    artistTags.innerText = "";
-    artistAvatar.innerText = "?";
-
-    if (noArtistSongs) {
-      noArtistSongs.style.display = "block";
-    }
+    return;
   }
+
+  artistName.innerText = artist.name;
+  artistDescription.innerText = artist.description || "Sin descripción todavía.";
+  artistTags.innerText = "Artista / Ministerio";
+
+  if (artist.avatar_url) {
+    artistAvatar.innerHTML = `<img src="${artist.avatar_url}" alt="${artist.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+  } else {
+    artistAvatar.innerText = getInitial(artist.name);
+  }
+
+  const { data: songsData } = await client
+    .from("songs")
+    .select("*, categories(name)")
+    .eq("artist_id", artist.id)
+    .order("title");
+
+  artistSongsList.innerHTML = "";
+
+  if (!songsData || songsData.length === 0) {
+    artistSongsList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Agrega canciones para este artista desde el panel de administración.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  songsData.forEach(song => {
+    const categoryName = song.categories ? song.categories.name : "Sin categoría";
+
+    artistSongsList.innerHTML += `
+      <article class="song-card">
+        <h3>🎵 ${song.title}</h3>
+        <p>✝ ${categoryName}</p>
+        <p>🎸 Tono: ${safeText(song.tone, "No definido")}</p>
+        <p>⭐ ${safeText(song.difficulty, "Sin dificultad")}</p>
+        <a class="song-btn" href="canto.html?id=${song.slug}">Ver canto</a>
+      </article>
+    `;
+  });
 }
+
+
 /* =========================
-   BUSCADOR DE CATEGORIAS
+   CATEGORÍAS DESDE SUPABASE
 ========================= */
+
+async function loadPublicCategories() {
+  const categoryList = document.getElementById("categoryList");
+
+  if (!categoryList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    categoryList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar con Supabase</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("categories")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    categoryList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando categorías</h3>
+        <p>${error.message}</p>
+      </div>
+    `;
+    return;
+  }
+
+  categoryList.innerHTML = "";
+
+  if (!data || data.length === 0) {
+    categoryList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay categorías todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Agrega categorías desde el panel de administración.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  data.forEach(category => {
+    categoryList.innerHTML += `
+      <article class="song-card category-card" data-title="${category.name.toLowerCase()} ${(category.description || "").toLowerCase()}">
+        <div class="category-icon">🎵</div>
+        <h3>${category.name}</h3>
+        <p>${category.description || "Sin descripción todavía."}</p>
+        <a class="song-btn" href="canciones.html?buscar=${encodeURIComponent(category.name)}">Ver cantos</a>
+      </article>
+    `;
+  });
+}
 
 const categorySearch = document.getElementById("categorySearch");
 
@@ -498,60 +708,15 @@ if (categorySearch) {
     }
   });
 }
+
+
 /* =========================
-   ARTISTAS DESDE SUPABASE
+   CARGAR SEGÚN LA PÁGINA
 ========================= */
 
-async function loadPublicArtists(){
-  const artistList = document.getElementById("artistList");
-
-  if(!artistList){
-    return;
-  }
-
-  if(typeof supabaseClient === "undefined"){
-    artistList.innerHTML = "<p>No se pudo conectar con Supabase.</p>";
-    return;
-  }
-
-  const { data: artistsData, error } = await supabaseClient
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if(error){
-    artistList.innerHTML = "<p>Error cargando artistas.</p>";
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  if(!artistsData || artistsData.length === 0){
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Agrega artistas desde el panel de administración.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  artistsData.forEach(artist => {
-    const avatarContent = artist.avatar_url
-      ? `<img src="${artist.avatar_url}" alt="${artist.name}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
-      : artist.name.charAt(0).toUpperCase();
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${artist.name.toLowerCase()} ${(artist.description || "").toLowerCase()}">
-        <div class="artist-avatar">${avatarContent}</div>
-        <h3>${artist.name}</h3>
-        <p>${artist.description || "Sin descripción todavía."}</p>
-        <a class="song-btn" href="artista.html?id=${artist.slug}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
+loadHomeSongs();
+loadPublicSongs();
+loadSingleSong();
 loadPublicArtists();
+loadArtistProfile();
+loadPublicCategories();
