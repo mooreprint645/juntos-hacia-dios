@@ -272,3 +272,7 @@ body.light-mode .quick-card{
 body.light-mode #themeToggle{
   color:#151515;
 }
+body.light-mode .quick-card,
+body.light-mode .quick-card:visited{
+  color:#151515 !important;
+}
