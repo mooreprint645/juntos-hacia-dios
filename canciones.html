@@ -11,8 +11,16 @@
 
 <header class="hero small-hero">
   <nav class="navbar">
-    <a href="index.html" class="nav-link">← Inicio</a>
     <h2>JHD</h2>
+
+    <div class="nav-menu">
+      <a href="index.html" class="nav-link">Inicio</a>
+      <a href="canciones.html" class="nav-link">Canciones</a>
+      <a href="artistas.html" class="nav-link">Artistas</a>
+      <a href="categorias.html" class="nav-link">Categorías</a>
+      <a href="donaciones.html" class="nav-link">Donaciones</a>
+    </div>
+
     <button id="themeToggle">🌙</button>
   </nav>
 
@@ -27,68 +35,21 @@
 </header>
 
 <section class="section">
-  <div class="filters">
-    <button onclick="filterSongs('todos')">Todos</button>
-    <button onclick="filterSongs('catolica')">Católicos</button>
-    <button onclick="filterSongs('cristiana')">Cristianos</button>
-    <button onclick="filterSongs('adoracion')">Adoración</button>
-    <button onclick="filterSongs('alabanza')">Alabanza</button>
-    <button onclick="filterSongs('maria')">María</button>
-    <button onclick="filterSongs('espiritu')">Espíritu Santo</button>
-  </div>
-</section>
-
-<section class="section">
-  <h2>Cantos de ejemplo</h2>
+  <h2>Cantos</h2>
 
   <div class="song-grid" id="songList">
-
-    <article 
-      class="song-card" 
-      data-category="catolica maria" 
-      data-title="quiero caminar contigo maria athenas catolica maria"
-    >
-      <h3>🎵 Quiero caminar contigo María</h3>
-      <p>👤 Athenas</p>
-      <p>✝ Católica · María</p>
-      <p>🎸 Tono: G</p>
-      <p>⭐ Fácil</p>
-      <a class="song-btn" href="canto.html?id=maria">Ver canto</a>
-    </article>
-
-    <article 
-      class="song-card" 
-      data-category="cristiana adoracion espiritu" 
-      data-title="ven espiritu santo adoracion cristiana espiritu santo"
-    >
-      <h3>🎵 Ven Espíritu Santo</h3>
-      <p>👤 Adoración</p>
-      <p>✝ Cristiana · Espíritu Santo</p>
-      <p>🎸 Tono: D</p>
-      <p>⭐ Fácil</p>
-      <a class="song-btn" href="canto.html?id=espiritu">Ver canto</a>
-    </article>
-
-    <article 
-      class="song-card" 
-      data-category="cristiana alabanza" 
-      data-title="digno y santo alabanza cristiana"
-    >
-      <h3>🎵 Digno y Santo</h3>
-      <p>👤 Alabanza</p>
-      <p>✝ Cristiana · Alabanza</p>
-      <p>🎸 Tono: A</p>
-      <p>⭐ Medio</p>
-      <a class="song-btn" href="canto.html?id=digno">Ver canto</a>
-    </article>
-
+    <div class="song-card">
+      <p style="color:var(--secondary);">Cargando canciones...</p>
+    </div>
   </div>
 
   <p id="noResults" style="display:none; color:var(--secondary); margin-top:25px;">
-    No se encontraron canciones con esa búsqueda.
+    No se encontraron canciones.
   </p>
 </section>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 <script src="app.js"></script>
 
 </body>
