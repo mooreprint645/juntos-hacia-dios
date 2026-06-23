@@ -525,3 +525,22 @@ body.light-mode .quick-card:visited{
   font-size:3rem;
   margin-bottom:18px;
 }
+/* BOTONES DEL MENÚ SUPERIOR - CORRECCIÓN FINAL */
+
+.navbar .nav-link,
+.navbar .nav-link:visited{
+  color:#000 !important;
+  background:var(--gold) !important;
+  text-decoration:none !important;
+  padding:10px 18px !important;
+  border-radius:30px !important;
+  font-weight:bold !important;
+  display:inline-block !important;
+  transition:.3s !important;
+}
+
+.navbar .nav-link:hover{
+  transform:scale(1.05);
+  box-shadow:0 0 18px rgba(246,196,83,.35);
+  text-decoration:none !important;
+}
