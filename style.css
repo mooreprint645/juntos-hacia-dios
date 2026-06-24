@@ -1538,3 +1538,48 @@ body.light-mode .donation-value {
     grid-column: 1 / -1 !important;
   }
 }
+/* =========================
+   CORRECCIÓN FINAL EDITOR + VISTA PREVIA
+========================= */
+
+/* Hacer grande el editor de letra en computadora */
+#songLyricsInput {
+  min-height: 460px !important;
+  height: 460px !important;
+  resize: vertical !important;
+  font-family: "Courier New", monospace !important;
+  font-size: 1rem !important;
+  line-height: 1.7 !important;
+}
+
+/* Ocultar vista previa por defecto */
+#jhdLyricsPreviewBox,
+.lyrics-preview-box {
+  display: none !important;
+}
+
+/* Mostrar solo cuando tenga la clase show */
+#jhdLyricsPreviewBox.show,
+.lyrics-preview-box.show {
+  display: block !important;
+}
+
+/* Mejor acomodo de botones */
+.lyrics-preview-tools {
+  margin-top: 18px !important;
+  margin-bottom: 10px !important;
+}
+
+.lyrics-preview-btn {
+  padding: 11px 16px !important;
+  border-radius: 999px !important;
+}
+
+/* Teléfono */
+@media (max-width: 700px) {
+  #songLyricsInput {
+    min-height: 360px !important;
+    height: 360px !important;
+    font-size: .9rem !important;
+  }
+}
