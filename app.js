@@ -3161,3 +3161,377 @@ runWhenReady(() => {
 });
 
 window.jhdSetExploreFilter = jhdSetExploreFilter;
+/* =========================================================
+   CORRECCIÓN ERROR RELACIÓN DUPLICADA SONGS / CATEGORIES
+   Usar solo song_categories -> categories
+========================================================= */
+
+function jhdGetCategoriesFromSong(song) {
+  if (song && Array.isArray(song.song_categories)) {
+    const multi = song.song_categories
+      .map(item => item.categories)
+      .filter(Boolean);
+
+    if (multi.length > 0) {
+      return multi;
+    }
+  }
+
+  return [];
+}
+
+function jhdGetCategoryNamesFromSong(song) {
+  const categories = jhdGetCategoriesFromSong(song);
+
+  if (categories.length === 0) {
+    return "Sin categoría";
+  }
+
+  return categories.map(category => category.name).join(", ");
+}
+
+function jhdGetCategorySlugTextFromSong(song) {
+  const categories = jhdGetCategoriesFromSong(song);
+
+  return categories
+    .map(category => {
+      return [
+        category.name || "",
+        category.slug || "",
+        jhdSlugifyFilter(category.name || "")
+      ].join(" ");
+    })
+    .join(" ")
+    .toLowerCase();
+}
+
+/* Inicio - canciones recientes */
+async function loadHomeSongs() {
+  const homeSongList = document.getElementById("homeSongList");
+
+  if (!homeSongList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    homeSongList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("songs")
+    .select(`
+      *,
+      artists(name, slug),
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  if (error) {
+    homeSongList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando canciones</h3>
+        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    homeSongList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Muy pronto se agregarán cantos, letras y acordes.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  homeSongList.innerHTML = "";
+
+  data.forEach(song => {
+    const title = song.title || "Sin título";
+    const artistName = song.artists ? song.artists.name : "Sin artista";
+    const categoryNames = jhdGetCategoryNamesFromSong(song);
+    const typeLabel = jhdGetSongTypeLabel(song.song_type);
+
+    homeSongList.innerHTML += `
+      <article class="song-card" data-title="${escapeHTML(`${title} ${artistName} ${categoryNames} ${typeLabel}`.toLowerCase())}">
+        <h3>🎵 ${escapeHTML(title)}</h3>
+        <p>👤 ${escapeHTML(artistName)}</p>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
+        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  });
+}
+
+/* Página canciones */
+async function loadPublicSongs() {
+  const songList = document.getElementById("songList");
+
+  if (!songList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar</h3>
+      </div>
+    `;
+    return;
+  }
+
+  jhdUpdateSongPageTitle();
+
+  let query = client
+    .from("songs")
+    .select(`
+      *,
+      artists(name, slug),
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .order("title");
+
+  query = jhdApplyTypeFilter(query);
+
+  const { data, error } = await query;
+
+  if (error) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando canciones</h3>
+        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Todavía no hay cantos en esta sección.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  jhdBuildExploreFilterBar(data);
+
+  songList.innerHTML = "";
+
+  data.forEach(song => {
+    const title = song.title || "Sin título";
+    const artistName = song.artists ? song.artists.name : "Sin artista";
+    const categoryNames = jhdGetCategoryNamesFromSong(song);
+    const categorySlugText = jhdGetCategorySlugTextFromSong(song);
+    const typeLabel = jhdGetSongTypeLabel(song.song_type);
+
+    songList.innerHTML += `
+      <article class="song-card"
+        data-category="${escapeHTML(categorySlugText)}"
+        data-title="${escapeHTML(`${title} ${artistName} ${categoryNames} ${typeLabel}`.toLowerCase())}">
+        <h3>🎵 ${escapeHTML(title)}</h3>
+        <p>👤 ${escapeHTML(artistName)}</p>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
+        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  });
+
+  const songSearch = document.getElementById("songSearch");
+  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
+
+  if (songSearch && initialQuery) {
+    songSearch.value = initialQuery.toLowerCase();
+  }
+
+  filterSongCards();
+}
+
+/* Canto individual */
+async function loadSingleSong() {
+  const songTitle = document.getElementById("songTitle");
+  const songInfo = document.getElementById("songInfo");
+
+  if (!songTitle || !songInfo) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    songTitle.innerText = "No se pudo conectar";
+    return;
+  }
+
+  const slug = new URLSearchParams(window.location.search).get("id");
+
+  if (!slug) {
+    songTitle.innerText = "Canto no encontrado";
+    songInfo.innerText = "No se especificó ningún canto.";
+    return;
+  }
+
+  const { data, error } = await client
+    .from("songs")
+    .select(`
+      *,
+      artists(name, slug),
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("slug", slug)
+    .single();
+
+  if (error || !data) {
+    songTitle.innerText = "Canto no encontrado";
+    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
+    return;
+  }
+
+  const artistName = data.artists ? data.artists.name : "Sin artista";
+  const categoryNames = jhdGetCategoryNamesFromSong(data);
+  const typeLabel = jhdGetSongTypeLabel(data.song_type);
+
+  songTitle.innerText = data.title || "Sin título";
+  songInfo.innerText = `${artistName} · ${typeLabel} · ${categoryNames} · Tono ${safeText(data.tone, "No definido")}`;
+
+  originalLyrics = data.lyrics || "";
+  transposeAmount = 0;
+  showLyrics();
+
+  const tutorialGuitar = document.getElementById("tutorialGuitar");
+  const tutorialPiano = document.getElementById("tutorialPiano");
+
+  if (tutorialGuitar) {
+    const guitarUrl = safeUrl(data.tutorial_guitar);
+    tutorialGuitar.href = guitarUrl || "#";
+    tutorialGuitar.style.display = guitarUrl ? "inline-block" : "none";
+  }
+
+  if (tutorialPiano) {
+    const pianoUrl = safeUrl(data.tutorial_piano);
+    tutorialPiano.href = pianoUrl || "#";
+    tutorialPiano.style.display = pianoUrl ? "inline-block" : "none";
+  }
+}
+
+/* Perfil de artista */
+async function loadArtistProfile() {
+  const artistName = document.getElementById("artistName");
+  const artistDescription = document.getElementById("artistDescription");
+  const artistTags = document.getElementById("artistTags");
+  const artistAvatar = document.getElementById("artistAvatar");
+  const artistSongsList = document.getElementById("artistSongsList");
+
+  if (!artistName || !artistSongsList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistName.innerText = "No se pudo conectar";
+    return;
+  }
+
+  const slug = new URLSearchParams(window.location.search).get("id");
+
+  if (!slug) {
+    artistName.innerText = "Artista no encontrado";
+    return;
+  }
+
+  const { data: artist, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !artist) {
+    artistName.innerText = "Artista no encontrado";
+    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
+    return;
+  }
+
+  artistName.innerText = artist.name || "Sin nombre";
+  artistDescription.innerText = artist.description || "Sin descripción todavía.";
+  artistTags.innerText = "Artista / Ministerio";
+
+  const avatar = safeUrl(artist.avatar_url);
+
+  if (artistAvatar) {
+    if (avatar) {
+      artistAvatar.innerHTML = `<img src="${escapeHTML(avatar)}" alt="${escapeHTML(artist.name)}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+    } else {
+      artistAvatar.innerText = getInitial(artist.name);
+    }
+  }
+
+  const { data: songsData } = await client
+    .from("songs")
+    .select(`
+      *,
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("artist_id", artist.id)
+    .order("title");
+
+  artistSongsList.innerHTML = "";
+
+  if (!songsData || songsData.length === 0) {
+    artistSongsList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+      </div>
+    `;
+    return;
+  }
+
+  songsData.forEach(song => {
+    const categoryNames = jhdGetCategoryNamesFromSong(song);
+    const typeLabel = jhdGetSongTypeLabel(song.song_type);
+
+    artistSongsList.innerHTML += `
+      <article class="song-card">
+        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
+        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  });
+}
+
+/* Recargar con funciones corregidas */
+runWhenReady(() => {
+  setTimeout(() => {
+    loadHomeSongs();
+    loadPublicSongs();
+    loadSingleSong();
+    loadArtistProfile();
+  }, 600);
+});
