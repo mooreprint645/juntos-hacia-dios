@@ -1863,3 +1863,174 @@ body.light-mode .chord-token {
     border-radius: 6px;
   }
 }
+/* =========================================================
+   CAJAS DE COLORES POR APARTADO
+   Intro / Verso / Coro / Puente / Final
+========================================================= */
+
+.lyrics-grouped-view {
+  display: block;
+  width: 100%;
+}
+
+.lyrics-section-card {
+  display: block;
+  margin: 18px 0;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 10px 24px rgba(0,0,0,.14);
+}
+
+.lyrics-section-title {
+  display: inline-block;
+  font-weight: 900;
+  font-size: 1rem;
+  margin-bottom: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
+.lyrics-section-content {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  font-family: "Courier New", monospace;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+/* ACORDES */
+.chord-token {
+  display: inline-block;
+  color: var(--gold);
+  font-weight: 900;
+  background: rgba(255, 204, 80, .12);
+  border: 1px solid rgba(255, 204, 80, .20);
+  border-radius: 7px;
+  padding: 0 4px;
+  margin: 0 1px;
+}
+
+/* ========= COLORES POR TIPO ========= */
+
+/* INTRO */
+.section-card-intro {
+  background: rgba(59, 130, 246, .12);
+  border-left: 6px solid #60a5fa;
+}
+.section-card-intro .lyrics-section-title {
+  background: rgba(59, 130, 246, .18);
+  color: #93c5fd;
+}
+
+/* VERSO */
+.section-card-verso,
+.section-card-estrofa {
+  background: rgba(34, 197, 94, .11);
+  border-left: 6px solid #4ade80;
+}
+.section-card-verso .lyrics-section-title,
+.section-card-estrofa .lyrics-section-title {
+  background: rgba(34, 197, 94, .18);
+  color: #86efac;
+}
+
+/* PRE CORO */
+.section-card-precoro {
+  background: rgba(234, 179, 8, .12);
+  border-left: 6px solid #facc15;
+}
+.section-card-precoro .lyrics-section-title {
+  background: rgba(234, 179, 8, .20);
+  color: #fde047;
+}
+
+/* CORO */
+.section-card-coro {
+  background: rgba(236, 72, 153, .12);
+  border-left: 6px solid #f472b6;
+}
+.section-card-coro .lyrics-section-title {
+  background: rgba(236, 72, 153, .20);
+  color: #f9a8d4;
+}
+
+/* PUENTE */
+.section-card-puente {
+  background: rgba(139, 92, 246, .12);
+  border-left: 6px solid #a78bfa;
+}
+.section-card-puente .lyrics-section-title {
+  background: rgba(139, 92, 246, .20);
+  color: #c4b5fd;
+}
+
+/* INTERLUDIO / INTERMEDIO / INSTRUMENTAL */
+.section-card-interludio,
+.section-card-intermedio {
+  background: rgba(20, 184, 166, .12);
+  border-left: 6px solid #2dd4bf;
+}
+.section-card-interludio .lyrics-section-title,
+.section-card-intermedio .lyrics-section-title {
+  background: rgba(20, 184, 166, .20);
+  color: #5eead4;
+}
+
+/* FINAL / OUTRO */
+.section-card-final {
+  background: rgba(239, 68, 68, .11);
+  border-left: 6px solid #f87171;
+}
+.section-card-final .lyrics-section-title {
+  background: rgba(239, 68, 68, .18);
+  color: #fca5a5;
+}
+
+/* DEFAULT */
+.section-card-default {
+  background: rgba(255,255,255,.05);
+  border-left: 6px solid var(--gold);
+}
+.section-card-default .lyrics-section-title {
+  background: rgba(255,255,255,.08);
+  color: var(--gold);
+}
+
+/* MODO CLARO */
+body.light-mode .lyrics-section-card {
+  border-color: rgba(0,0,0,.08);
+  box-shadow: 0 8px 18px rgba(0,0,0,.05);
+}
+body.light-mode .lyrics-section-content {
+  color: #111;
+}
+body.light-mode .section-card-default {
+  background: rgba(0,0,0,.03);
+}
+body.light-mode .chord-token {
+  color: #8a6500;
+  background: rgba(255, 204, 80, .20);
+  border-color: rgba(138, 101, 0, .16);
+}
+
+/* TELÉFONO */
+@media (max-width: 700px) {
+  .lyrics-section-card {
+    padding: 14px;
+    border-radius: 16px;
+    margin: 14px 0;
+  }
+
+  .lyrics-section-title {
+    font-size: .88rem;
+    padding: 5px 10px;
+  }
+
+  .lyrics-section-content {
+    font-size: .9rem;
+    line-height: 1.65;
+  }
+}
