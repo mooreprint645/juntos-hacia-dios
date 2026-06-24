@@ -2694,3 +2694,11 @@ async function loadArtistProfile() {
     `;
   });
 }
+/* =========================================================
+   OCULTAR ASISTENTE DE ACORDES
+========================================================= */
+
+#jhdChordHelperBox,
+.chord-helper-box {
+  display: none !important;
+}
