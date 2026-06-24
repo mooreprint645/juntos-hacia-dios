@@ -1730,3 +1730,136 @@ body.light-mode .editor-section-block {
     padding: 14px;
   }
 }
+/* =========================
+   LETRA COLOREADA SIN CAJAS
+   Vista pública + vista previa admin
+========================= */
+
+/* Ocultar el mapa de cajas anterior */
+#jhdEditorSectionMap {
+  display: none !important;
+}
+
+/* Vista general de letra */
+.lyrics-colored-view {
+  display: block;
+  width: 100%;
+  white-space: pre-wrap;
+  font-family: "Courier New", monospace;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: #ffffff;
+}
+
+/* Cada línea normal */
+.lyrics-colored-line {
+  display: block;
+  min-height: 1.45em;
+}
+
+/* Apartados: Intro, Verso, Coro, Puente, Final */
+.lyrics-colored-section {
+  display: block;
+  margin-top: 18px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  width: fit-content;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 900;
+  letter-spacing: .3px;
+}
+
+/* Colores por tipo */
+.section-intro {
+  background: rgba(96, 165, 250, .18);
+  color: #93c5fd;
+}
+
+.section-verso,
+.section-estrofa {
+  background: rgba(52, 211, 153, .16);
+  color: #6ee7b7;
+}
+
+.section-precoro {
+  background: rgba(251, 191, 36, .17);
+  color: #fcd34d;
+}
+
+.section-coro {
+  background: rgba(244, 114, 182, .16);
+  color: #f9a8d4;
+}
+
+.section-puente {
+  background: rgba(167, 139, 250, .17);
+  color: #c4b5fd;
+}
+
+.section-interludio,
+.section-intermedio {
+  background: rgba(45, 212, 191, .16);
+  color: #5eead4;
+}
+
+.section-final {
+  background: rgba(248, 113, 113, .16);
+  color: #fca5a5;
+}
+
+.section-default {
+  background: rgba(255,255,255,.10);
+  color: var(--gold);
+}
+
+/* Acordes dentro de las líneas */
+.chord-token {
+  display: inline-block;
+  color: var(--gold);
+  font-weight: 900;
+  background: rgba(255, 204, 80, .12);
+  border: 1px solid rgba(255, 204, 80, .22);
+  border-radius: 7px;
+  padding: 0 4px;
+  margin: 0 1px;
+}
+
+/* Líneas que son principalmente acordes */
+.lyrics-chord-line {
+  color: var(--gold);
+}
+
+/* Vista previa admin usa el mismo estilo */
+.lyrics-preview-content .lyrics-colored-view {
+  font-size: .95rem;
+}
+
+/* Modo claro */
+body.light-mode .lyrics-colored-view {
+  color: #111;
+}
+
+body.light-mode .chord-token {
+  color: #8a6500;
+  background: rgba(255, 204, 80, .22);
+  border-color: rgba(138, 101, 0, .20);
+}
+
+/* Teléfono */
+@media (max-width: 700px) {
+  .lyrics-colored-view {
+    font-size: .88rem;
+    line-height: 1.65;
+  }
+
+  .lyrics-colored-section {
+    font-size: .88rem;
+    padding: 6px 9px;
+  }
+
+  .chord-token {
+    padding: 0 3px;
+    border-radius: 6px;
+  }
+}
