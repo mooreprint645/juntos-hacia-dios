@@ -1457,3 +1457,84 @@ body.light-mode .donation-value {
     grid-column: 1 / -1 !important;
   }
 }
+/* =========================
+   MEJORA ADMIN AGREGAR CANCIÓN
+========================= */
+
+/* Hace más cómoda la tarjeta de agregar canción */
+#adminPanel .song-card:has(#songLyricsInput) {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Campo de letra más útil para canciones largas */
+#songLyricsInput {
+  min-height: 420px !important;
+  resize: vertical !important;
+  font-family: "Courier New", monospace !important;
+  line-height: 1.65 !important;
+  font-size: 1rem !important;
+  white-space: pre !important;
+}
+
+/* Apartados más limpios */
+#jhdLyricsToolbar,
+#lyricsSectionToolbar {
+  margin-top: 12px !important;
+  margin-bottom: 16px !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+}
+
+.section-toolbar-title {
+  font-size: 1rem !important;
+  margin-bottom: 12px !important;
+}
+
+.section-toolbar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 9px !important;
+}
+
+.section-chip {
+  padding: 10px 15px !important;
+  font-size: .9rem !important;
+}
+
+/* Inputs más cómodos */
+#adminPanel input,
+#adminPanel select,
+#adminPanel textarea {
+  margin-bottom: 14px !important;
+}
+
+/* Botón guardar más visible */
+#adminPanel .song-card:has(#songLyricsInput) .song-btn {
+  margin-top: 10px !important;
+}
+
+/* Teléfono */
+@media (max-width: 700px) {
+  #songLyricsInput {
+    min-height: 360px !important;
+    font-size: .92rem !important;
+  }
+
+  .section-toolbar {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .section-chip {
+    width: 100% !important;
+    padding: 11px 8px !important;
+  }
+
+  .section-template-btn {
+    grid-column: 1 / -1 !important;
+  }
+}
