@@ -1227,3 +1227,152 @@ body.light-mode .hero-badge {
     margin-top: 22px !important;
   }
 }
+/* =========================
+   DONACIONES
+========================= */
+
+.donation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+}
+
+.donation-card {
+  position: relative;
+}
+
+.donation-badge {
+  display: inline-block;
+  background: rgba(255,255,255,.10);
+  color: var(--gold);
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: .85rem;
+  margin-bottom: 14px;
+}
+
+.donation-card h3 {
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+
+.donation-card p {
+  color: var(--secondary);
+  line-height: 1.6;
+}
+
+.donation-info {
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.donation-row {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.donation-label {
+  display: block;
+  color: var(--secondary);
+  font-size: .82rem;
+  margin-bottom: 4px;
+}
+
+.donation-value {
+  display: block;
+  color: #fff;
+  font-weight: 800;
+  word-break: break-word;
+}
+
+.copy-btn {
+  margin-top: 8px;
+  border: none;
+  background: var(--gold);
+  color: #111;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.donation-link {
+  margin-top: 18px;
+}
+
+.donation-note {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
+  color: var(--secondary);
+}
+
+.donation-thanks-card {
+  text-align: center;
+}
+
+/* Admin donaciones */
+
+.donation-admin-form {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.donation-admin-form input,
+.donation-admin-form textarea,
+.donation-admin-form select {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background: #fff;
+  color: #111;
+}
+
+.donation-admin-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.donation-admin-wide {
+  grid-column: 1 / -1;
+}
+
+.donation-active-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--secondary);
+}
+
+.donation-active-row input {
+  width: auto;
+}
+
+body.light-mode .donation-row,
+body.light-mode .donation-note {
+  background: rgba(0,0,0,.04);
+  border-color: rgba(0,0,0,.10);
+}
+
+body.light-mode .donation-value {
+  color: #111;
+}
+
+@media (max-width: 800px) {
+  .donation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .donation-admin-form {
+    grid-template-columns: 1fr;
+  }
+}
