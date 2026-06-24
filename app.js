@@ -766,3 +766,415 @@ if (menuToggle && navMenu) {
     });
   });
 }
+/* =========================
+   DONACIONES PÚBLICAS + ADMIN
+========================= */
+
+let editingDonationId = null;
+
+function donationSafe(value) {
+  return String(value || "").trim();
+}
+
+function donationEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function donationRow(label, value, canCopy = false) {
+  if (!donationSafe(value)) return "";
+
+  const cleanValue = donationEscape(value);
+
+  return `
+    <div class="donation-row">
+      <span class="donation-label">${donationEscape(label)}</span>
+      <span class="donation-value">${cleanValue}</span>
+      ${canCopy ? `<button class="copy-btn" onclick="copyDonationText('${cleanValue}')">Copiar</button>` : ""}
+    </div>
+  `;
+}
+
+async function copyDonationText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("Dato copiado");
+  } catch (error) {
+    alert("No se pudo copiar. Selecciona el texto manualmente.");
+  }
+}
+
+async function loadPublicDonationCards() {
+  const donationCardsList = document.getElementById("donationCardsList");
+
+  if (!donationCardsList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    donationCardsList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar</h3>
+        <p style="color:var(--secondary); margin-top:12px;">
+          Intenta actualizar la página más tarde.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("donation_cards")
+    .select("*")
+    .eq("is_active", true)
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    donationCardsList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando donaciones</h3>
+        <p style="color:var(--secondary); margin-top:12px;">
+          Intenta actualizar la página más tarde.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    donationCardsList.innerHTML = `
+      <div class="song-card">
+        <h3>Muy pronto</h3>
+        <p style="color:var(--secondary); margin-top:12px;">
+          Próximamente se agregarán formas de apoyar este proyecto.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  donationCardsList.innerHTML = "";
+
+  data.forEach(card => {
+    donationCardsList.innerHTML += `
+      <article class="song-card donation-card">
+        <span class="donation-badge">${donationEscape(card.payment_type || "Donación")}</span>
+
+        <h3>${donationEscape(card.title)}</h3>
+
+        ${card.description ? `<p>${donationEscape(card.description)}</p>` : ""}
+
+        <div class="donation-info">
+          ${donationRow("Nombre", card.account_name)}
+          ${donationRow("Banco", card.bank_name)}
+          ${donationRow("Cuenta", card.account_number, true)}
+          ${donationRow("CLABE", card.clabe, true)}
+          ${donationRow("Tarjeta", card.card_number, true)}
+          ${donationRow("Teléfono", card.phone, true)}
+        </div>
+
+        ${card.link_url ? `
+          <div class="donation-link">
+            <a class="song-btn" href="${donationEscape(card.link_url)}" target="_blank" rel="noopener">
+              Abrir enlace
+            </a>
+          </div>
+        ` : ""}
+
+        ${card.note ? `
+          <div class="donation-note">
+            ${donationEscape(card.note)}
+          </div>
+        ` : ""}
+      </article>
+    `;
+  });
+}
+
+function setupDonationAdminSection() {
+  const adminPanel = document.getElementById("adminPanel");
+
+  if (!adminPanel) return;
+  if (document.getElementById("donationAdminSection")) return;
+
+  const section = document.createElement("section");
+  section.className = "section";
+  section.id = "donationAdminSection";
+
+  section.innerHTML = `
+    <h2>Donaciones</h2>
+
+    <div class="song-grid">
+      <div class="song-card">
+        <h3 id="donationFormTitle">Agregar tarjeta de donación</h3>
+
+        <div class="donation-admin-form">
+          <input id="donationTitleInput" type="text" placeholder="Título, ejemplo: Transferencia bancaria">
+
+          <select id="donationTypeInput">
+            <option value="Transferencia">Transferencia</option>
+            <option value="Depósito">Depósito</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Link externo">Link externo</option>
+            <option value="Otro">Otro</option>
+          </select>
+
+          <input id="donationAccountNameInput" type="text" placeholder="Nombre del titular">
+          <input id="donationBankInput" type="text" placeholder="Banco">
+
+          <input id="donationAccountInput" type="text" placeholder="Número de cuenta">
+          <input id="donationClabeInput" type="text" placeholder="CLABE">
+
+          <input id="donationCardInput" type="text" placeholder="Número de tarjeta">
+          <input id="donationPhoneInput" type="text" placeholder="Teléfono">
+
+          <input id="donationOrderInput" type="number" placeholder="Orden, ejemplo: 1">
+
+          <label class="donation-active-row">
+            <input id="donationActiveInput" type="checkbox" checked>
+            Mostrar esta tarjeta en la página pública
+          </label>
+
+          <input class="donation-admin-wide" id="donationLinkInput" type="url" placeholder="Link externo opcional">
+
+          <textarea class="donation-admin-wide" id="donationDescriptionInput" placeholder="Descripción breve"></textarea>
+
+          <textarea class="donation-admin-wide" id="donationNoteInput" placeholder="Nota opcional"></textarea>
+        </div>
+
+        <button class="song-btn" onclick="saveDonationCard()">Guardar tarjeta</button>
+        <button class="song-btn secondary-btn" onclick="cancelDonationEdit()">Cancelar edición</button>
+      </div>
+
+      <div class="song-card">
+        <h3>Tarjetas de donación guardadas</h3>
+        <div id="adminDonationCardsList">
+          <p style="color:var(--secondary); margin-top:12px;">Cargando...</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  adminPanel.appendChild(section);
+
+  loadAdminDonationCards();
+}
+
+function getDonationFormData() {
+  return {
+    title: donationSafe(document.getElementById("donationTitleInput").value),
+    payment_type: donationSafe(document.getElementById("donationTypeInput").value),
+    account_name: donationSafe(document.getElementById("donationAccountNameInput").value),
+    bank_name: donationSafe(document.getElementById("donationBankInput").value),
+    account_number: donationSafe(document.getElementById("donationAccountInput").value),
+    clabe: donationSafe(document.getElementById("donationClabeInput").value),
+    card_number: donationSafe(document.getElementById("donationCardInput").value),
+    phone: donationSafe(document.getElementById("donationPhoneInput").value),
+    link_url: donationSafe(document.getElementById("donationLinkInput").value),
+    description: donationSafe(document.getElementById("donationDescriptionInput").value),
+    note: donationSafe(document.getElementById("donationNoteInput").value),
+    display_order: Number(document.getElementById("donationOrderInput").value || 0),
+    is_active: document.getElementById("donationActiveInput").checked,
+    updated_at: new Date().toISOString()
+  };
+}
+
+function clearDonationForm() {
+  editingDonationId = null;
+
+  const title = document.getElementById("donationFormTitle");
+  if (title) title.innerText = "Agregar tarjeta de donación";
+
+  [
+    "donationTitleInput",
+    "donationAccountNameInput",
+    "donationBankInput",
+    "donationAccountInput",
+    "donationClabeInput",
+    "donationCardInput",
+    "donationPhoneInput",
+    "donationLinkInput",
+    "donationDescriptionInput",
+    "donationNoteInput",
+    "donationOrderInput"
+  ].forEach(id => {
+    const input = document.getElementById(id);
+    if (input) input.value = "";
+  });
+
+  const typeInput = document.getElementById("donationTypeInput");
+  if (typeInput) typeInput.value = "Transferencia";
+
+  const activeInput = document.getElementById("donationActiveInput");
+  if (activeInput) activeInput.checked = true;
+}
+
+async function saveDonationCard() {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase");
+    return;
+  }
+
+  const payload = getDonationFormData();
+
+  if (!payload.title) {
+    alert("Escribe un título para la tarjeta de donación");
+    return;
+  }
+
+  let result;
+
+  if (editingDonationId) {
+    result = await client
+      .from("donation_cards")
+      .update(payload)
+      .eq("id", editingDonationId);
+  } else {
+    result = await client
+      .from("donation_cards")
+      .insert([payload]);
+  }
+
+  if (result.error) {
+    alert("Error al guardar: " + result.error.message);
+    return;
+  }
+
+  alert("Tarjeta guardada");
+  clearDonationForm();
+  loadAdminDonationCards();
+  loadPublicDonationCards();
+}
+
+async function loadAdminDonationCards() {
+  const list = document.getElementById("adminDonationCardsList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    list.innerHTML = `<p style="color:var(--secondary);">No se pudo conectar.</p>`;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("donation_cards")
+    .select("*")
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    list.innerHTML = `
+      <p style="color:var(--secondary);">
+        Inicia sesión para administrar donaciones.
+      </p>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `<p style="color:var(--secondary);">No hay tarjetas todavía.</p>`;
+    return;
+  }
+
+  list.innerHTML = "";
+
+  data.forEach(card => {
+    list.innerHTML += `
+      <div class="admin-list-item">
+        <div>
+          <strong>${donationEscape(card.title)}</strong>
+          <p style="color:var(--secondary); margin-top:6px;">
+            ${donationEscape(card.payment_type || "Donación")} · 
+            ${card.is_active ? "Visible" : "Oculta"} · 
+            Orden: ${card.display_order || 0}
+          </p>
+        </div>
+
+        <div>
+          <button onclick="editDonationCard('${card.id}')">Editar</button>
+          <button onclick="deleteDonationCard('${card.id}')">Eliminar</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+async function editDonationCard(id) {
+  const client = getSupabase();
+
+  const { data, error } = await client
+    .from("donation_cards")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    alert("No se pudo cargar la tarjeta");
+    return;
+  }
+
+  editingDonationId = id;
+
+  document.getElementById("donationFormTitle").innerText = "Editando tarjeta de donación";
+  document.getElementById("donationTitleInput").value = data.title || "";
+  document.getElementById("donationTypeInput").value = data.payment_type || "Transferencia";
+  document.getElementById("donationAccountNameInput").value = data.account_name || "";
+  document.getElementById("donationBankInput").value = data.bank_name || "";
+  document.getElementById("donationAccountInput").value = data.account_number || "";
+  document.getElementById("donationClabeInput").value = data.clabe || "";
+  document.getElementById("donationCardInput").value = data.card_number || "";
+  document.getElementById("donationPhoneInput").value = data.phone || "";
+  document.getElementById("donationLinkInput").value = data.link_url || "";
+  document.getElementById("donationDescriptionInput").value = data.description || "";
+  document.getElementById("donationNoteInput").value = data.note || "";
+  document.getElementById("donationOrderInput").value = data.display_order || 0;
+  document.getElementById("donationActiveInput").checked = data.is_active;
+
+  document.getElementById("donationTitleInput").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelDonationEdit() {
+  clearDonationForm();
+}
+
+async function deleteDonationCard(id) {
+  const confirmDelete = confirm("¿Eliminar esta tarjeta de donación?");
+
+  if (!confirmDelete) return;
+
+  const client = getSupabase();
+
+  const { error } = await client
+    .from("donation_cards")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("Error al eliminar: " + error.message);
+    return;
+  }
+
+  alert("Tarjeta eliminada");
+  clearDonationForm();
+  loadAdminDonationCards();
+  loadPublicDonationCards();
+}
+
+loadPublicDonationCards();
+setupDonationAdminSection();
+
+if (typeof supabaseClient !== "undefined") {
+  supabaseClient.auth.onAuthStateChange(() => {
+    setupDonationAdminSection();
+    loadAdminDonationCards();
+  });
+}
