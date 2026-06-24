@@ -1583,3 +1583,150 @@ body.light-mode .donation-value {
     font-size: .9rem !important;
   }
 }
+/* =========================
+   LETRA EN CAJAS POR APARTADO
+   Vista pública + Admin
+========================= */
+
+.lyrics-boxed {
+  display: block;
+  width: 100%;
+}
+
+.lyrics-section-box {
+  display: block;
+  margin: 18px 0;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.10);
+  border-left: 5px solid var(--gold);
+  box-shadow: 0 12px 30px rgba(0,0,0,.18);
+}
+
+.lyrics-section-box-title {
+  display: block;
+  color: var(--gold);
+  font-weight: 900;
+  font-family: inherit;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  letter-spacing: .3px;
+}
+
+.lyrics-section-box-content {
+  display: block;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  color: #fff;
+  font-family: "Courier New", monospace;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+/* Mapa visual dentro del admin */
+.editor-section-map {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.editor-section-map-title {
+  color: var(--gold);
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.editor-section-map-help {
+  color: var(--secondary);
+  font-size: .92rem;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.editor-section-blocks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.editor-section-block {
+  text-align: left;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  border-left: 5px solid var(--gold);
+  color: #fff;
+  border-radius: 16px;
+  padding: 14px;
+  cursor: pointer;
+  transition: .2s ease;
+}
+
+.editor-section-block:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,.10);
+}
+
+.editor-section-block strong {
+  display: block;
+  color: var(--gold);
+  margin-bottom: 8px;
+  font-size: .95rem;
+}
+
+.editor-section-preview {
+  display: block;
+  color: var(--secondary);
+  font-family: "Courier New", monospace;
+  font-size: .86rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  max-height: 90px;
+  overflow: hidden;
+}
+
+.editor-section-empty {
+  color: var(--secondary);
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.05);
+}
+
+/* Modo claro */
+body.light-mode .lyrics-section-box,
+body.light-mode .editor-section-map,
+body.light-mode .editor-section-block {
+  background: rgba(0,0,0,.04);
+  border-color: rgba(0,0,0,.10);
+}
+
+body.light-mode .lyrics-section-box-content,
+body.light-mode .editor-section-block {
+  color: #111;
+}
+
+/* Teléfono */
+@media (max-width: 700px) {
+  .lyrics-section-box {
+    padding: 14px;
+    border-radius: 16px;
+    margin: 14px 0;
+  }
+
+  .lyrics-section-box-content {
+    font-size: .88rem;
+    line-height: 1.65;
+  }
+
+  .editor-section-blocks {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-section-map {
+    padding: 14px;
+  }
+}
