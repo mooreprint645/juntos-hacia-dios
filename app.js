@@ -2196,3 +2196,217 @@ function jhdUpdateLyricsPreview() {
 
   previewContent.innerHTML = renderLyricsHTML(textarea.value);
 }
+/* =========================================================
+   RENDER TIPO APP
+   Tarjetas oscuras + chip pequeño arriba
+========================================================= */
+
+function jhdAppEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdAppCleanSection(line) {
+  return String(line || "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .replace(/:$/, "")
+    .trim();
+}
+
+function jhdAppNormalize(value) {
+  return jhdAppCleanSection(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function jhdAppIsSection(line) {
+  const raw = String(line || "").trim();
+  const title = jhdAppNormalize(raw);
+
+  if (raw.startsWith("[") && raw.endsWith("]")) return true;
+
+  const patterns = [
+    /^intro$/,
+    /^introduccion$/,
+    /^verso\s*\d*$/,
+    /^estrofa\s*\d*$/,
+    /^pre\s*coro\s*\d*$/,
+    /^precoro\s*\d*$/,
+    /^coro\s*\d*$/,
+    /^coro\s*final$/,
+    /^repetir\s*coro$/,
+    /^puente$/,
+    /^intermedio$/,
+    /^interludio$/,
+    /^instrumental$/,
+    /^solo$/,
+    /^final$/,
+    /^outro$/
+  ];
+
+  return patterns.some(pattern => pattern.test(title));
+}
+
+function jhdAppChipClass(title) {
+  const t = jhdAppNormalize(title);
+
+  if (t.includes("intro") || t.includes("introduccion")) return "chip-intro";
+  if (t.includes("verso")) return "chip-verso";
+  if (t.includes("estrofa")) return "chip-estrofa";
+  if (t.includes("pre coro") || t.includes("precoro")) return "chip-precoro";
+  if (t.includes("coro")) return "chip-coro";
+  if (t.includes("puente") || t.includes("bridge")) return "chip-puente";
+  if (t.includes("interludio")) return "chip-interludio";
+  if (t.includes("intermedio") || t.includes("instrumental") || t.includes("solo")) return "chip-intermedio";
+  if (t.includes("final") || t.includes("outro")) return "chip-final";
+
+  return "chip-default";
+}
+
+function jhdAppChipLabel(title) {
+  const t = jhdAppNormalize(title);
+
+  const numMatch = t.match(/\d+/);
+  const num = numMatch ? numMatch[0] : "";
+
+  if (t.includes("intro") || t.includes("introduccion")) return "I";
+  if (t.includes("verso")) return num ? `V${num}` : "V";
+  if (t.includes("estrofa")) return num ? `E${num}` : "E";
+  if (t.includes("pre coro") || t.includes("precoro")) return num ? `PC ${num}` : "PC";
+  if (t.includes("coro final")) return "CF";
+  if (t.includes("coro")) return num ? `C${num}` : "C";
+  if (t.includes("puente") || t.includes("bridge")) return "P";
+  if (t.includes("interludio")) return "INT";
+  if (t.includes("intermedio")) return "IM";
+  if (t.includes("instrumental")) return "INS";
+  if (t.includes("solo")) return "S";
+  if (t.includes("final") || t.includes("outro")) return "F";
+
+  return title.length > 10 ? title.substring(0, 10) : title;
+}
+
+function jhdAppHighlightChords(line) {
+  const escaped = jhdAppEscape(line);
+
+  return escaped.replace(
+    /(^|[\s(\[])([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?)(?=\s|$|[)\],])/g,
+    function(match, before, chord) {
+      return `${before}<span class="chord-token">${chord}</span>`;
+    }
+  );
+}
+
+function jhdAppParseLyrics(text) {
+  const lines = String(text || "").split("\n");
+  const sections = [];
+  let currentSection = null;
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+
+    if (trimmed && jhdAppIsSection(trimmed)) {
+      if (currentSection) sections.push(currentSection);
+
+      currentSection = {
+        title: jhdAppCleanSection(trimmed),
+        lines: []
+      };
+    } else {
+      if (!currentSection) {
+        currentSection = {
+          title: "Letra",
+          lines: []
+        };
+      }
+
+      currentSection.lines.push(line);
+    }
+  });
+
+  if (currentSection) sections.push(currentSection);
+
+  return sections.filter(section => section.title || section.lines.join("").trim());
+}
+
+function jhdAppRenderLines(lines) {
+  return lines.map(line => {
+    return `<span class="lyrics-app-line">${jhdAppHighlightChords(line)}</span>`;
+  }).join("");
+}
+
+function renderLyricsHTML(text) {
+  if (!text || !String(text).trim()) {
+    return `
+      <div class="lyrics-app-view">
+        <div class="lyrics-app-section">
+          <div class="lyrics-app-chip chip-default">TXT</div>
+          <div class="lyrics-app-content">
+            <span class="lyrics-app-line">No hay letra disponible todavía.</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const sections = jhdAppParseLyrics(text);
+
+  return `
+    <div class="lyrics-app-view">
+      ${sections.map(section => {
+        const chipClass = jhdAppChipClass(section.title);
+        const chipLabel = jhdAppChipLabel(section.title);
+
+        return `
+          <div class="lyrics-app-section">
+            <div class="lyrics-app-chip ${chipClass}" title="${jhdAppEscape(section.title)}">
+              ${jhdAppEscape(chipLabel)}
+            </div>
+
+            <div class="lyrics-app-content">
+              ${jhdAppRenderLines(section.lines)}
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+/* Vista pública */
+function showLyrics() {
+  const lyricsBox = document.getElementById("songLyrics");
+
+  if (lyricsBox) {
+    const transposedText = transposeText(originalLyrics, transposeAmount);
+    lyricsBox.innerHTML = renderLyricsHTML(transposedText);
+  }
+
+  const label = document.getElementById("chordLanguageLabel");
+
+  if (label) {
+    label.innerText = chordLanguage === "spanish"
+      ? "Cifrado actual: Español"
+      : "Cifrado actual: Inglés";
+  }
+}
+
+/* Vista previa admin */
+function jhdPreviewRenderLyrics(text) {
+  return renderLyricsHTML(text);
+}
+
+function jhdUpdateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const previewContent = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !previewContent) return;
+
+  previewContent.innerHTML = renderLyricsHTML(textarea.value);
+}
