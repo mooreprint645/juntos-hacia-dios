@@ -2508,3 +2508,55 @@ async function loadArtistProfile() {
     `;
   });
 }
+/* =========================================================
+   REFUERZO - DETECTAR SELECTOR DE CATEGORÍA EN ADMIN
+========================================================= */
+
+function jhdFindSongCategorySelect() {
+  const possibleSelectors = [
+    "#songCategoryInput",
+    "#categoryInput",
+    "#songCategorySelect",
+    "#categorySelect",
+    "#songCategory",
+    "#category",
+    "select[name='category_id']",
+    "select[name='category']"
+  ];
+
+  for (const selector of possibleSelectors) {
+    const found = document.querySelector(selector);
+    if (found) return found;
+  }
+
+  const allSelects = Array.from(document.querySelectorAll("select"));
+
+  const categorySelect = allSelects.find(select => {
+    const text = select.innerText.toLowerCase();
+    const placeholder = select.options && select.options[0]
+      ? select.options[0].textContent.toLowerCase()
+      : "";
+
+    return text.includes("categoría") || placeholder.includes("categoría");
+  });
+
+  return categorySelect || null;
+}
+
+setTimeout(() => {
+  if (typeof jhdInitMultiCategoryAdmin === "function") {
+    jhdInitMultiCategoryAdmin();
+  }
+}, 500);
+
+setTimeout(() => {
+  if (typeof jhdInitMultiCategoryAdmin === "function") {
+    jhdInitMultiCategoryAdmin();
+  }
+}, 1500);
+
+setTimeout(() => {
+  if (typeof jhdInitMultiCategoryAdmin === "function") {
+    jhdInitMultiCategoryAdmin();
+  }
+}, 3000);
