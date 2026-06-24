@@ -584,3 +584,265 @@ body.light-mode .quick-card:visited{
 #adminPanel .song-grid{
   align-items:start;
 }
+/* =========================
+   AJUSTE RESPONSIVE MÓVIL
+   Juntos Hacia Dios
+========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Ajuste general para que nada se salga */
+img,
+video,
+iframe {
+  max-width: 100%;
+}
+
+/* TABLET Y CELULAR */
+@media (max-width: 900px) {
+
+  .navbar {
+    width: 100% !important;
+    padding: 18px 16px !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+    align-items: center !important;
+  }
+
+  .navbar h2 {
+    font-size: 1.4rem !important;
+  }
+
+  .nav-menu {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  .nav-link {
+    font-size: 0.9rem !important;
+    padding: 9px 12px !important;
+    border-radius: 20px !important;
+  }
+
+  #themeToggle {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+  }
+
+  .hero,
+  .small-hero {
+    min-height: auto !important;
+    padding: 20px 15px 55px !important;
+  }
+
+  .hero-content {
+    width: 100% !important;
+    padding: 25px 5px 0 !important;
+  }
+
+  .hero-content h1 {
+    font-size: 2.2rem !important;
+    line-height: 1.1 !important;
+    margin-bottom: 12px !important;
+  }
+
+  .hero-content p {
+    font-size: 1rem !important;
+    padding: 0 10px !important;
+  }
+
+  .search-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 0 10px !important;
+    margin-top: 25px !important;
+  }
+
+  .search-box input {
+    width: 100% !important;
+    font-size: 1rem !important;
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .search-box button {
+    width: 100% !important;
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .section {
+    width: 100% !important;
+    padding: 35px 16px !important;
+  }
+
+  .section h2 {
+    font-size: 1.7rem !important;
+    text-align: center !important;
+  }
+
+  .song-grid {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .song-card {
+    width: 100% !important;
+    padding: 22px !important;
+    border-radius: 18px !important;
+  }
+
+  .song-card h3 {
+    font-size: 1.25rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .song-card p {
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .song-btn {
+    width: 100% !important;
+    display: block !important;
+    text-align: center !important;
+    margin-top: 15px !important;
+  }
+
+  .features {
+    grid-template-columns: 1fr !important;
+    gap: 15px !important;
+  }
+
+  .features div,
+  .features a {
+    width: 100% !important;
+    text-align: center !important;
+  }
+}
+
+/* CELULAR PEQUEÑO */
+@media (max-width: 600px) {
+
+  .navbar {
+    padding-top: 55px !important;
+  }
+
+  .nav-menu {
+    gap: 7px !important;
+  }
+
+  .nav-link {
+    font-size: 0.82rem !important;
+    padding: 8px 10px !important;
+  }
+
+  .hero-content h1 {
+    font-size: 1.9rem !important;
+  }
+
+  .hero-content p {
+    font-size: 0.95rem !important;
+  }
+
+  .section {
+    padding: 30px 14px !important;
+  }
+
+  .section h2 {
+    font-size: 1.5rem !important;
+  }
+
+  .song-card {
+    padding: 18px !important;
+  }
+
+  .song-card h3 {
+    font-size: 1.15rem !important;
+  }
+
+  .artist-card {
+    text-align: center !important;
+  }
+
+  .artist-avatar {
+    margin: 0 auto 15px !important;
+  }
+
+  .category-card {
+    text-align: center !important;
+  }
+
+  .category-icon {
+    margin: 0 auto 15px !important;
+  }
+
+  .lyrics-card {
+    padding: 16px !important;
+  }
+
+  #songLyrics {
+    font-size: 0.92rem !important;
+    line-height: 1.65 !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-x: hidden !important;
+  }
+
+  .transpose-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .transpose-controls button {
+    width: 100% !important;
+  }
+}
+
+/* TELÉFONOS MUY ANGOSTOS */
+@media (max-width: 420px) {
+
+  .hero-content h1 {
+    font-size: 1.65rem !important;
+  }
+
+  .nav-link {
+    font-size: 0.78rem !important;
+    padding: 7px 9px !important;
+  }
+
+  .search-box {
+    padding: 0 !important;
+  }
+
+  .song-card {
+    padding: 16px !important;
+  }
+
+  .song-card h3 {
+    font-size: 1.05rem !important;
+  }
+
+  .song-card p {
+    font-size: 0.9rem !important;
+  }
+}
