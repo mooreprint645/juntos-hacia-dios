@@ -2576,3 +2576,137 @@ function jhdUpdateLyricsPreview() {
 
   previewContent.innerHTML = renderLyricsHTML(textarea.value);
 }
+/* =========================================================
+   ACORDES SOBRE PALABRAS
+   Formato recomendado: (D)Quiero caminar contigo (G)María
+========================================================= */
+
+function jhdWordChordEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdWordChordIsValid(chord) {
+  return /^[A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?$/.test(chord);
+}
+
+function jhdWordChordRenderLine(line) {
+  const value = String(line || "");
+  const regex = /\(([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?)\)/g;
+
+  let html = "";
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(value)) !== null) {
+    const chord = match[1];
+
+    html += jhdWordChordEscape(value.slice(lastIndex, match.index));
+
+    const afterChordStart = regex.lastIndex;
+    const afterChord = value.slice(afterChordStart);
+
+    const wordMatch = afterChord.match(/^(\s*)(\S+)([\s\S]*)$/);
+
+    if (wordMatch) {
+      const spacesBeforeWord = wordMatch[1];
+      const word = wordMatch[2];
+
+      html += jhdWordChordEscape(spacesBeforeWord);
+      html += `
+        <span class="chord-word">
+          <span class="chord-token">${jhdWordChordEscape(chord)}</span>
+          <span class="word-token">${jhdWordChordEscape(word)}</span>
+        </span>
+      `;
+
+      lastIndex = afterChordStart + spacesBeforeWord.length + word.length;
+      regex.lastIndex = lastIndex;
+    } else {
+      html += `<span class="chord-alone">${jhdWordChordEscape(chord)}</span>`;
+      lastIndex = regex.lastIndex;
+    }
+  }
+
+  html += jhdWordChordEscape(value.slice(lastIndex));
+
+  return html;
+}
+
+/* Reemplaza el render de líneas para que los acordes queden sobre palabras */
+function jhdAppRenderLines(lines) {
+  return lines.map(line => {
+    return `<span class="lyrics-app-line">${jhdWordChordRenderLine(line)}</span>`;
+  }).join("");
+}
+
+/* Reemplaza el asistente: ahora inserta el acorde en la misma línea */
+function jhdInsertChordAboveCursor(chordValue) {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) {
+    alert("No se encontró el campo de letra.");
+    return;
+  }
+
+  const chordInput = document.getElementById("jhdCustomChordInput");
+  const chordRaw = String(chordValue || (chordInput ? chordInput.value : "") || "").trim();
+
+  if (!chordRaw) {
+    alert("Escribe o selecciona un acorde.");
+    return;
+  }
+
+  const cleanChord = chordRaw.replace(/[()]/g, "").trim();
+
+  if (!jhdWordChordIsValid(cleanChord)) {
+    alert("Ese acorde no parece válido. Ejemplo: G, Bm, F#m, C/E");
+    return;
+  }
+
+  const value = textarea.value || "";
+  const cursor = textarea.selectionStart || 0;
+  const insertText = `(${cleanChord})`;
+
+  textarea.value = value.slice(0, cursor) + insertText + value.slice(cursor);
+  textarea.focus();
+
+  const newCursor = cursor + insertText.length;
+  textarea.setSelectionRange(newCursor, newCursor);
+
+  if (typeof jhdUpdateLyricsPreview === "function") {
+    jhdUpdateLyricsPreview();
+  }
+}
+
+/* Vista pública */
+function showLyrics() {
+  const lyricsBox = document.getElementById("songLyrics");
+
+  if (lyricsBox) {
+    const transposedText = transposeText(originalLyrics, transposeAmount);
+    lyricsBox.innerHTML = renderLyricsHTML(transposedText);
+  }
+
+  const label = document.getElementById("chordLanguageLabel");
+
+  if (label) {
+    label.innerText = chordLanguage === "spanish"
+      ? "Cifrado actual: Español"
+      : "Cifrado actual: Inglés";
+  }
+}
+
+/* Vista previa admin */
+function jhdUpdateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const previewContent = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !previewContent) return;
+
+  previewContent.innerHTML = renderLyricsHTML(textarea.value);
+}
