@@ -2012,3 +2012,187 @@ jhdHideOldSectionMap();
 setTimeout(jhdHideOldSectionMap, 500);
 setTimeout(jhdHideOldSectionMap, 1500);
 setTimeout(jhdHideOldSectionMap, 3000);
+/* =========================================================
+   RENDER DE LETRA EN CAJAS DE COLORES POR APARTADO
+========================================================= */
+
+function jhdBoxColorEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdBoxColorCleanSection(line) {
+  return String(line || "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .replace(/:$/, "")
+    .trim();
+}
+
+function jhdBoxColorNormalize(value) {
+  return jhdBoxColorCleanSection(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function jhdBoxColorSectionClass(title) {
+  const t = jhdBoxColorNormalize(title);
+
+  if (t.includes("intro") || t.includes("introduccion")) return "section-card-intro";
+  if (t.includes("verso")) return "section-card-verso";
+  if (t.includes("estrofa")) return "section-card-estrofa";
+  if (t.includes("pre coro") || t.includes("precoro")) return "section-card-precoro";
+  if (t.includes("coro")) return "section-card-coro";
+  if (t.includes("puente") || t.includes("bridge")) return "section-card-puente";
+  if (t.includes("interludio")) return "section-card-interludio";
+  if (t.includes("intermedio") || t.includes("instrumental") || t.includes("solo")) return "section-card-intermedio";
+  if (t.includes("final") || t.includes("outro")) return "section-card-final";
+
+  return "section-card-default";
+}
+
+function jhdBoxColorIsSection(line) {
+  const raw = String(line || "").trim();
+  const title = jhdBoxColorNormalize(raw);
+
+  if (raw.startsWith("[") && raw.endsWith("]")) return true;
+
+  const patterns = [
+    /^intro$/,
+    /^introduccion$/,
+    /^verso\s*\d*$/,
+    /^estrofa\s*\d*$/,
+    /^pre\s*coro\s*\d*$/,
+    /^precoro\s*\d*$/,
+    /^coro\s*\d*$/,
+    /^coro\s*final$/,
+    /^repetir\s*coro$/,
+    /^puente$/,
+    /^intermedio$/,
+    /^interludio$/,
+    /^instrumental$/,
+    /^solo$/,
+    /^final$/,
+    /^outro$/
+  ];
+
+  return patterns.some(pattern => pattern.test(title));
+}
+
+function jhdBoxColorHighlightChords(line) {
+  const escaped = jhdBoxColorEscape(line);
+
+  return escaped.replace(
+    /(^|[\s(\[])([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?)(?=\s|$|[)\],])/g,
+    function(match, before, chord) {
+      return `${before}<span class="chord-token">${chord}</span>`;
+    }
+  );
+}
+
+function jhdBoxColorParseLyrics(text) {
+  const lines = String(text || "").split("\n");
+  const sections = [];
+  let currentSection = null;
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+
+    if (trimmed && jhdBoxColorIsSection(trimmed)) {
+      if (currentSection) {
+        sections.push(currentSection);
+      }
+
+      currentSection = {
+        title: jhdBoxColorCleanSection(trimmed),
+        lines: []
+      };
+    } else {
+      if (!currentSection) {
+        currentSection = {
+          title: "Letra",
+          lines: []
+        };
+      }
+
+      currentSection.lines.push(line);
+    }
+  });
+
+  if (currentSection) {
+    sections.push(currentSection);
+  }
+
+  return sections.filter(section => {
+    return section.title || section.lines.join("").trim();
+  });
+}
+
+function renderLyricsHTML(text) {
+  if (!text || !String(text).trim()) {
+    return `
+      <div class="lyrics-grouped-view">
+        <div class="lyrics-section-card section-card-default">
+          <div class="lyrics-section-title">Letra</div>
+          <div class="lyrics-section-content">No hay letra disponible todavía.</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const sections = jhdBoxColorParseLyrics(text);
+
+  return `
+    <div class="lyrics-grouped-view">
+      ${sections.map(section => {
+        const sectionClass = jhdBoxColorSectionClass(section.title);
+        const content = section.lines.map(line => jhdBoxColorHighlightChords(line)).join("\n").trim();
+
+        return `
+          <div class="lyrics-section-card ${sectionClass}">
+            <div class="lyrics-section-title">${jhdBoxColorEscape(section.title)}</div>
+            <div class="lyrics-section-content">${content || "Sin contenido todavía."}</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+/* Vista pública del canto */
+function showLyrics() {
+  const lyricsBox = document.getElementById("songLyrics");
+
+  if (lyricsBox) {
+    const transposedText = transposeText(originalLyrics, transposeAmount);
+    lyricsBox.innerHTML = renderLyricsHTML(transposedText);
+  }
+
+  const label = document.getElementById("chordLanguageLabel");
+
+  if (label) {
+    label.innerText = chordLanguage === "spanish"
+      ? "Cifrado actual: Español"
+      : "Cifrado actual: Inglés";
+  }
+}
+
+/* Vista previa del admin */
+function jhdPreviewRenderLyrics(text) {
+  return renderLyricsHTML(text);
+}
+
+function jhdUpdateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const previewContent = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !previewContent) return;
+
+  previewContent.innerHTML = renderLyricsHTML(textarea.value);
+}
