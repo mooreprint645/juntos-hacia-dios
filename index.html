@@ -1,73 +1,262 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Juntos Hacia Dios</title>
-  <link rel="stylesheet" href="style.css">
-</head>
+/* =========================
+   AJUSTE RESPONSIVE MÓVIL
+   Juntos Hacia Dios
+========================= */
 
-<body>
+* {
+  box-sizing: border-box;
+}
 
-<header class="hero">
-  <nav class="navbar">
-    <h2>JHD</h2>
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
-    <div class="nav-menu">
-      <a href="index.html" class="nav-link">Inicio</a>
-      <a href="canciones.html" class="nav-link">Canciones</a>
-      <a href="artistas.html" class="nav-link">Artistas</a>
-      <a href="categorias.html" class="nav-link">Categorías</a>
-      <a href="donaciones.html" class="nav-link">Donaciones</a>
-    </div>
+/* Ajuste general para que nada se salga */
+img,
+video,
+iframe {
+  max-width: 100%;
+}
 
-    <button id="themeToggle">🌙</button>
-  </nav>
+/* TABLET Y CELULAR */
+@media (max-width: 900px) {
 
-  <div class="hero-content">
-    <h1>Juntos Hacia Dios</h1>
-    <p>Cantos, letras y acordes cristianos y católicos</p>
+  .navbar {
+    width: 100% !important;
+    padding: 18px 16px !important;
+    flex-direction: column !important;
+    gap: 15px !important;
+    align-items: center !important;
+  }
 
-    <div class="search-box">
-      <input id="homeSearch" type="text" placeholder="Buscar canción, artista o categoría...">
-      <button onclick="searchHomeSongs()">Buscar</button>
-    </div>
-  </div>
-</header>
+  .navbar h2 {
+    font-size: 1.4rem !important;
+  }
 
-<section class="section">
-  <h2>Canciones recientes</h2>
+  .nav-menu {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
 
-  <div class="song-grid" id="homeSongList">
-    <div class="song-card">
-      <p style="color:var(--secondary);">Cargando canciones...</p>
-    </div>
-  </div>
+  .nav-link {
+    font-size: 0.9rem !important;
+    padding: 9px 12px !important;
+    border-radius: 20px !important;
+  }
 
-  <p id="noHomeResults" style="display:none; color:var(--secondary); margin-top:25px;">
-    No se encontraron canciones.
-  </p>
+  #themeToggle {
+    position: absolute !important;
+    top: 16px !important;
+    right: 16px !important;
+  }
 
-  <div style="margin-top:30px;">
-    <a class="song-btn" href="canciones.html">Ver todas las canciones</a>
-  </div>
-</section>
+  .hero,
+  .small-hero {
+    min-height: auto !important;
+    padding: 20px 15px 55px !important;
+  }
 
-<section class="section">
-  <h2>Funciones disponibles</h2>
+  .hero-content {
+    width: 100% !important;
+    padding: 25px 5px 0 !important;
+  }
 
-  <div class="features">
-    <div>🎹 Cifrado inglés y español</div>
-    <div>🔄 Transposición automática</div>
-    <div>▶ Tutoriales</div>
-    <div>🌙 Modo noche</div>
-    <div>💰 Donaciones</div>
-  </div>
-</section>
+  .hero-content h1 {
+    font-size: 2.2rem !important;
+    line-height: 1.1 !important;
+    margin-bottom: 12px !important;
+  }
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+  .hero-content p {
+    font-size: 1rem !important;
+    padding: 0 10px !important;
+  }
 
-</body>
-</html>
+  .search-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 0 10px !important;
+    margin-top: 25px !important;
+  }
+
+  .search-box input {
+    width: 100% !important;
+    font-size: 1rem !important;
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .search-box button {
+    width: 100% !important;
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .section {
+    width: 100% !important;
+    padding: 35px 16px !important;
+  }
+
+  .section h2 {
+    font-size: 1.7rem !important;
+    text-align: center !important;
+  }
+
+  .song-grid {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .song-card {
+    width: 100% !important;
+    padding: 22px !important;
+    border-radius: 18px !important;
+  }
+
+  .song-card h3 {
+    font-size: 1.25rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .song-card p {
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .song-btn {
+    width: 100% !important;
+    display: block !important;
+    text-align: center !important;
+    margin-top: 15px !important;
+  }
+
+  .features {
+    grid-template-columns: 1fr !important;
+    gap: 15px !important;
+  }
+
+  .features div,
+  .features a {
+    width: 100% !important;
+    text-align: center !important;
+  }
+}
+
+/* CELULAR PEQUEÑO */
+@media (max-width: 600px) {
+
+  .navbar {
+    padding-top: 55px !important;
+  }
+
+  .nav-menu {
+    gap: 7px !important;
+  }
+
+  .nav-link {
+    font-size: 0.82rem !important;
+    padding: 8px 10px !important;
+  }
+
+  .hero-content h1 {
+    font-size: 1.9rem !important;
+  }
+
+  .hero-content p {
+    font-size: 0.95rem !important;
+  }
+
+  .section {
+    padding: 30px 14px !important;
+  }
+
+  .section h2 {
+    font-size: 1.5rem !important;
+  }
+
+  .song-card {
+    padding: 18px !important;
+  }
+
+  .song-card h3 {
+    font-size: 1.15rem !important;
+  }
+
+  .artist-card {
+    text-align: center !important;
+  }
+
+  .artist-avatar {
+    margin: 0 auto 15px !important;
+  }
+
+  .category-card {
+    text-align: center !important;
+  }
+
+  .category-icon {
+    margin: 0 auto 15px !important;
+  }
+
+  .lyrics-card {
+    padding: 16px !important;
+  }
+
+  #songLyrics {
+    font-size: 0.92rem !important;
+    line-height: 1.65 !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-x: hidden !important;
+  }
+
+  .transpose-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .transpose-controls button {
+    width: 100% !important;
+  }
+}
+
+/* TELÉFONOS MUY ANGOSTOS */
+@media (max-width: 420px) {
+
+  .hero-content h1 {
+    font-size: 1.65rem !important;
+  }
+
+  .nav-link {
+    font-size: 0.78rem !important;
+    padding: 7px 9px !important;
+  }
+
+  .search-box {
+    padding: 0 !important;
+  }
+
+  .song-card {
+    padding: 16px !important;
+  }
+
+  .song-card h3 {
+    font-size: 1.05rem !important;
+  }
+
+  .song-card p {
+    font-size: 0.9rem !important;
+  }
+}
