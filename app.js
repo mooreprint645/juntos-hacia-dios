@@ -1450,3 +1450,42 @@ document.addEventListener("DOMContentLoaded", jhdCreateLyricsPreview);
 setTimeout(jhdCreateLyricsPreview, 500);
 setTimeout(jhdCreateLyricsPreview, 1500);
 setTimeout(jhdCreateLyricsPreview, 3000);
+/* =========================
+   CORRECCIÓN FINAL VISTA PREVIA
+========================= */
+
+function jhdForceShowLyricsPreview() {
+  const previewBoxes = document.querySelectorAll("#jhdLyricsPreviewBox, .lyrics-preview-box");
+
+  previewBoxes.forEach(box => {
+    box.classList.add("show");
+    box.style.display = "block";
+  });
+
+  if (typeof jhdUpdateLyricsPreview === "function") {
+    jhdUpdateLyricsPreview();
+  }
+}
+
+function jhdForceHideLyricsPreview() {
+  const previewBoxes = document.querySelectorAll("#jhdLyricsPreviewBox, .lyrics-preview-box");
+
+  previewBoxes.forEach(box => {
+    box.classList.remove("show");
+    box.style.display = "none";
+  });
+}
+
+/* Reemplaza el comportamiento anterior */
+function jhdShowLyricsPreview() {
+  jhdForceShowLyricsPreview();
+}
+
+function jhdHideLyricsPreview() {
+  jhdForceHideLyricsPreview();
+}
+
+/* Ocultar automáticamente al cargar */
+setTimeout(jhdForceHideLyricsPreview, 300);
+setTimeout(jhdForceHideLyricsPreview, 1000);
+setTimeout(jhdForceHideLyricsPreview, 2000);
