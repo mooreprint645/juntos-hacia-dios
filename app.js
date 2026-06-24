@@ -2560,3 +2560,35 @@ setTimeout(() => {
     jhdInitMultiCategoryAdmin();
   }
 }, 3000);
+/* =========================================================
+   DESACTIVAR ASISTENTE DE ACORDES
+   Seguiremos usando acordes manuales con ( )
+========================================================= */
+
+function createChordHelper() {
+  const oldBox = document.getElementById("jhdChordHelperBox");
+
+  if (oldBox) {
+    oldBox.remove();
+  }
+}
+
+function insertChordAtCursor() {
+  alert("El asistente de acordes fue desactivado. Escribe los acordes manualmente con paréntesis, ejemplo: (G)María o Mar(G)ía.");
+}
+
+setTimeout(() => {
+  const oldBox = document.getElementById("jhdChordHelperBox");
+
+  if (oldBox) {
+    oldBox.remove();
+  }
+}, 500);
+
+setTimeout(() => {
+  const oldBox = document.getElementById("jhdChordHelperBox");
+
+  if (oldBox) {
+    oldBox.remove();
+  }
+}, 1500);
