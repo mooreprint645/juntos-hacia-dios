@@ -1834,3 +1834,181 @@ setTimeout(jhdCreateEditorSectionMap, 3000);
 setTimeout(jhdUpdateEditorSectionMap, 800);
 setTimeout(jhdUpdateEditorSectionMap, 2000);
 setTimeout(jhdUpdateEditorSectionMap, 3500);
+/* =========================
+   LETRA COLOREADA SIN CAJAS
+   Vista pública + vista previa admin
+========================= */
+
+function jhdColorEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdColorCleanSection(line) {
+  return String(line || "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .replace(/:$/, "")
+    .trim();
+}
+
+function jhdColorNormalize(value) {
+  return jhdColorCleanSection(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function jhdColorIsSection(line) {
+  const raw = String(line || "").trim();
+  const title = jhdColorNormalize(raw);
+
+  if (raw.startsWith("[") && raw.endsWith("]")) {
+    return true;
+  }
+
+  const patterns = [
+    /^intro$/,
+    /^introduccion$/,
+    /^verso\s*\d*$/,
+    /^estrofa\s*\d*$/,
+    /^pre\s*coro\s*\d*$/,
+    /^precoro\s*\d*$/,
+    /^coro\s*\d*$/,
+    /^coro\s*final$/,
+    /^repetir\s*coro$/,
+    /^puente$/,
+    /^intermedio$/,
+    /^interludio$/,
+    /^instrumental$/,
+    /^solo$/,
+    /^final$/,
+    /^outro$/
+  ];
+
+  return patterns.some(pattern => pattern.test(title));
+}
+
+function jhdColorSectionClass(line) {
+  const title = jhdColorNormalize(line);
+
+  if (title.includes("intro") || title.includes("introduccion")) return "section-intro";
+  if (title.includes("verso")) return "section-verso";
+  if (title.includes("estrofa")) return "section-estrofa";
+  if (title.includes("pre coro") || title.includes("precoro")) return "section-precoro";
+  if (title.includes("coro")) return "section-coro";
+  if (title.includes("puente") || title.includes("bridge")) return "section-puente";
+  if (title.includes("interludio")) return "section-interludio";
+  if (title.includes("intermedio") || title.includes("instrumental") || title.includes("solo")) return "section-intermedio";
+  if (title.includes("final") || title.includes("outro")) return "section-final";
+
+  return "section-default";
+}
+
+function jhdColorHighlightChords(line) {
+  const escaped = jhdColorEscape(line);
+
+  return escaped.replace(
+    /(^|[\s(\[])([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?)(?=\s|$|[)\],])/g,
+    function(match, before, chord) {
+      return `${before}<span class="chord-token">${chord}</span>`;
+    }
+  );
+}
+
+function jhdColorIsChordLine(line) {
+  const clean = String(line || "").trim();
+
+  if (!clean) return false;
+
+  const withoutChords = clean.replace(
+    /\b[A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?\b/g,
+    ""
+  );
+
+  return withoutChords.replace(/[|\-–—.,/()\[\]\s]/g, "").length === 0;
+}
+
+function renderLyricsHTML(text) {
+  if (!text || !String(text).trim()) {
+    return `
+      <span class="lyrics-colored-view">
+        <span class="lyrics-colored-line">No hay letra disponible todavía.</span>
+      </span>
+    `;
+  }
+
+  const lines = String(text).split("\n");
+
+  const html = lines.map(line => {
+    const trimmed = line.trim();
+
+    if (trimmed === "") {
+      return `<span class="lyrics-colored-line"></span>`;
+    }
+
+    if (jhdColorIsSection(trimmed)) {
+      const sectionName = jhdColorCleanSection(trimmed);
+      const sectionClass = jhdColorSectionClass(trimmed);
+
+      return `<span class="lyrics-colored-section ${sectionClass}">${jhdColorEscape(sectionName)}</span>`;
+    }
+
+    const chordLineClass = jhdColorIsChordLine(line) ? " lyrics-chord-line" : "";
+
+    return `<span class="lyrics-colored-line${chordLineClass}">${jhdColorHighlightChords(line)}</span>`;
+  }).join("\n");
+
+  return `<span class="lyrics-colored-view">${html}</span>`;
+}
+
+/* Vista pública del canto con colores */
+function showLyrics() {
+  const lyricsBox = document.getElementById("songLyrics");
+
+  if (lyricsBox) {
+    const transposedText = transposeText(originalLyrics, transposeAmount);
+    lyricsBox.innerHTML = renderLyricsHTML(transposedText);
+  }
+
+  const label = document.getElementById("chordLanguageLabel");
+
+  if (label) {
+    label.innerText = chordLanguage === "spanish"
+      ? "Cifrado actual: Español"
+      : "Cifrado actual: Inglés";
+  }
+}
+
+/* Vista previa del admin con los mismos colores */
+function jhdPreviewRenderLyrics(text) {
+  return renderLyricsHTML(text);
+}
+
+function jhdUpdateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const previewContent = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !previewContent) return;
+
+  previewContent.innerHTML = renderLyricsHTML(textarea.value);
+}
+
+/* Ocultar mapa de cajas anterior si existe */
+function jhdHideOldSectionMap() {
+  const oldMap = document.getElementById("jhdEditorSectionMap");
+
+  if (oldMap) {
+    oldMap.style.display = "none";
+  }
+}
+
+jhdHideOldSectionMap();
+setTimeout(jhdHideOldSectionMap, 500);
+setTimeout(jhdHideOldSectionMap, 1500);
+setTimeout(jhdHideOldSectionMap, 3000);
