@@ -1178,3 +1178,117 @@ if (typeof supabaseClient !== "undefined") {
     loadAdminDonationCards();
   });
 }
+/* =========================
+   BOTONES DE APARTADOS EN ADMIN
+   Intro / Verso / Coro / Puente
+========================= */
+
+function jhdInsertSongSection(sectionName) {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) {
+    alert("No se encontró el campo de letra.");
+    return;
+  }
+
+  const start = textarea.selectionStart || 0;
+  const end = textarea.selectionEnd || 0;
+  const currentValue = textarea.value || "";
+
+  const before = currentValue.substring(0, start);
+  const after = currentValue.substring(end);
+
+  const needsLineBefore = before.length > 0 && !before.endsWith("\n");
+  const textToInsert = `${needsLineBefore ? "\n\n" : ""}[${sectionName}]\n`;
+
+  textarea.value = before + textToInsert + after;
+  textarea.focus();
+
+  const newPosition = before.length + textToInsert.length;
+  textarea.selectionStart = newPosition;
+  textarea.selectionEnd = newPosition;
+}
+
+function jhdInsertSongTemplate() {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) {
+    alert("No se encontró el campo de letra.");
+    return;
+  }
+
+  const template = `[Intro]
+G   D   Em   C
+
+[Verso 1]
+
+
+[Pre Coro]
+
+
+[Coro]
+
+
+[Verso 2]
+
+
+[Puente]
+
+
+[Coro]
+
+
+[Final]
+
+`;
+
+  if (textarea.value.trim()) {
+    textarea.value = textarea.value.trimEnd() + "\n\n" + template;
+  } else {
+    textarea.value = template;
+  }
+
+  textarea.focus();
+}
+
+function jhdCreateLyricsToolbar() {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) return;
+
+  if (document.getElementById("jhdLyricsToolbar")) return;
+
+  const toolbar = document.createElement("div");
+  toolbar.id = "jhdLyricsToolbar";
+  toolbar.className = "section-toolbar-box";
+
+  toolbar.innerHTML = `
+    <div class="section-toolbar-title">Apartados de la canción</div>
+
+    <div class="section-toolbar">
+      <button type="button" class="section-chip" onclick="jhdInsertSongSection('Intro')">Intro</button>
+      <button type="button" class="section-chip" onclick="jhdInsertSongSection('Verso 1')">Verso 1</button>
+      <button type="button" class="section-chip" onclick="jhdInsertSongSection('Pre Coro')">Pre Coro</button>
+      <button type="button" class="section-chip" onclick="jhdInsertSongSection('Coro')">Coro</button>
+      <button type="button" class="section-chip" onclick="jhdInsertSongSection('Verso 2')">Verso 2</button>
+      <button type="button" class="section-chip" onclick="jhdInsertSongSection('Puente')">Puente</button>
+      <button type="button" class="section-chip" onclick="jhdInsertSongSection('Interludio')">Interludio</button>
+      <button type="button" class="section-chip" onclick="jhdInsertSongSection('Final')">Final</button>
+      <button type="button" class="section-chip section-template-btn" onclick="jhdInsertSongTemplate()">Plantilla completa</button>
+    </div>
+
+    <p class="lyrics-helper">
+      Presiona un apartado y se insertará en la letra. Puedes escribir los acordes debajo de cada sección.
+    </p>
+  `;
+
+  textarea.parentNode.insertBefore(toolbar, textarea);
+}
+
+jhdCreateLyricsToolbar();
+
+document.addEventListener("DOMContentLoaded", jhdCreateLyricsToolbar);
+
+setTimeout(jhdCreateLyricsToolbar, 500);
+setTimeout(jhdCreateLyricsToolbar, 1500);
+setTimeout(jhdCreateLyricsToolbar, 3000);
