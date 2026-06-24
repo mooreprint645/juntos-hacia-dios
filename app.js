@@ -2410,3 +2410,169 @@ function jhdUpdateLyricsPreview() {
 
   previewContent.innerHTML = renderLyricsHTML(textarea.value);
 }
+/* =========================================================
+   ACORDES ENTRE PARÉNTESIS
+   Ejemplo: (G) (Bm) (Em) para no confundir con secciones
+========================================================= */
+
+function jhdParenEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdParenIsChord(value) {
+  return /^[A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?$/.test(value);
+}
+
+/* Detecta líneas de acordes aunque estén como (G) (Bm) (Em) */
+function jhdIsChordHelperLine(line) {
+  const clean = String(line || "").trim();
+
+  if (!clean) return false;
+
+  const withoutParenChords = clean.replace(
+    /\([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?\)/g,
+    ""
+  );
+
+  const withoutNormalChords = withoutParenChords.replace(
+    /\b[A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?\b/g,
+    ""
+  );
+
+  return withoutNormalChords.replace(/[|\-–—.,/()\[\]\s]/g, "").length === 0;
+}
+
+/* Coloca el acorde entre paréntesis en la posición exacta */
+function jhdInsertChordAboveCursor(chordValue) {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) {
+    alert("No se encontró el campo de letra.");
+    return;
+  }
+
+  const chordInput = document.getElementById("jhdCustomChordInput");
+  const chordRaw = String(chordValue || (chordInput ? chordInput.value : "") || "").trim();
+
+  if (!chordRaw) {
+    alert("Escribe o selecciona un acorde.");
+    return;
+  }
+
+  const cleanChord = chordRaw.replace(/[()]/g, "").trim();
+
+  if (!jhdParenIsChord(cleanChord)) {
+    alert("Ese acorde no parece válido. Ejemplo: G, Bm, F#m, C/E");
+    return;
+  }
+
+  const chord = `(${cleanChord})`;
+
+  const value = textarea.value || "";
+  const cursor = textarea.selectionStart || 0;
+
+  const currentLineStart = value.lastIndexOf("\n", cursor - 1) + 1;
+  let currentLineEnd = value.indexOf("\n", cursor);
+
+  if (currentLineEnd === -1) {
+    currentLineEnd = value.length;
+  }
+
+  const column = cursor - currentLineStart;
+
+  const beforeCurrentLine = value.substring(0, currentLineStart);
+  const afterCurrentLine = value.substring(currentLineStart);
+
+  const previousLineEnd = Math.max(0, currentLineStart - 1);
+  const previousLineStart = beforeCurrentLine.lastIndexOf("\n", previousLineEnd - 1) + 1;
+  const previousLine = value.substring(previousLineStart, previousLineEnd);
+
+  let newValue = "";
+  let newCursor = cursor;
+
+  if (previousLine && jhdIsChordHelperLine(previousLine)) {
+    const updatedPreviousLine = jhdPutChordAtColumn(previousLine, chord, column);
+
+    newValue =
+      value.substring(0, previousLineStart) +
+      updatedPreviousLine +
+      value.substring(previousLineEnd);
+
+    newCursor = cursor;
+  } else {
+    const chordLine = jhdPutChordAtColumn("", chord, column);
+
+    newValue = beforeCurrentLine + chordLine + "\n" + afterCurrentLine;
+
+    newCursor = cursor + chordLine.length + 1;
+  }
+
+  textarea.value = newValue;
+  textarea.focus();
+  textarea.setSelectionRange(newCursor, newCursor);
+
+  if (typeof jhdUpdateLyricsPreview === "function") {
+    jhdUpdateLyricsPreview();
+  }
+}
+
+/* Renderiza acordes entre paréntesis como acordes bonitos */
+function jhdAppHighlightChords(line) {
+  const escaped = jhdParenEscape(line);
+
+  let result = escaped.replace(
+    /\(([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?)\)/g,
+    function(match, chord) {
+      return `<span class="chord-token">${chord}</span>`;
+    }
+  );
+
+  result = result.replace(
+    /(^|[\s(\[])([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?)(?=\s|$|[)\],])/g,
+    function(match, before, chord) {
+      return `${before}<span class="chord-token">${chord}</span>`;
+    }
+  );
+
+  return result;
+}
+
+/* Render de líneas usando acordes entre paréntesis */
+function jhdAppRenderLines(lines) {
+  return lines.map(line => {
+    return `<span class="lyrics-app-line">${jhdAppHighlightChords(line)}</span>`;
+  }).join("");
+}
+
+/* Reforzar vista pública */
+function showLyrics() {
+  const lyricsBox = document.getElementById("songLyrics");
+
+  if (lyricsBox) {
+    const transposedText = transposeText(originalLyrics, transposeAmount);
+    lyricsBox.innerHTML = renderLyricsHTML(transposedText);
+  }
+
+  const label = document.getElementById("chordLanguageLabel");
+
+  if (label) {
+    label.innerText = chordLanguage === "spanish"
+      ? "Cifrado actual: Español"
+      : "Cifrado actual: Inglés";
+  }
+}
+
+/* Reforzar vista previa admin */
+function jhdUpdateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const previewContent = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !previewContent) return;
+
+  previewContent.innerHTML = renderLyricsHTML(textarea.value);
+}
