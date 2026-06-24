@@ -2182,3 +2182,69 @@ body.light-mode .chord-token{
     line-height:1.65;
   }
 }
+/* =========================================================
+   ACORDES SOBRE PALABRAS - FORMATO ESTABLE
+   Usar: (D)Quiero caminar contigo (G)María
+========================================================= */
+
+.lyrics-app-content {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.lyrics-app-line {
+  display: block !important;
+  min-height: 1.85em !important;
+  margin-bottom: 7px !important;
+}
+
+.chord-word {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  vertical-align: bottom;
+  line-height: 1.05;
+  margin: 0 2px;
+}
+
+.chord-word .chord-token {
+  display: block;
+  color: var(--gold);
+  font-weight: 900;
+  font-size: .82rem;
+  line-height: 1;
+  margin-bottom: 2px;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.chord-word .word-token {
+  display: block;
+  color: inherit;
+}
+
+.chord-alone {
+  display: inline-block;
+  color: var(--gold);
+  font-weight: 900;
+  margin-right: 10px;
+}
+
+body.light-mode .chord-word .chord-token,
+body.light-mode .chord-alone {
+  color: #9a6d00;
+}
+
+@media (max-width: 700px) {
+  .lyrics-app-line {
+    min-height: 1.75em !important;
+    margin-bottom: 6px !important;
+  }
+
+  .chord-word .chord-token {
+    font-size: .76rem;
+  }
+}
