@@ -3019,3 +3019,141 @@ https://plus.unsplash.com/premium_photo-1661377118520-287ec60a32f3?q=80&w=870&au
     grid-template-columns: 1fr 1fr;
   }
 }
+/* =========================================================
+   ARTISTAS - DEGRADADO EDITABLE CON MARCADORES
+========================================================= */
+
+#jhdArtistGradientBox {
+  margin: 14px 0 18px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+}
+
+.artist-gradient-admin-title {
+  font-weight: 900;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.artist-gradient-admin-help {
+  color: var(--secondary);
+  font-size: .9rem;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.artist-gradient-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.artist-gradient-control {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.artist-gradient-control label {
+  display: block;
+  font-size: .85rem;
+  color: var(--secondary);
+  margin-bottom: 7px;
+}
+
+.artist-gradient-control input[type="color"] {
+  width: 100%;
+  height: 42px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.artist-gradient-control input[type="range"] {
+  width: 100%;
+}
+
+.artist-gradient-value {
+  display: block;
+  margin-top: 5px;
+  font-size: .82rem;
+  color: var(--secondary);
+}
+
+.artist-gradient-angle {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.artist-gradient-angle label {
+  display: block;
+  font-size: .85rem;
+  color: var(--secondary);
+  margin-bottom: 7px;
+}
+
+.artist-gradient-angle input[type="range"] {
+  width: 100%;
+}
+
+.artist-gradient-preview {
+  height: 105px;
+  border-radius: 16px;
+  margin-top: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: linear-gradient(135deg, #0b1324 0%, #1d3557 50%, #111827 100%);
+}
+
+.artist-profile-hero {
+  --artist-c1: #0b1324;
+  --artist-c2: #1d3557;
+  --artist-c3: #111827;
+  --artist-s1: 0%;
+  --artist-s2: 50%;
+  --artist-s3: 100%;
+  --artist-angle: 135deg;
+
+  background:
+    radial-gradient(circle at top left, rgba(255, 198, 73, .30), transparent 35%),
+    linear-gradient(
+      var(--artist-angle),
+      var(--artist-c1) var(--artist-s1),
+      var(--artist-c2) var(--artist-s2),
+      var(--artist-c3) var(--artist-s3)
+    ) !important;
+}
+
+.artist-profile-avatar,
+.artist-avatar {
+  background:
+    linear-gradient(
+      135deg,
+      var(--artist-c2, var(--gold)),
+      var(--artist-c1, #ffe8a3)
+    ) !important;
+  color: #111 !important;
+  font-weight: 900 !important;
+}
+
+.artist-profile-avatar img,
+.artist-avatar img,
+.artist-cover-image,
+.artist-cover-overlay {
+  display: none !important;
+}
+
+body:not(.admin-page) #jhdArtistGradientBox {
+  display: none !important;
+}
+
+@media (max-width: 800px) {
+  .artist-gradient-controls {
+    grid-template-columns: 1fr;
+  }
+}
