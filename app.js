@@ -1292,3 +1292,161 @@ document.addEventListener("DOMContentLoaded", jhdCreateLyricsToolbar);
 setTimeout(jhdCreateLyricsToolbar, 500);
 setTimeout(jhdCreateLyricsToolbar, 1500);
 setTimeout(jhdCreateLyricsToolbar, 3000);
+/* =========================
+   VISTA PREVIA DE LETRA EN ADMIN
+========================= */
+
+function jhdPreviewEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdPreviewNormalizeTitle(line) {
+  return String(line || "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .replace(/:$/, "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function jhdPreviewCleanTitle(line) {
+  return String(line || "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .replace(/:$/, "")
+    .trim();
+}
+
+function jhdPreviewIsSectionTitle(line) {
+  const title = jhdPreviewNormalizeTitle(line);
+
+  const patterns = [
+    /^intro$/,
+    /^introduccion$/,
+    /^verso\s*\d*$/,
+    /^estrofa\s*\d*$/,
+    /^pre\s*coro\s*\d*$/,
+    /^precoro\s*\d*$/,
+    /^coro\s*\d*$/,
+    /^intermedio$/,
+    /^interludio$/,
+    /^instrumental$/,
+    /^puente$/,
+    /^bridge$/,
+    /^solo$/,
+    /^tag$/,
+    /^final$/,
+    /^outro$/,
+    /^coro\s*final$/,
+    /^repetir\s*coro$/
+  ];
+
+  return patterns.some(pattern => pattern.test(title));
+}
+
+function jhdPreviewRenderLyrics(text) {
+  if (!text || !text.trim()) {
+    return `<span class="preview-line">Aquí aparecerá la vista previa de la letra con acordes.</span>`;
+  }
+
+  return text.split("\n").map(line => {
+    const trimmedLine = line.trim();
+
+    if (trimmedLine === "") {
+      return "";
+    }
+
+    if (jhdPreviewIsSectionTitle(trimmedLine)) {
+      return `<span class="preview-section-title">${jhdPreviewEscape(jhdPreviewCleanTitle(trimmedLine))}</span>`;
+    }
+
+    return `<span class="preview-line">${jhdPreviewEscape(line)}</span>`;
+  }).join("\n");
+}
+
+function jhdUpdateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const previewContent = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !previewContent) return;
+
+  previewContent.innerHTML = jhdPreviewRenderLyrics(textarea.value);
+}
+
+function jhdShowLyricsPreview() {
+  const previewBox = document.getElementById("jhdLyricsPreviewBox");
+
+  if (!previewBox) return;
+
+  previewBox.classList.add("show");
+  jhdUpdateLyricsPreview();
+}
+
+function jhdHideLyricsPreview() {
+  const previewBox = document.getElementById("jhdLyricsPreviewBox");
+
+  if (!previewBox) return;
+
+  previewBox.classList.remove("show");
+}
+
+function jhdCreateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) return;
+
+  if (document.getElementById("jhdLyricsPreviewWrapper")) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.id = "jhdLyricsPreviewWrapper";
+
+  wrapper.innerHTML = `
+    <div class="lyrics-preview-tools">
+      <button type="button" class="lyrics-preview-btn" onclick="jhdShowLyricsPreview()">
+        Ver vista previa
+      </button>
+
+      <button type="button" class="lyrics-preview-btn secondary" onclick="jhdUpdateLyricsPreview()">
+        Actualizar vista previa
+      </button>
+
+      <button type="button" class="lyrics-preview-btn secondary" onclick="jhdHideLyricsPreview()">
+        Ocultar vista previa
+      </button>
+    </div>
+
+    <div class="lyrics-preview-box" id="jhdLyricsPreviewBox">
+      <h4>Vista previa de la canción</h4>
+      <div class="lyrics-preview-content" id="jhdLyricsPreviewContent">
+        Aquí aparecerá la vista previa.
+      </div>
+    </div>
+  `;
+
+  textarea.parentNode.insertBefore(wrapper, textarea.nextSibling);
+
+  textarea.addEventListener("input", () => {
+    const previewBox = document.getElementById("jhdLyricsPreviewBox");
+
+    if (previewBox && previewBox.classList.contains("show")) {
+      jhdUpdateLyricsPreview();
+    }
+  });
+}
+
+jhdCreateLyricsPreview();
+
+document.addEventListener("DOMContentLoaded", jhdCreateLyricsPreview);
+
+setTimeout(jhdCreateLyricsPreview, 500);
+setTimeout(jhdCreateLyricsPreview, 1500);
+setTimeout(jhdCreateLyricsPreview, 3000);
