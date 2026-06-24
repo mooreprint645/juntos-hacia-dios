@@ -3535,3 +3535,200 @@ runWhenReady(() => {
     loadArtistProfile();
   }, 600);
 });
+/* =========================================================
+   ARTISTAS SIN COPYRIGHT
+   Usar iniciales y portada de color, no imágenes
+========================================================= */
+
+function jhdGetArtistInitials(name) {
+  const clean = String(name || "")
+    .trim()
+    .replace(/\s+/g, " ");
+
+  if (!clean) return "?";
+
+  const words = clean.split(" ");
+
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+
+  return words
+    .slice(0, 3)
+    .map(word => word.charAt(0))
+    .join("")
+    .toUpperCase();
+}
+
+/* Página artistas con iniciales */
+async function loadPublicArtists() {
+  const artistList = document.getElementById("artistList");
+
+  if (!artistList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando artistas</h3>
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay artistas todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Muy pronto se agregarán artistas y ministerios.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  artistList.innerHTML = "";
+
+  data.forEach(artist => {
+    const name = artist.name || "Sin nombre";
+    const initials = jhdGetArtistInitials(name);
+
+    artistList.innerHTML += `
+      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
+        <div class="artist-avatar">${escapeHTML(initials)}</div>
+        <h3>${escapeHTML(name)}</h3>
+        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
+        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
+      </article>
+    `;
+  });
+}
+
+/* Perfil de artista con iniciales y portada de color */
+async function loadArtistProfile() {
+  const artistName = document.getElementById("artistName");
+  const artistDescription = document.getElementById("artistDescription");
+  const artistTags = document.getElementById("artistTags");
+  const artistAvatar = document.getElementById("artistAvatar");
+  const artistSongsList = document.getElementById("artistSongsList");
+  const artistHero = document.querySelector(".artist-profile-hero");
+
+  if (!artistName || !artistSongsList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistName.innerText = "No se pudo conectar";
+    return;
+  }
+
+  const slug = new URLSearchParams(window.location.search).get("id");
+
+  if (!slug) {
+    artistName.innerText = "Artista no encontrado";
+    return;
+  }
+
+  const { data: artist, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !artist) {
+    artistName.innerText = "Artista no encontrado";
+    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
+    return;
+  }
+
+  artistName.innerText = artist.name || "Sin nombre";
+  artistDescription.innerText = artist.description || "Sin descripción todavía.";
+  artistTags.innerText = "ARTISTA / MINISTERIO";
+
+  if (artistAvatar) {
+    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
+  }
+
+  const { data: songsData } = await client
+    .from("songs")
+    .select(`
+      *,
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("artist_id", artist.id)
+    .order("title");
+
+  if (artistHero && songsData && songsData.length > 0) {
+    const firstType = songsData[0].song_type;
+
+    artistHero.classList.remove("profile-catolico", "profile-cristiano");
+
+    if (firstType === "catolico") {
+      artistHero.classList.add("profile-catolico");
+    }
+
+    if (firstType === "cristiano") {
+      artistHero.classList.add("profile-cristiano");
+    }
+  }
+
+  artistSongsList.innerHTML = "";
+
+  if (!songsData || songsData.length === 0) {
+    artistSongsList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Muy pronto se agregarán cantos para este artista.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  songsData.forEach(song => {
+    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
+      ? jhdGetCategoryNamesFromSong(song)
+      : "Sin categoría";
+
+    const typeLabel = typeof jhdGetSongTypeLabel === "function"
+      ? jhdGetSongTypeLabel(song.song_type)
+      : "Sin tipo";
+
+    artistSongsList.innerHTML += `
+      <article class="song-card">
+        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
+        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  });
+}
+
+runWhenReady(() => {
+  setTimeout(() => {
+    loadPublicArtists();
+    loadArtistProfile();
+  }, 700);
+});
