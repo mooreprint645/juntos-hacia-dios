@@ -739,3 +739,30 @@ loadSingleSong();
 loadPublicArtists();
 loadArtistProfile();
 loadPublicCategories();
+/* =========================
+   MENÚ HAMBURGUESA MÓVIL
+========================= */
+
+const menuToggle = document.getElementById("menuToggle");
+const navMenu = document.getElementById("navMenu");
+
+if (menuToggle && navMenu) {
+  menuToggle.addEventListener("click", () => {
+    navMenu.classList.toggle("show-menu");
+
+    if (navMenu.classList.contains("show-menu")) {
+      menuToggle.textContent = "✕ Cerrar";
+    } else {
+      menuToggle.textContent = "☰ Menú";
+    }
+  });
+
+  const navLinks = navMenu.querySelectorAll("a");
+
+  navLinks.forEach(link => {
+    link.addEventListener("click", () => {
+      navMenu.classList.remove("show-menu");
+      menuToggle.textContent = "☰ Menú";
+    });
+  });
+}
