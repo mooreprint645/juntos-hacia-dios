@@ -2034,3 +2034,151 @@ body.light-mode .chord-token {
     line-height: 1.65;
   }
 }
+/* =========================================================
+   ESTILO TIPO APP PARA APARTADOS DE CANTO
+   Tarjetas oscuras + pastillas pequeñas de color
+========================================================= */
+
+.lyrics-app-view{
+  display:block;
+  width:100%;
+}
+
+.lyrics-app-section{
+  display:block;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:14px;
+  padding:14px 16px;
+  margin:12px 0;
+  box-shadow:0 6px 18px rgba(0,0,0,.10);
+}
+
+.lyrics-app-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:42px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:.72rem;
+  font-weight:800;
+  letter-spacing:.3px;
+  margin-bottom:10px;
+  line-height:1.1;
+}
+
+.lyrics-app-content{
+  display:block;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:normal;
+  font-family:"Courier New", monospace;
+  font-size:1rem;
+  line-height:1.7;
+  color:#fff;
+}
+
+.lyrics-app-line{
+  display:block;
+  min-height:1.35em;
+}
+
+/* Acordes */
+.chord-token{
+  color:var(--gold);
+  font-weight:800;
+  display:inline-block;
+  padding:0;
+  margin:0 1px;
+  background:transparent;
+  border:none;
+}
+
+/* ===== CHIPS POR TIPO ===== */
+
+/* Versos */
+.chip-verso,
+.chip-estrofa{
+  background:rgba(80, 205, 137, .18);
+  color:#b7f4ce;
+}
+
+/* Coro */
+.chip-coro{
+  background:rgba(240, 143, 166, .18);
+  color:#ffd1dc;
+}
+
+/* Pre Coro */
+.chip-precoro{
+  background:rgba(247, 193, 84, .18);
+  color:#ffe39e;
+}
+
+/* Intro */
+.chip-intro{
+  background:rgba(107, 174, 255, .18);
+  color:#cde3ff;
+}
+
+/* Puente */
+.chip-puente{
+  background:rgba(159, 136, 255, .18);
+  color:#ddd2ff;
+}
+
+/* Interludio / instrumental */
+.chip-intermedio,
+.chip-interludio{
+  background:rgba(99, 208, 196, .18);
+  color:#c7fff7;
+}
+
+/* Final / outro */
+.chip-final{
+  background:rgba(255, 131, 131, .18);
+  color:#ffd0d0;
+}
+
+/* Default */
+.chip-default{
+  background:rgba(255,255,255,.12);
+  color:#fff;
+}
+
+/* Modo claro */
+body.light-mode .lyrics-app-section{
+  background:rgba(0,0,0,.035);
+  border-color:rgba(0,0,0,.06);
+  box-shadow:0 5px 12px rgba(0,0,0,.04);
+}
+
+body.light-mode .lyrics-app-content{
+  color:#111;
+}
+
+body.light-mode .chord-token{
+  color:#9a6d00;
+}
+
+/* Móvil */
+@media (max-width:700px){
+  .lyrics-app-section{
+    padding:12px 14px;
+    border-radius:12px;
+    margin:10px 0;
+  }
+
+  .lyrics-app-chip{
+    min-width:38px;
+    font-size:.68rem;
+    padding:4px 9px;
+    margin-bottom:8px;
+  }
+
+  .lyrics-app-content{
+    font-size:.95rem;
+    line-height:1.65;
+  }
+}
