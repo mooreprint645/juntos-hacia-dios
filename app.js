@@ -2710,3 +2710,111 @@ function jhdUpdateLyricsPreview() {
 
   previewContent.innerHTML = renderLyricsHTML(textarea.value);
 }
+/* =========================================================
+   ACORDE EN MEDIO DE PALABRA SIN ROMPERLA
+   Ejemplo: Mar(G)ía
+========================================================= */
+
+function jhdSmartChordEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdSmartChordRenderLine(line) {
+  const value = String(line || "");
+
+  const regex = /(^|\s)([^\s()]*?)\(([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?)\)([^\s()]*)/g;
+
+  let html = "";
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(value)) !== null) {
+    const separator = match[1] || "";
+    const prefix = match[2] || "";
+    const chord = match[3] || "";
+    const suffix = match[4] || "";
+
+    html += jhdSmartChordEscape(value.slice(lastIndex, match.index));
+    html += jhdSmartChordEscape(separator);
+
+    if (prefix && suffix) {
+      html += `
+        <span class="chord-split-word">
+          <span class="chord-token">${jhdSmartChordEscape(chord)}</span>
+          <span class="word-prefix">${jhdSmartChordEscape(prefix)}</span>
+          <span class="word-token">${jhdSmartChordEscape(suffix)}</span>
+        </span>
+      `;
+    } else if (suffix) {
+      html += `
+        <span class="chord-word">
+          <span class="chord-token">${jhdSmartChordEscape(chord)}</span>
+          <span class="word-token">${jhdSmartChordEscape(suffix)}</span>
+        </span>
+      `;
+    } else {
+      html += `<span class="chord-alone">${jhdSmartChordEscape(chord)}</span>`;
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  html += jhdSmartChordEscape(value.slice(lastIndex));
+
+  return html;
+}
+
+function jhdAppRenderLines(lines) {
+  return lines.map(line => {
+    return `<span class="lyrics-app-line">${jhdSmartChordRenderLine(line)}</span>`;
+  }).join("");
+}
+
+function jhdSoftRenderLines(lines) {
+  return lines.map(line => {
+    return `<span class="lyrics-app-line">${jhdSmartChordRenderLine(line)}</span>`;
+  }).join("");
+}
+
+function jhdAppHighlightChords(line) {
+  return jhdSmartChordRenderLine(line);
+}
+
+function jhdWordChordRenderLine(line) {
+  return jhdSmartChordRenderLine(line);
+}
+
+function jhdFinalChordRenderLine(line) {
+  return jhdSmartChordRenderLine(line);
+}
+
+function jhdUpdateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const previewContent = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !previewContent) return;
+
+  previewContent.innerHTML = renderLyricsHTML(textarea.value);
+}
+
+function showLyrics() {
+  const lyricsBox = document.getElementById("songLyrics");
+
+  if (lyricsBox) {
+    const transposedText = transposeText(originalLyrics, transposeAmount);
+    lyricsBox.innerHTML = renderLyricsHTML(transposedText);
+  }
+
+  const label = document.getElementById("chordLanguageLabel");
+
+  if (label) {
+    label.innerText = chordLanguage === "spanish"
+      ? "Cifrado actual: Español"
+      : "Cifrado actual: Inglés";
+  }
+}
