@@ -2592,3 +2592,572 @@ setTimeout(() => {
     oldBox.remove();
   }
 }, 1500);
+/* =========================================================
+   EXPLORAR SIN "AMBOS"
+   Católico / Cristiano / Todos con filtros de temas
+========================================================= */
+
+window.jhdActiveExploreFilter = "";
+
+function jhdNormalizeSongType(value) {
+  const text = String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (text.includes("catolico")) return "catolico";
+  if (text.includes("cristiano")) return "cristiano";
+
+  return "";
+}
+
+function jhdGetSongTypeLabel(type) {
+  const value = jhdNormalizeSongType(type);
+
+  if (value === "catolico") return "Católico";
+  if (value === "cristiano") return "Cristiano";
+
+  return "Sin tipo";
+}
+
+function jhdGetCurrentTypeFilter() {
+  const params = new URLSearchParams(window.location.search);
+  return jhdNormalizeSongType(params.get("tipo"));
+}
+
+function jhdApplyTypeFilter(query) {
+  const type = jhdGetCurrentTypeFilter();
+
+  if (type === "catolico") {
+    return query.eq("song_type", "catolico");
+  }
+
+  if (type === "cristiano") {
+    return query.eq("song_type", "cristiano");
+  }
+
+  return query;
+}
+
+function jhdUpdateSongPageTitle() {
+  const type = jhdGetCurrentTypeFilter();
+
+  const pageTitle =
+    document.getElementById("pageTitle") ||
+    document.querySelector(".section h2") ||
+    document.querySelector("h1");
+
+  if (!pageTitle) return;
+
+  if (type === "catolico") {
+    pageTitle.innerText = "Cantos Católicos";
+  } else if (type === "cristiano") {
+    pageTitle.innerText = "Cantos Cristianos";
+  } else {
+    pageTitle.innerText = "Explorar canciones";
+  }
+}
+
+function jhdSlugifyFilter(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function jhdGetCategoriesFromSong(song) {
+  if (typeof getSongCategories === "function") {
+    const multi = getSongCategories(song);
+
+    if (multi.length > 0) {
+      return multi;
+    }
+  }
+
+  if (song.categories) {
+    return [song.categories];
+  }
+
+  return [];
+}
+
+function jhdGetCategoryNamesFromSong(song) {
+  const categories = jhdGetCategoriesFromSong(song);
+
+  if (categories.length === 0) {
+    return "Sin categoría";
+  }
+
+  return categories.map(category => category.name).join(", ");
+}
+
+function jhdGetCategorySlugTextFromSong(song) {
+  const categories = jhdGetCategoriesFromSong(song);
+
+  return categories
+    .map(category => {
+      return [
+        category.name || "",
+        category.slug || "",
+        jhdSlugifyFilter(category.name || "")
+      ].join(" ");
+    })
+    .join(" ")
+    .toLowerCase();
+}
+
+function jhdBuildExploreFilterBar(songs) {
+  const songList = document.getElementById("songList");
+
+  if (!songList) return;
+
+  let filterBox = document.getElementById("jhdExploreFilterBox");
+
+  if (!filterBox) {
+    filterBox = document.createElement("div");
+    filterBox.id = "jhdExploreFilterBox";
+    filterBox.className = "explore-filter-box";
+    songList.parentNode.insertBefore(filterBox, songList);
+  }
+
+  const type = jhdGetCurrentTypeFilter();
+
+  let help = "Filtra por tema o uso. Aquí se mezclan cantos católicos y cristianos.";
+
+  if (type === "catolico") {
+    help = "Filtra solo dentro de cantos católicos.";
+  }
+
+  if (type === "cristiano") {
+    help = "Filtra solo dentro de cantos cristianos.";
+  }
+
+  const categoryMap = new Map();
+
+  songs.forEach(song => {
+    const categories = jhdGetCategoriesFromSong(song);
+
+    categories.forEach(category => {
+      if (!category || !category.name) return;
+
+      const slug = category.slug || jhdSlugifyFilter(category.name);
+
+      categoryMap.set(slug, {
+        slug,
+        name: category.name
+      });
+    });
+  });
+
+  const categories = Array.from(categoryMap.values())
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  filterBox.innerHTML = `
+    <div class="explore-filter-title">Filtros</div>
+    <div class="explore-filter-help">${escapeHTML(help)}</div>
+
+    <div class="explore-filter-list">
+      <button class="explore-filter-chip active" type="button" onclick="jhdSetExploreFilter('')">
+        Todos
+      </button>
+
+      ${categories.map(category => `
+        <button class="explore-filter-chip" type="button" onclick="jhdSetExploreFilter('${escapeHTML(category.slug)}')">
+          ${escapeHTML(category.name)}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function jhdSetExploreFilter(filterValue) {
+  window.jhdActiveExploreFilter = String(filterValue || "").toLowerCase();
+
+  document.querySelectorAll(".explore-filter-chip").forEach(button => {
+    button.classList.remove("active");
+  });
+
+  document.querySelectorAll(".explore-filter-chip").forEach(button => {
+    const onclick = button.getAttribute("onclick") || "";
+
+    if (!window.jhdActiveExploreFilter && onclick.includes("jhdSetExploreFilter('')")) {
+      button.classList.add("active");
+    }
+
+    if (window.jhdActiveExploreFilter && onclick.includes(window.jhdActiveExploreFilter)) {
+      button.classList.add("active");
+    }
+  });
+
+  filterSongCards();
+}
+
+function filterSongCards() {
+  const songSearch = document.getElementById("songSearch");
+  const cards = document.querySelectorAll("#songList .song-card");
+  const noResults = document.getElementById("noResults");
+
+  const value = songSearch ? songSearch.value.toLowerCase().trim() : "";
+  const activeFilter = String(window.jhdActiveExploreFilter || "").toLowerCase();
+
+  let found = 0;
+
+  cards.forEach(card => {
+    const title = card.dataset.title || "";
+    const category = card.dataset.category || "";
+
+    const matchesSearch = !value || title.includes(value);
+    const matchesCategory = !activeFilter || category.includes(activeFilter);
+
+    if (matchesSearch && matchesCategory) {
+      card.style.display = "block";
+      found++;
+    } else {
+      card.style.display = "none";
+    }
+  });
+
+  if (noResults) {
+    noResults.style.display = found === 0 ? "block" : "none";
+  }
+}
+
+/* Admin: selector solo Católico / Cristiano */
+function jhdFindSongTitleInput() {
+  return document.querySelector(
+    "#songTitleInput, #titleInput, input[name='title'], input[placeholder*='Título']"
+  );
+}
+
+function jhdFindSongSlugInput() {
+  return document.querySelector(
+    "#songSlugInput, #slugInput, input[name='slug']"
+  );
+}
+
+function jhdSlugifyText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function jhdGetCurrentSongSlug() {
+  const slugInput = jhdFindSongSlugInput();
+
+  if (slugInput && slugInput.value.trim()) {
+    return slugInput.value.trim();
+  }
+
+  const titleInput = jhdFindSongTitleInput();
+
+  if (titleInput && titleInput.value.trim()) {
+    return jhdSlugifyText(titleInput.value.trim());
+  }
+
+  return "";
+}
+
+function jhdLoadSongTypeSelector() {
+  const titleInput = jhdFindSongTitleInput();
+
+  if (!titleInput) return;
+
+  let box = document.getElementById("jhdSongTypeBox");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "jhdSongTypeBox";
+    box.className = "multi-category-box";
+    titleInput.parentNode.insertBefore(box, titleInput.nextSibling);
+  }
+
+  box.innerHTML = `
+    <div class="multi-category-title">Sección del canto</div>
+
+    <div class="multi-category-help">
+      Elige dónde aparecerá este canto.
+    </div>
+
+    <select id="jhdSongTypeInput">
+      <option value="catolico">Católico</option>
+      <option value="cristiano">Cristiano</option>
+    </select>
+  `;
+}
+
+function jhdGetSelectedSongType() {
+  const input = document.getElementById("jhdSongTypeInput");
+
+  if (!input) return "catolico";
+
+  return jhdNormalizeSongType(input.value) || "catolico";
+}
+
+async function jhdSaveSongTypeBySlug() {
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const slug = jhdGetCurrentSongSlug();
+  const songType = jhdGetSelectedSongType();
+
+  if (!slug) return;
+
+  const { error } = await client
+    .from("songs")
+    .update({ song_type: songType })
+    .eq("slug", slug);
+
+  if (error) {
+    alert("La canción se guardó, pero hubo error guardando la sección del canto: " + error.message);
+  }
+}
+
+async function jhdLoadSongTypeForSong(songIdOrSlug) {
+  const client = getSupabase();
+
+  if (!client || !songIdOrSlug) return;
+
+  const input = document.getElementById("jhdSongTypeInput");
+
+  if (!input) return;
+
+  const value = String(songIdOrSlug);
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+  let query = client
+    .from("songs")
+    .select("song_type");
+
+  if (isUuid) {
+    query = query.eq("id", value);
+  } else {
+    query = query.eq("slug", value);
+  }
+
+  const { data, error } = await query.single();
+
+  if (!error && data && data.song_type) {
+    input.value = jhdNormalizeSongType(data.song_type) || "catolico";
+  }
+}
+
+function jhdPatchSaveSongTypeNoAmbos() {
+  if (window.jhdSongTypeNoAmbosPatched) return;
+  window.jhdSongTypeNoAmbosPatched = true;
+
+  if (typeof window.saveSong === "function") {
+    const previousSaveSong = window.saveSong;
+
+    window.saveSong = async function() {
+      await previousSaveSong.apply(this, arguments);
+
+      setTimeout(async () => {
+        await jhdSaveSongTypeBySlug();
+      }, 900);
+    };
+  }
+
+  if (typeof window.editSong === "function") {
+    const previousEditSong = window.editSong;
+
+    window.editSong = async function(songId) {
+      await previousEditSong.apply(this, arguments);
+
+      setTimeout(async () => {
+        jhdLoadSongTypeSelector();
+        await jhdLoadSongTypeForSong(songId);
+      }, 900);
+    };
+  }
+}
+
+function jhdInitSongTypeNoAmbos() {
+  jhdLoadSongTypeSelector();
+  jhdPatchSaveSongTypeNoAmbos();
+
+  setTimeout(jhdLoadSongTypeSelector, 700);
+  setTimeout(jhdPatchSaveSongTypeNoAmbos, 900);
+
+  setTimeout(jhdLoadSongTypeSelector, 1600);
+  setTimeout(jhdPatchSaveSongTypeNoAmbos, 1800);
+}
+
+/* Página canciones: todos o solo católico/cristiano */
+async function loadPublicSongs() {
+  const songList = document.getElementById("songList");
+
+  if (!songList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar</h3>
+      </div>
+    `;
+    return;
+  }
+
+  jhdUpdateSongPageTitle();
+
+  let query = client
+    .from("songs")
+    .select(`
+      *,
+      artists(name, slug),
+      categories(name, slug),
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .order("title");
+
+  query = jhdApplyTypeFilter(query);
+
+  const { data, error } = await query;
+
+  if (error) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando canciones</h3>
+        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    songList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+        <p style="color:var(--secondary); margin-top:15px;">
+          Todavía no hay cantos en esta sección.
+        </p>
+      </div>
+    `;
+    return;
+  }
+
+  jhdBuildExploreFilterBar(data);
+
+  songList.innerHTML = "";
+
+  data.forEach(song => {
+    const title = song.title || "Sin título";
+    const artistName = song.artists ? song.artists.name : "Sin artista";
+    const categoryNames = jhdGetCategoryNamesFromSong(song);
+    const categorySlugText = jhdGetCategorySlugTextFromSong(song);
+    const typeLabel = jhdGetSongTypeLabel(song.song_type);
+
+    songList.innerHTML += `
+      <article class="song-card"
+        data-category="${escapeHTML(categorySlugText)}"
+        data-title="${escapeHTML(`${title} ${artistName} ${categoryNames} ${typeLabel}`.toLowerCase())}">
+        <h3>🎵 ${escapeHTML(title)}</h3>
+        <p>👤 ${escapeHTML(artistName)}</p>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
+        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  });
+
+  const songSearch = document.getElementById("songSearch");
+  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
+
+  if (songSearch && initialQuery) {
+    songSearch.value = initialQuery.toLowerCase();
+  }
+
+  filterSongCards();
+}
+
+/* Canto individual: mostrar sección */
+async function loadSingleSong() {
+  const songTitle = document.getElementById("songTitle");
+  const songInfo = document.getElementById("songInfo");
+
+  if (!songTitle || !songInfo) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    songTitle.innerText = "No se pudo conectar";
+    return;
+  }
+
+  const slug = new URLSearchParams(window.location.search).get("id");
+
+  if (!slug) {
+    songTitle.innerText = "Canto no encontrado";
+    songInfo.innerText = "No se especificó ningún canto.";
+    return;
+  }
+
+  const { data, error } = await client
+    .from("songs")
+    .select(`
+      *,
+      artists(name, slug),
+      categories(name, slug),
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("slug", slug)
+    .single();
+
+  if (error || !data) {
+    songTitle.innerText = "Canto no encontrado";
+    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
+    return;
+  }
+
+  const artistName = data.artists ? data.artists.name : "Sin artista";
+  const categoryNames = jhdGetCategoryNamesFromSong(data);
+  const typeLabel = jhdGetSongTypeLabel(data.song_type);
+
+  songTitle.innerText = data.title || "Sin título";
+  songInfo.innerText = `${artistName} · ${typeLabel} · ${categoryNames} · Tono ${safeText(data.tone, "No definido")}`;
+
+  originalLyrics = data.lyrics || "";
+  transposeAmount = 0;
+  showLyrics();
+
+  const tutorialGuitar = document.getElementById("tutorialGuitar");
+  const tutorialPiano = document.getElementById("tutorialPiano");
+
+  if (tutorialGuitar) {
+    const guitarUrl = safeUrl(data.tutorial_guitar);
+    tutorialGuitar.href = guitarUrl || "#";
+    tutorialGuitar.style.display = guitarUrl ? "inline-block" : "none";
+  }
+
+  if (tutorialPiano) {
+    const pianoUrl = safeUrl(data.tutorial_piano);
+    tutorialPiano.href = pianoUrl || "#";
+    tutorialPiano.style.display = pianoUrl ? "inline-block" : "none";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", jhdInitSongTypeNoAmbos);
+setTimeout(jhdInitSongTypeNoAmbos, 1200);
+setTimeout(jhdInitSongTypeNoAmbos, 2500);
+
+runWhenReady(() => {
+  setTimeout(() => {
+    loadPublicSongs();
+    loadSingleSong();
+  }, 500);
+});
+
+window.jhdSetExploreFilter = jhdSetExploreFilter;
