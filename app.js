@@ -1489,3 +1489,348 @@ function jhdHideLyricsPreview() {
 setTimeout(jhdForceHideLyricsPreview, 300);
 setTimeout(jhdForceHideLyricsPreview, 1000);
 setTimeout(jhdForceHideLyricsPreview, 2000);
+/* =========================
+   CAJAS POR APARTADO
+   Vista pública + Admin
+========================= */
+
+function jhdBoxEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdBoxCleanTitle(line) {
+  return String(line || "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .replace(/:$/, "")
+    .trim();
+}
+
+function jhdBoxNormalizeTitle(line) {
+  return jhdBoxCleanTitle(line)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function jhdBoxIsSectionTitle(line) {
+  const raw = String(line || "").trim();
+  const title = jhdBoxNormalizeTitle(raw);
+
+  const isBracketTitle = raw.startsWith("[") && raw.endsWith("]");
+
+  const patterns = [
+    /^intro$/,
+    /^introduccion$/,
+    /^verso\s*\d*$/,
+    /^estrofa\s*\d*$/,
+    /^pre\s*coro\s*\d*$/,
+    /^precoro\s*\d*$/,
+    /^coro\s*\d*$/,
+    /^coro\s*final$/,
+    /^repetir\s*coro$/,
+    /^intermedio$/,
+    /^interludio$/,
+    /^instrumental$/,
+    /^puente$/,
+    /^bridge$/,
+    /^solo$/,
+    /^tag$/,
+    /^final$/,
+    /^outro$/
+  ];
+
+  return isBracketTitle || patterns.some(pattern => pattern.test(title));
+}
+
+function jhdBoxParseLyrics(text) {
+  const value = String(text || "");
+  const lines = value.split("\n");
+
+  const blocks = [];
+  let currentBlock = null;
+  let position = 0;
+
+  lines.forEach(line => {
+    const lineStartPosition = position;
+    const trimmedLine = line.trim();
+
+    if (trimmedLine && jhdBoxIsSectionTitle(trimmedLine)) {
+      if (currentBlock) {
+        blocks.push(currentBlock);
+      }
+
+      currentBlock = {
+        title: jhdBoxCleanTitle(trimmedLine),
+        lines: [],
+        position: lineStartPosition
+      };
+    } else {
+      if (!currentBlock) {
+        currentBlock = {
+          title: "Sin apartado",
+          lines: [],
+          position: 0
+        };
+      }
+
+      currentBlock.lines.push(line);
+    }
+
+    position += line.length + 1;
+  });
+
+  if (currentBlock) {
+    blocks.push(currentBlock);
+  }
+
+  return blocks.filter(block => {
+    const hasTitle = block.title && block.title !== "Sin apartado";
+    const hasContent = block.lines.join("").trim().length > 0;
+    return hasTitle || hasContent;
+  });
+}
+
+/* Reemplaza la vista pública anterior por cajas */
+function renderLyricsHTML(text) {
+  if (!text || !text.trim()) {
+    return `
+      <span class="lyrics-boxed">
+        <span class="lyrics-section-box">
+          <span class="lyrics-section-box-title">Letra</span>
+          <span class="lyrics-section-box-content">No hay letra disponible todavía.</span>
+        </span>
+      </span>
+    `;
+  }
+
+  const blocks = jhdBoxParseLyrics(text);
+
+  return `
+    <span class="lyrics-boxed">
+      ${blocks.map(block => `
+        <span class="lyrics-section-box">
+          <span class="lyrics-section-box-title">${jhdBoxEscape(block.title)}</span>
+          <span class="lyrics-section-box-content">${jhdBoxEscape(block.lines.join("\n").trim() || "Sin contenido todavía.")}</span>
+        </span>
+      `).join("")}
+    </span>
+  `;
+}
+
+/* Reforzar showLyrics para usar las cajas */
+function showLyrics() {
+  const lyricsBox = document.getElementById("songLyrics");
+
+  if (lyricsBox) {
+    const transposedText = transposeText(originalLyrics, transposeAmount);
+    lyricsBox.innerHTML = renderLyricsHTML(transposedText);
+  }
+
+  const label = document.getElementById("chordLanguageLabel");
+
+  if (label) {
+    label.innerText = chordLanguage === "spanish"
+      ? "Cifrado actual: Español"
+      : "Cifrado actual: Inglés";
+  }
+}
+
+/* Vista previa también en cajas */
+function jhdPreviewRenderLyrics(text) {
+  return renderLyricsHTML(text)
+    .replaceAll("lyrics-section-box", "lyrics-section-box")
+    .replaceAll("lyrics-section-box-title", "lyrics-section-box-title")
+    .replaceAll("lyrics-section-box-content", "lyrics-section-box-content");
+}
+
+function jhdUpdateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const previewContent = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !previewContent) return;
+
+  previewContent.innerHTML = renderLyricsHTML(textarea.value);
+}
+
+/* Mapa visual de secciones en el editor */
+function jhdCreateEditorSectionMap() {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) return;
+
+  if (document.getElementById("jhdEditorSectionMap")) return;
+
+  const map = document.createElement("div");
+  map.id = "jhdEditorSectionMap";
+  map.className = "editor-section-map";
+
+  map.innerHTML = `
+    <div class="editor-section-map-title">Mapa visual de secciones</div>
+    <div class="editor-section-map-help">
+      Estas cajas te ayudan a revisar dónde empieza cada parte. Toca una caja para ir a esa sección dentro del editor.
+    </div>
+    <div class="editor-section-blocks" id="jhdEditorSectionBlocks">
+      <div class="editor-section-empty">Escribe apartados como [Intro], [Verso 1], [Coro] para verlos aquí.</div>
+    </div>
+  `;
+
+  const previewWrapper = document.getElementById("jhdLyricsPreviewWrapper");
+
+  if (previewWrapper) {
+    textarea.parentNode.insertBefore(map, previewWrapper);
+  } else {
+    textarea.parentNode.insertBefore(map, textarea.nextSibling);
+  }
+
+  textarea.addEventListener("input", jhdUpdateEditorSectionMap);
+  textarea.addEventListener("keyup", jhdUpdateEditorSectionMap);
+  textarea.addEventListener("change", jhdUpdateEditorSectionMap);
+
+  jhdUpdateEditorSectionMap();
+}
+
+function jhdUpdateEditorSectionMap() {
+  const textarea = document.getElementById("songLyricsInput");
+  const blocksContainer = document.getElementById("jhdEditorSectionBlocks");
+
+  if (!textarea || !blocksContainer) return;
+
+  const blocks = jhdBoxParseLyrics(textarea.value);
+
+  if (!blocks || blocks.length === 0) {
+    blocksContainer.innerHTML = `
+      <div class="editor-section-empty">
+        Escribe apartados como [Intro], [Verso 1], [Coro] para verlos aquí.
+      </div>
+    `;
+    return;
+  }
+
+  blocksContainer.innerHTML = blocks.map((block, index) => {
+    const preview = block.lines
+      .join("\n")
+      .trim()
+      .split("\n")
+      .slice(0, 5)
+      .join("\n");
+
+    return `
+      <button type="button" class="editor-section-block" onclick="jhdGoToEditorSection(${block.position})">
+        <strong>${jhdBoxEscape(block.title)}</strong>
+        <span class="editor-section-preview">${jhdBoxEscape(preview || "Sin contenido todavía.")}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function jhdGoToEditorSection(position) {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) return;
+
+  textarea.focus();
+  textarea.selectionStart = position;
+  textarea.selectionEnd = position;
+
+  textarea.scrollTop = Math.max(0, position * 0.55);
+}
+
+/* Rehacer botones de apartados para que también actualicen el mapa */
+function jhdInsertSongSection(sectionName) {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) {
+    alert("No se encontró el campo de letra.");
+    return;
+  }
+
+  const start = textarea.selectionStart || 0;
+  const end = textarea.selectionEnd || 0;
+  const currentValue = textarea.value || "";
+
+  const before = currentValue.substring(0, start);
+  const after = currentValue.substring(end);
+
+  const needsLineBefore = before.length > 0 && !before.endsWith("\n");
+  const textToInsert = `${needsLineBefore ? "\n\n" : ""}[${sectionName}]\n`;
+
+  textarea.value = before + textToInsert + after;
+  textarea.focus();
+
+  const newPosition = before.length + textToInsert.length;
+  textarea.selectionStart = newPosition;
+  textarea.selectionEnd = newPosition;
+
+  jhdUpdateEditorSectionMap();
+
+  if (typeof jhdUpdateLyricsPreview === "function") {
+    jhdUpdateLyricsPreview();
+  }
+}
+
+function jhdInsertSongTemplate() {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) {
+    alert("No se encontró el campo de letra.");
+    return;
+  }
+
+  const template = `[Intro]
+
+
+[Verso 1]
+
+
+[Pre Coro]
+
+
+[Coro]
+
+
+[Verso 2]
+
+
+[Puente]
+
+
+[Coro Final]
+
+
+[Final]
+
+`;
+
+  if (textarea.value.trim()) {
+    textarea.value = textarea.value.trimEnd() + "\n\n" + template;
+  } else {
+    textarea.value = template;
+  }
+
+  textarea.focus();
+
+  jhdUpdateEditorSectionMap();
+
+  if (typeof jhdUpdateLyricsPreview === "function") {
+    jhdUpdateLyricsPreview();
+  }
+}
+
+jhdCreateEditorSectionMap();
+
+document.addEventListener("DOMContentLoaded", jhdCreateEditorSectionMap);
+
+setTimeout(jhdCreateEditorSectionMap, 500);
+setTimeout(jhdCreateEditorSectionMap, 1500);
+setTimeout(jhdCreateEditorSectionMap, 3000);
+
+setTimeout(jhdUpdateEditorSectionMap, 800);
+setTimeout(jhdUpdateEditorSectionMap, 2000);
+setTimeout(jhdUpdateEditorSectionMap, 3500);
