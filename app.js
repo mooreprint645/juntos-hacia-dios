@@ -7476,3 +7476,147 @@ runWhenReady(() => {
     jhdRenderMeshEditor();
   }, 1200);
 });
+/* =========================================================
+   FIX LOGIN ADMIN
+========================================================= */
+
+async function loginAdmin() {
+  const emailInput = document.getElementById("adminEmailInput");
+  const passwordInput = document.getElementById("adminPasswordInput");
+  const message = document.getElementById("adminLoginMessage");
+
+  const email = emailInput ? emailInput.value.trim() : "";
+  const password = passwordInput ? passwordInput.value : "";
+
+  if (message) {
+    message.innerText = "";
+  }
+
+  if (!email || !password) {
+    if (message) {
+      message.innerText = "Escribe tu correo y contraseña.";
+    }
+    return;
+  }
+
+  const client = getSupabase();
+
+  if (!client) {
+    if (message) {
+      message.innerText = "No se pudo conectar con Supabase.";
+    }
+    return;
+  }
+
+  const { data, error } = await client.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    if (message) {
+      message.innerText = "No se pudo iniciar sesión. Revisa correo y contraseña.";
+    }
+
+    console.error("Error login admin:", error.message);
+    return;
+  }
+
+  await checkAdminSession();
+}
+
+async function logoutAdmin() {
+  const client = getSupabase();
+
+  if (client) {
+    await client.auth.signOut();
+  }
+
+  await checkAdminSession();
+}
+
+async function checkAdminSession() {
+  const client = getSupabase();
+
+  const loginSection = document.getElementById("adminLoginSection");
+  const panel = document.getElementById("adminPanel");
+  const userText = document.getElementById("adminUserText");
+
+  if (!client) {
+    if (loginSection) loginSection.style.display = "block";
+    if (panel) panel.style.display = "none";
+    return;
+  }
+
+  const { data } = await client.auth.getSession();
+  const session = data ? data.session : null;
+
+  if (!session || !session.user) {
+    if (loginSection) loginSection.style.display = "block";
+    if (panel) panel.style.display = "none";
+    return;
+  }
+
+  const email = session.user.email || "";
+
+  if (email !== "mooreprint645@gmail.com") {
+    await client.auth.signOut();
+
+    if (loginSection) loginSection.style.display = "block";
+    if (panel) panel.style.display = "none";
+    return;
+  }
+
+  if (loginSection) loginSection.style.display = "none";
+  if (panel) panel.style.display = "block";
+
+  if (userText) {
+    userText.innerText = "Sesión iniciada como: " + email;
+  }
+
+  if (typeof loadAdminData === "function") {
+    loadAdminData();
+  }
+
+  if (typeof loadAdminArtists === "function") {
+    loadAdminArtists();
+  }
+
+  if (typeof loadAdminCategories === "function") {
+    loadAdminCategories();
+  }
+
+  if (typeof loadAdminSongs === "function") {
+    loadAdminSongs();
+  }
+
+  if (typeof loadArtistOptions === "function") {
+    loadArtistOptions();
+  }
+
+  if (typeof loadCategoryOptions === "function") {
+    loadCategoryOptions();
+  }
+
+  if (typeof jhdInitMeshGradientEditor === "function") {
+    jhdInitMeshGradientEditor();
+  }
+
+  if (typeof jhdInitPointGradientEditor === "function") {
+    jhdInitPointGradientEditor();
+  }
+
+  if (typeof jhdInitSimpleArtistGradient === "function") {
+    jhdInitSimpleArtistGradient();
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  checkAdminSession();
+});
+
+setTimeout(checkAdminSession, 800);
+
+window.loginAdmin = loginAdmin;
+window.logoutAdmin = logoutAdmin;
+window.checkAdminSession = checkAdminSession;
