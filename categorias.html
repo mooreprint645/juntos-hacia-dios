@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>Categorías | Juntos Hacia Dios</title>
-  <meta name="description" content="Explora categorías de cantos católicos y cristianos en Juntos Hacia Dios.">
+  <meta name="description" content="Explora cantos por categorías en Juntos Hacia Dios.">
 
-  <link rel="stylesheet" href="style.css?v=final">
+  <link rel="stylesheet" href="style.css?v=stylefinal1">
 </head>
 
 <body>
@@ -30,30 +30,342 @@
 
     <button id="themeToggle" type="button">🌙</button>
   </nav>
-
-  <div class="hero-content">
-    <h1>Categorías</h1>
-    <p class="hero-description">
-      Explora los cantos por tipo de uso, tema o momento.
-    </p>
-  </div>
 </header>
 
 <main>
   <section class="section">
-    <h2>Explorar categorías</h2>
 
-    <div class="song-list" id="categoryList">
-      <div class="song-card">
-        <h3>Cargando categorías...</h3>
-      </div>
+    <p class="hero-kicker">Explorar</p>
+    <h1 style="margin-bottom:10px;">Categorías</h1>
+
+    <p class="hero-description" style="margin-bottom:22px;">
+      Encuentra cantos por tipo, momento o uso.
+    </p>
+
+    <div class="search-container">
+      <input
+        id="categoriesSearchInput"
+        type="search"
+        placeholder="Buscar categoría..."
+        autocomplete="off"
+      >
     </div>
+
+    <p id="categoryCountText" style="color:var(--secondary); margin-bottom:18px;">
+      Cargando categorías...
+    </p>
+
+    <div id="categoriesGrid" class="categories-grid">
+
+      <div class="category-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+      </div>
+
+      <div class="category-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+      </div>
+
+      <div class="category-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+      </div>
+
+    </div>
+
+    <section class="section-inner" id="categorySongsSection" style="display:none;">
+      <h2 id="selectedCategoryTitle">Cantos</h2>
+
+      <p id="selectedCategoryDescription" style="color:var(--secondary); margin-bottom:18px;"></p>
+
+      <div id="categorySongsGrid" class="songs-grid"></div>
+    </section>
+
   </section>
 </main>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js?v=final"></script>
-<script src="app.js?v=final"></script>
+<script src="app.js?v=limpia15"></script>
+
+<script>
+  let allCategoriesForPage = [];
+  let allCategorySongsForPage = [];
+
+  function categoriesEscapeHTML(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function categoriesSlugify(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  }
+
+  function categorySongArtistsText(song) {
+    if (song._artists && song._artists.length) {
+      return song._artists.map(function (artist) {
+        return artist.name;
+      }).join(" · ");
+    }
+
+    return "Sin artista";
+  }
+
+  function renderCategorySongs(category) {
+    const section = document.getElementById("categorySongsSection");
+    const title = document.getElementById("selectedCategoryTitle");
+    const description = document.getElementById("selectedCategoryDescription");
+    const grid = document.getElementById("categorySongsGrid");
+
+    if (!section || !grid) return;
+
+    section.style.display = "block";
+
+    if (title) {
+      title.textContent = category.name || "Categoría";
+    }
+
+    if (description) {
+      description.textContent = category.description || "Cantos dentro de esta categoría.";
+    }
+
+    const songs = allCategorySongsForPage.filter(function (song) {
+      return (song._categories || []).some(function (item) {
+        return String(item.id) === String(category.id);
+      });
+    });
+
+    if (!songs.length) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>Aún no hay cantos</h3>
+          <p style="color:var(--secondary);">
+            Esta categoría todavía no tiene canciones agregadas.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = songs.map(function (song) {
+      const slug = song.slug || categoriesSlugify(song.title);
+      const artists = categorySongArtistsText(song);
+      const meta = [song.tone, song.difficulty].filter(Boolean).join(" · ");
+
+      return `
+        <a class="song-card song-link-card" href="canto.html?slug=${categoriesEscapeHTML(slug)}">
+          <p class="artists-line">${categoriesEscapeHTML(artists)}</p>
+
+          <h3>${categoriesEscapeHTML(song.title || "Sin título")}</h3>
+
+          <p style="color:var(--secondary); margin-top:8px;">
+            ${categoriesEscapeHTML(meta)}
+          </p>
+        </a>
+      `;
+    }).join("");
+
+    section.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+
+  function renderCategoriesList(items) {
+    const grid = document.getElementById("categoriesGrid");
+    const countText = document.getElementById("categoryCountText");
+
+    if (!grid) return;
+
+    if (countText) {
+      countText.textContent = items.length === 1
+        ? "1 categoría encontrada"
+        : items.length + " categorías encontradas";
+    }
+
+    if (!items.length) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>No se encontraron categorías</h3>
+          <p style="color:var(--secondary);">
+            Intenta buscar con otro nombre.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = items.map(function (category) {
+      return `
+        <button
+          class="category-card"
+          type="button"
+          onclick="selectCategoryById('${categoriesEscapeHTML(category.id)}')"
+          style="text-align:left; cursor:pointer;"
+        >
+          <h3>${categoriesEscapeHTML(category.name || "Categoría")}</h3>
+
+          <p>
+            ${categoriesEscapeHTML(category.description || "Ver cantos de esta categoría.")}
+          </p>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function selectCategoryById(categoryId) {
+    const category = allCategoriesForPage.find(function (item) {
+      return String(item.id) === String(categoryId);
+    });
+
+    if (!category) return;
+
+    renderCategorySongs(category);
+  }
+
+  async function loadCategorySongsData(client) {
+    const songsResult = await client
+      .from("songs")
+      .select("*")
+      .order("title", { ascending: true });
+
+    const songs = songsResult.data || [];
+
+    const songIds = songs.map(function (song) {
+      return song.id;
+    });
+
+    if (!songIds.length) {
+      allCategorySongsForPage = [];
+      return;
+    }
+
+    const artistsResult = await client
+      .from("song_artists")
+      .select("song_id, sort_order, artists(id, name, slug, description)")
+      .in("song_id", songIds)
+      .order("sort_order", { ascending: true });
+
+    const categoryRelationsResult = await client
+      .from("song_categories")
+      .select("song_id, categories(id, name, slug, description)")
+      .in("song_id", songIds);
+
+    allCategorySongsForPage = songs.map(function (song) {
+      const artists = (artistsResult.data || [])
+        .filter(function (row) {
+          return String(row.song_id) === String(song.id) && row.artists;
+        })
+        .map(function (row) {
+          return row.artists;
+        });
+
+      const categories = (categoryRelationsResult.data || [])
+        .filter(function (row) {
+          return String(row.song_id) === String(song.id) && row.categories;
+        })
+        .map(function (row) {
+          return row.categories;
+        });
+
+      return Object.assign({}, song, {
+        _artists: artists,
+        _categories: categories
+      });
+    });
+  }
+
+  async function loadCategoriesPage() {
+    const client = window.supabaseClient;
+
+    const grid = document.getElementById("categoriesGrid");
+    const countText = document.getElementById("categoryCountText");
+
+    if (!client) {
+      if (grid) {
+        grid.innerHTML = `
+          <div class="song-card">
+            <h3>No se pudo conectar</h3>
+            <p style="color:var(--secondary);">
+              Revisa la conexión con Supabase.
+            </p>
+          </div>
+        `;
+      }
+
+      if (countText) {
+        countText.textContent = "No se pudo cargar la lista.";
+      }
+
+      return;
+    }
+
+    const result = await client
+      .from("categories")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (result.error) {
+      if (grid) {
+        grid.innerHTML = `
+          <div class="song-card">
+            <h3>Error al cargar categorías</h3>
+            <p style="color:var(--secondary);">
+              ${categoriesEscapeHTML(result.error.message)}
+            </p>
+          </div>
+        `;
+      }
+
+      if (countText) {
+        countText.textContent = "Error al cargar categorías.";
+      }
+
+      return;
+    }
+
+    allCategoriesForPage = result.data || [];
+
+    await loadCategorySongsData(client);
+
+    renderCategoriesList(allCategoriesForPage);
+  }
+
+  function setupCategoriesSearch() {
+    const input = document.getElementById("categoriesSearchInput");
+
+    if (!input) return;
+
+    input.addEventListener("input", function () {
+      const query = input.value.trim().toLowerCase();
+
+      const filtered = allCategoriesForPage.filter(function (category) {
+        const text = [
+          category.name,
+          category.description
+        ].join(" ").toLowerCase();
+
+        return text.includes(query);
+      });
+
+      renderCategoriesList(filtered);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setupCategoriesSearch();
+    loadCategoriesPage();
+  });
+</script>
 
 </body>
 </html>
