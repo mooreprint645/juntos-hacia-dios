@@ -3974,3 +3974,70 @@ body:not(.admin-page) #jhdArtistGradientBox {
     height: 150px !important;
   }
 }
+/* =========================================================
+   FIX MESH PREVIEW + OCULTAR URL ARTISTA
+========================================================= */
+
+#jhdMeshCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  pointer-events: none !important;
+}
+
+.mesh-canvas-wrap {
+  position: relative !important;
+  width: 100% !important;
+  height: 180px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.18) !important;
+  background: #0b1020 !important;
+  cursor: crosshair !important;
+  touch-action: none !important;
+  margin-bottom: 14px !important;
+}
+
+.mesh-point {
+  position: absolute !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  border: 3px solid #fff !important;
+  transform: translate(-50%, -50%) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.55) !important;
+  z-index: 5 !important;
+  cursor: grab !important;
+}
+
+.mesh-point.active {
+  outline: 3px solid var(--gold) !important;
+  outline-offset: 3px !important;
+}
+
+#jhdArtistGradientBox input[placeholder*="URL"],
+#jhdArtistGradientBox input[placeholder*="url"] {
+  display: none !important;
+}
+
+.artist-profile-hero {
+  --artist-mesh-gradient:
+    radial-gradient(circle at 20% 35%, rgba(250, 204, 21, .85) 0%, rgba(250, 204, 21, .35) 24%, transparent 70%),
+    radial-gradient(circle at 75% 30%, rgba(56, 189, 248, .70) 0%, rgba(56, 189, 248, .30) 26%, transparent 75%),
+    radial-gradient(circle at 45% 78%, rgba(168, 85, 247, .65) 0%, rgba(168, 85, 247, .25) 24%, transparent 72%),
+    linear-gradient(135deg, #0b1020, #111827);
+
+  background: var(--artist-mesh-gradient) !important;
+}
+
+.artist-avatar,
+.artist-profile-avatar {
+  background: var(--artist-mesh-gradient) !important;
+}
+
+.artist-profile-avatar img,
+.artist-avatar img,
+.artist-cover-image,
+.artist-cover-overlay {
+  display: none !important;
+}
