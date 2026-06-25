@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>Canto | Juntos Hacia Dios</title>
-  <meta name="description" content="Letra y acordes de canto en Juntos Hacia Dios.">
+  <meta name="description" content="Letra, acordes, tono, capo y tutoriales del canto en Juntos Hacia Dios.">
 
   <link rel="stylesheet" href="style.css?v=final">
 </head>
@@ -14,7 +14,7 @@
 
 <header class="hero small-hero">
   <nav class="navbar">
-    <h2>JHD</h2>
+    <h2>Juntos Hacia Dios</h2>
 
     <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menú">
       ☰ Menú
@@ -30,19 +30,52 @@
 
     <button id="themeToggle" type="button">🌙</button>
   </nav>
+
+  <div class="hero-content">
+    <p class="hero-kicker">Letra y acordes</p>
+    <h1>Canto</h1>
+    <p class="hero-description">
+      Revisa la letra, acordes, tono original, capo, transposición y tutoriales.
+    </p>
+  </div>
 </header>
 
 <main>
-  <section class="section" id="songPage">
-    <div class="song-card">
-      <h3>Cargando canto...</h3>
+  <section class="section">
+
+    <div style="margin-bottom:20px;">
+      <a href="canciones.html" class="song-btn">
+        ← Volver a canciones
+      </a>
     </div>
+
+    <div id="songPage">
+      <div class="song-card">
+        <div class="shimmer-card">
+          <h3>Cargando canto...</h3>
+          <p style="color:var(--secondary);">
+            Estamos preparando la letra, acordes, capo y tutoriales.
+          </p>
+        </div>
+      </div>
+    </div>
+
   </section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js?v=final"></script>
-<script src="app.js?v=limpia1"></script>
+<script src="app.js?v=limpia13"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(function () {
+      if (typeof loadSongPage === "function") {
+        loadSongPage();
+      }
+    }, 300);
+  });
+</script>
 
 </body>
 </html>
