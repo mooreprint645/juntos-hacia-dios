@@ -1,11 +1,12 @@
 /* =========================================================
-   JUNTOS HACIA DIOS - APP MINIMA DE RESCATE
-   Luna + login + categorias + editar categoria
+   JUNTOS HACIA DIOS - APP MINIMA
+   Luna + login + categorias + artistas basicos
 ========================================================= */
 
 const ADMIN_EMAIL = "mooreprint645@gmail.com";
 
 let currentEditingCategoryId = null;
+let currentEditingArtistId = null;
 
 function getSupabase() {
   return window.supabaseClient || null;
@@ -27,6 +28,22 @@ function slugify(text) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function getInitials(name) {
+  const clean = String(name || "").trim().replace(/\s+/g, " ");
+
+  if (!clean) return "?";
+
+  const words = clean.split(" ");
+
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+
+  return words.slice(0, 3).map(function (word) {
+    return word.charAt(0);
+  }).join("").toUpperCase();
 }
 
 /* =========================================================
@@ -186,7 +203,220 @@ async function checkAdminSession() {
   }
 
   await loadAdminCategories();
+  await loadAdminArtists();
   await loadCategoryOptions();
+}
+
+/* =========================================================
+   ARTISTAS ADMIN
+========================================================= */
+
+function resetArtistForm() {
+  currentEditingArtistId = null;
+
+  const title = document.getElementById("artistFormTitle");
+  const nameInput = document.getElementById("artistNameInput");
+  const descriptionInput = document.getElementById("artistDescriptionInput");
+
+  if (title) title.innerText = "Agregar artista";
+  if (nameInput) nameInput.value = "";
+  if (descriptionInput) descriptionInput.value = "";
+}
+
+async function editArtist(id) {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase.");
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    alert("No se pudo cargar el artista.");
+    return;
+  }
+
+  currentEditingArtistId = id;
+
+  const title = document.getElementById("artistFormTitle");
+  const nameInput = document.getElementById("artistNameInput");
+  const descriptionInput = document.getElementById("artistDescriptionInput");
+
+  if (title) title.innerText = "Editar artista";
+  if (nameInput) nameInput.value = data.name || "";
+  if (descriptionInput) descriptionInput.value = data.description || "";
+
+  const form = document.getElementById("artistFormCard");
+
+  if (form) {
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+async function saveArtist() {
+  const nameInput = document.getElementById("artistNameInput");
+  const descriptionInput = document.getElementById("artistDescriptionInput");
+
+  const name = nameInput ? nameInput.value.trim() : "";
+  const description = descriptionInput ? descriptionInput.value.trim() : "";
+
+  if (!name) {
+    alert("Escribe el nombre del artista.");
+    return;
+  }
+
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase.");
+    return;
+  }
+
+  let result;
+
+  if (currentEditingArtistId) {
+    result = await client
+      .from("artists")
+      .update({
+        name: name,
+        slug: slugify(name),
+        description: description,
+        avatar_url: "",
+        cover_url: ""
+      })
+      .eq("id", currentEditingArtistId);
+  } else {
+    result = await client
+      .from("artists")
+      .insert({
+        name: name,
+        slug: slugify(name),
+        description: description,
+        avatar_url: "",
+        cover_url: ""
+      });
+  }
+
+  if (result.error) {
+    alert("No se pudo guardar artista: " + result.error.message);
+    return;
+  }
+
+  const wasEditing = !!currentEditingArtistId;
+
+  resetArtistForm();
+
+  await loadAdminArtists();
+  await loadArtistOptions();
+
+  alert(wasEditing ? "Artista actualizado." : "Artista guardado.");
+}
+
+async function deleteArtist(id) {
+  if (!confirm("¿Eliminar este artista?")) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { error } = await client
+    .from("artists")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("No se pudo eliminar: " + error.message);
+    return;
+  }
+
+  await loadAdminArtists();
+  await loadArtistOptions();
+}
+
+async function loadAdminArtists() {
+  const list = document.getElementById("adminArtistList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    list.innerHTML = "<p>No se pudo conectar con Supabase.</p>";
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    list.innerHTML = "<p style='color:#ffb4b4;'>Error: " + escapeHTML(error.message) + "</p>";
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = "<p style='color:var(--secondary);'>No hay artistas todavía.</p>";
+    return;
+  }
+
+  list.innerHTML = data.map(function (artist) {
+    return `
+      <div class="admin-list-item">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div class="artist-avatar" style="width:44px; height:44px; font-size:16px;">
+            ${escapeHTML(getInitials(artist.name || ""))}
+          </div>
+
+          <div>
+            <strong>${escapeHTML(artist.name || "Sin nombre")}</strong>
+            <p style="color:var(--secondary); margin-top:6px;">
+              ${escapeHTML(artist.description || "Sin descripción.")}
+            </p>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button type="button" class="song-btn" onclick="editArtist('${artist.id}')">
+            Editar
+          </button>
+
+          <button type="button" class="song-btn" onclick="deleteArtist('${artist.id}')">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadArtistOptions() {
+  const select = document.getElementById("songArtistInput");
+
+  if (!select) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("artists")
+    .select("id, name")
+    .order("name", { ascending: true });
+
+  if (error) return;
+
+  select.innerHTML = '<option value="">Selecciona artista</option>';
+
+  (data || []).forEach(function (artist) {
+    select.innerHTML += `<option value="${artist.id}">${escapeHTML(artist.name || "Sin nombre")}</option>`;
+  });
 }
 
 /* =========================================================
@@ -477,8 +707,15 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 window.loginAdmin = loginAdmin;
 window.logoutAdmin = logoutAdmin;
+
 window.saveCategory = saveCategory;
 window.editCategory = editCategory;
 window.deleteCategory = deleteCategory;
 window.cancelCategoryEdit = resetCategoryForm;
+
+window.saveArtist = saveArtist;
+window.editArtist = editArtist;
+window.deleteArtist = deleteArtist;
+window.cancelArtistEdit = resetArtistForm;
+
 window.loadPublicCategories = loadPublicCategories;
