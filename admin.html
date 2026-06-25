@@ -32,6 +32,7 @@
   </nav>
 
   <div class="hero-content">
+    <p class="hero-kicker">Administración privada</p>
     <h1>Panel de administración</h1>
     <p class="hero-description">
       Administra artistas, categorías, álbumes, canciones, capo, tutoriales y enlaces.
@@ -50,8 +51,19 @@
         Acceso privado para administrar el contenido.
       </p>
 
-      <input id="adminEmailInput" type="email" placeholder="Correo electrónico" autocomplete="email">
-      <input id="adminPasswordInput" type="password" placeholder="Contraseña" autocomplete="current-password">
+      <input
+        id="adminEmailInput"
+        type="email"
+        placeholder="Correo electrónico"
+        autocomplete="email"
+      >
+
+      <input
+        id="adminPasswordInput"
+        type="password"
+        placeholder="Contraseña"
+        autocomplete="current-password"
+      >
 
       <div style="margin-top:16px;">
         <button class="song-btn" type="button" onclick="loginAdmin()">
@@ -81,12 +93,20 @@
     <!-- ARTISTAS Y CATEGORÍAS -->
     <div class="admin-grid">
 
+      <!-- ARTISTA -->
       <div class="song-card" id="artistFormCard">
         <h2 id="artistFormTitle">Agregar artista</h2>
 
-        <input id="artistNameInput" type="text" placeholder="Nombre del artista o ministerio">
+        <input
+          id="artistNameInput"
+          type="text"
+          placeholder="Nombre del artista o ministerio"
+        >
 
-        <textarea id="artistDescriptionInput" placeholder="Descripción del artista"></textarea>
+        <textarea
+          id="artistDescriptionInput"
+          placeholder="Descripción del artista"
+        ></textarea>
 
         <div class="admin-actions">
           <button class="song-btn" type="button" onclick="saveArtist()">
@@ -99,12 +119,20 @@
         </div>
       </div>
 
+      <!-- CATEGORÍA -->
       <div class="song-card" id="categoryFormCard">
         <h2 id="categoryFormTitle">Agregar categoría</h2>
 
-        <input id="categoryNameInput" type="text" placeholder="Nombre de la categoría">
+        <input
+          id="categoryNameInput"
+          type="text"
+          placeholder="Nombre de la categoría"
+        >
 
-        <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría"></textarea>
+        <textarea
+          id="categoryDescriptionInput"
+          placeholder="Descripción de la categoría"
+        ></textarea>
 
         <div class="admin-actions">
           <button class="song-btn" type="button" onclick="saveCategory()">
@@ -119,7 +147,7 @@
 
     </div>
 
-    <!-- ÁLBUMES -->
+    <!-- ÁLBUMES / CARPETAS -->
     <div class="song-card" id="albumFormCard" style="margin-top:28px;">
       <h2 id="albumFormTitle">Agregar álbum / carpeta</h2>
 
@@ -131,9 +159,16 @@
         <option value="">Selecciona artista</option>
       </select>
 
-      <input id="albumTitleInput" type="text" placeholder="Nombre del álbum o carpeta">
+      <input
+        id="albumTitleInput"
+        type="text"
+        placeholder="Nombre del álbum o carpeta"
+      >
 
-      <textarea id="albumDescriptionInput" placeholder="Descripción del álbum o carpeta"></textarea>
+      <textarea
+        id="albumDescriptionInput"
+        placeholder="Descripción del álbum o carpeta"
+      ></textarea>
 
       <div class="admin-actions">
         <button class="song-btn" type="button" onclick="saveAlbum()">
@@ -145,7 +180,6 @@
         </button>
       </div>
     </div>
-
     <!-- CANCIÓN -->
     <div class="song-card" id="songFormCard" style="margin-top:28px;">
       <h2 id="songFormTitle">Agregar canción</h2>
@@ -327,11 +361,7 @@
         <p style="color:var(--secondary);">Aún no hay links agregados.</p>
       </div>
 
-      <textarea
-        id="songLinksInput"
-        style="display:none;"
-        oninput="updateAdminPreview()"
-      ></textarea>
+      <textarea id="songLinksInput" hidden></textarea>
 
       <div class="admin-actions">
         <button class="song-btn" type="button" onclick="saveSong()">
@@ -360,8 +390,7 @@
         </div>
       </div>
     </div>
-
-    <!-- LISTAS -->
+ <!-- LISTAS -->
     <div class="admin-grid" style="margin-top:28px;">
 
       <div class="song-card">
@@ -470,7 +499,15 @@
   }
 
   function adminTypeOptions(selected) {
-    const options = ["Tutorial", "Video", "Canal", "Cover", "Acordes", "Letra", "Otro"];
+    const options = [
+      "Tutorial",
+      "Video",
+      "Canal",
+      "Cover",
+      "Acordes",
+      "Letra",
+      "Otro"
+    ];
 
     return options.map(function (option) {
       return '<option value="' + adminEscapeHTML(option) + '"' + (option === selected ? " selected" : "") + '>' + adminEscapeHTML(option) + '</option>';
@@ -478,7 +515,15 @@
   }
 
   function adminPlatformOptions(selected) {
-    const options = ["YouTube", "TikTok", "Instagram", "Facebook", "Spotify", "Sitio web", "Otro"];
+    const options = [
+      "YouTube",
+      "TikTok",
+      "Instagram",
+      "Facebook",
+      "Spotify",
+      "Sitio web",
+      "Otro"
+    ];
 
     return options.map(function (option) {
       return '<option value="' + adminEscapeHTML(option) + '"' + (option === selected ? " selected" : "") + '>' + adminEscapeHTML(option) + '</option>';
@@ -499,7 +544,6 @@
       ].join(" | ");
     }).join("\n");
   }
-
   function renderAdminLinksRows() {
     const box = document.getElementById("songLinksRows");
 
@@ -600,6 +644,9 @@
 
     if (!textarea) return;
 
+    textarea.hidden = true;
+    textarea.style.display = "none";
+
     adminLinkItems = adminParseLinksText(textarea.value);
     renderAdminLinksRows();
   }
@@ -639,4 +686,93 @@
 
         ${capoText ? `
           <div class="capo-box">
-            <span>Sin capo: ${adm
+            <span>Sin capo: ${adminEscapeHTML(tone || "Tono original")}</span>
+            <span>Con ${adminEscapeHTML(capoText)}</span>
+          </div>
+        ` : ""}
+
+        <pre class="lyrics-block">${adminRenderLyricsPreview(lyrics || "La letra aparecerá aquí...")}</pre>
+
+        ${links.length ? `
+          <section class="song-links-box">
+            <h2>Tutoriales y enlaces</h2>
+
+            <div class="song-links-list">
+              ${links.map(function (link) {
+                return `
+                  <div class="song-link-item">
+                    <span>🔗</span>
+                    <div>
+                      <strong>${adminEscapeHTML(link.title || "Link")}</strong>
+                      <small>${adminEscapeHTML([link.platform, link.type].filter(Boolean).join(" · "))}</small>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </section>
+        ` : ""}
+
+      </article>
+    `;
+  }
+
+  const originalAdminSaveSong = window.saveSong;
+
+  window.saveSong = async function () {
+    syncAdminLinksTextarea();
+
+    if (typeof originalAdminSaveSong === "function") {
+      const result = await originalAdminSaveSong();
+
+      setTimeout(function () {
+        loadAdminLinksFromTextarea();
+        updateAdminPreview();
+      }, 700);
+
+      return result;
+    }
+  };
+
+  const originalAdminEditSong = window.editSong;
+
+  window.editSong = async function (id) {
+    if (typeof originalAdminEditSong === "function") {
+      await originalAdminEditSong(id);
+    }
+
+    setTimeout(function () {
+      loadAdminLinksFromTextarea();
+      updateAdminPreview();
+    }, 800);
+  };
+
+  const originalAdminCancelSongEdit = window.cancelSongEdit;
+
+  window.cancelSongEdit = function () {
+    if (typeof originalAdminCancelSongEdit === "function") {
+      originalAdminCancelSongEdit();
+    }
+
+    adminLinkItems = [];
+    renderAdminLinksRows();
+    updateAdminPreview();
+  };
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(function () {
+      const textarea = document.getElementById("songLinksInput");
+
+      if (textarea) {
+        textarea.hidden = true;
+        textarea.style.display = "none";
+      }
+
+      loadAdminLinksFromTextarea();
+      updateAdminPreview();
+    }, 1000);
+  });
+</script>
+
+</body>
+</html>
