@@ -2898,3 +2898,292 @@ async function loadArtistPage() {
 }
 
 window.loadArtistPage = loadArtistPage;
+/* =========================================================
+   APP 1.6 - EDITOR DE DONACIONES
+========================================================= */
+
+function donationEditorClient() {
+  if (window.supabaseClient) return window.supabaseClient;
+
+  if (typeof getSupabase === "function") {
+    return getSupabase();
+  }
+
+  return null;
+}
+
+function donationEditorEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function ensureDonationEditorInAdmin() {
+  const panel = document.getElementById("adminPanel");
+
+  if (!panel) return;
+
+  if (document.getElementById("donationEditorCard")) return;
+
+  const donationHTML = `
+    <div class="song-card" id="donationEditorCard" style="margin-top:28px;">
+      <h2>Editor de donaciones</h2>
+
+      <p style="color:var(--secondary); margin-bottom:14px;">
+        Edita la información que aparece en la página de donaciones.
+      </p>
+
+      <input
+        id="donationTitleInput"
+        type="text"
+        placeholder="Título, ejemplo: Apoya este proyecto"
+      >
+
+      <textarea
+        id="donationDescriptionInput"
+        placeholder="Descripción de la donación"
+      ></textarea>
+
+      <input
+        id="donationMethodInput"
+        type="text"
+        placeholder="Método, ejemplo: Mercado Pago"
+      >
+
+      <input
+        id="donationTransferNumberInput"
+        type="text"
+        placeholder="Número para transferir"
+      >
+
+      <textarea
+        id="donationNoteInput"
+        placeholder="Nota final"
+      ></textarea>
+
+      <div class="admin-actions">
+        <button class="song-btn" type="button" onclick="saveDonationSettings()">
+          Guardar donaciones
+        </button>
+
+        <button class="song-btn" type="button" onclick="loadDonationSettingsAdmin()">
+          Recargar datos
+        </button>
+      </div>
+
+      <p id="donationEditorMessage" style="color:var(--secondary); margin-top:14px;"></p>
+    </div>
+  `;
+
+  panel.insertAdjacentHTML("beforeend", donationHTML);
+
+  loadDonationSettingsAdmin();
+}
+
+async function loadDonationSettingsAdmin() {
+  const client = donationEditorClient();
+  const message = document.getElementById("donationEditorMessage");
+
+  if (!client) {
+    if (message) {
+      message.textContent = "No se pudo conectar con Supabase.";
+    }
+
+    return;
+  }
+
+  const result = await client
+    .from("donation_settings")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (result.error) {
+    if (message) {
+      message.textContent = "Error al cargar donaciones: " + result.error.message;
+    }
+
+    return;
+  }
+
+  const data = result.data || {};
+
+  const titleInput = document.getElementById("donationTitleInput");
+  const descriptionInput = document.getElementById("donationDescriptionInput");
+  const methodInput = document.getElementById("donationMethodInput");
+  const transferInput = document.getElementById("donationTransferNumberInput");
+  const noteInput = document.getElementById("donationNoteInput");
+
+  if (titleInput) titleInput.value = data.title || "Apoya este proyecto";
+  if (descriptionInput) descriptionInput.value = data.description || "";
+  if (methodInput) methodInput.value = data.method || "Mercado Pago";
+  if (transferInput) transferInput.value = data.transfer_number || "722969014489272097";
+  if (noteInput) noteInput.value = data.note || "Gracias por apoyar este proyecto. Dios te bendiga.";
+
+  if (message) {
+    message.textContent = "Datos de donaciones cargados.";
+  }
+}
+
+async function saveDonationSettings() {
+  const client = donationEditorClient();
+  const message = document.getElementById("donationEditorMessage");
+
+  if (!client) {
+    if (message) {
+      message.textContent = "No se pudo conectar con Supabase.";
+    }
+
+    return;
+  }
+
+  const payload = {
+    id: 1,
+    title: document.getElementById("donationTitleInput")?.value || "Apoya este proyecto",
+    description: document.getElementById("donationDescriptionInput")?.value || "",
+    method: document.getElementById("donationMethodInput")?.value || "Mercado Pago",
+    transfer_number: document.getElementById("donationTransferNumberInput")?.value || "",
+    note: document.getElementById("donationNoteInput")?.value || "",
+    updated_at: new Date().toISOString()
+  };
+
+  const result = await client
+    .from("donation_settings")
+    .upsert(payload, { onConflict: "id" });
+
+  if (result.error) {
+    if (message) {
+      message.textContent = "No se pudo guardar: " + result.error.message;
+    }
+
+    alert("No se pudo guardar donaciones: " + result.error.message);
+    return;
+  }
+
+  if (message) {
+    message.textContent = "Donaciones guardadas correctamente.";
+  }
+
+  alert("Donaciones guardadas correctamente.");
+}
+
+async function loadDonationPage() {
+  const box = document.getElementById("donationsBox");
+
+  if (!box) return;
+
+  const client = donationEditorClient();
+
+  if (!client) {
+    box.innerHTML = `
+      <h2>No se pudo cargar</h2>
+      <p style="color:var(--secondary);">
+        Revisa la conexión con Supabase.
+      </p>
+    `;
+    return;
+  }
+
+  const result = await client
+    .from("donation_settings")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (result.error || !result.data) {
+    box.innerHTML = `
+      <h2>Apoya este proyecto</h2>
+      <p style="color:var(--secondary); line-height:1.7;">
+        La información de donaciones aún no está disponible.
+      </p>
+    `;
+    return;
+  }
+
+  const data = result.data;
+
+  box.innerHTML = `
+    <h2>${donationEditorEscape(data.title || "Apoya este proyecto")}</h2>
+
+    <p style="color:var(--secondary); line-height:1.7; margin-bottom:22px;">
+      ${donationEditorEscape(data.description || "")}
+    </p>
+
+    <div class="donation-info">
+
+      <div class="donation-row">
+        <strong>Método de transferencia</strong>
+        <span>${donationEditorEscape(data.method || "Mercado Pago")}</span>
+      </div>
+
+      <div class="donation-row">
+        <strong>Número para transferir</strong>
+        <span id="donationNumber">${donationEditorEscape(data.transfer_number || "")}</span>
+      </div>
+
+      <div class="donation-row">
+        <strong>Nota</strong>
+        <span>${donationEditorEscape(data.note || "")}</span>
+      </div>
+
+    </div>
+
+    <div style="margin-top:22px;">
+      <button class="song-btn" type="button" onclick="copyDonationNumber()">
+        Copiar número
+      </button>
+    </div>
+
+    <p id="copyDonationMessage" style="color:var(--secondary); margin-top:14px;"></p>
+  `;
+}
+
+function copyDonationNumber() {
+  const number = document.getElementById("donationNumber")?.textContent?.trim() || "";
+  const message = document.getElementById("copyDonationMessage");
+
+  if (!number) {
+    if (message) {
+      message.textContent = "No hay número disponible para copiar.";
+    }
+
+    return;
+  }
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(number).then(function () {
+      if (message) {
+        message.textContent = "Número copiado correctamente.";
+      }
+    }).catch(function () {
+      if (message) {
+        message.textContent = "No se pudo copiar automáticamente. Puedes copiarlo manualmente.";
+      }
+    });
+
+    return;
+  }
+
+  if (message) {
+    message.textContent = "Puedes copiar el número manualmente: " + number;
+  }
+}
+
+window.ensureDonationEditorInAdmin = ensureDonationEditorInAdmin;
+window.loadDonationSettingsAdmin = loadDonationSettingsAdmin;
+window.saveDonationSettings = saveDonationSettings;
+window.loadDonationPage = loadDonationPage;
+window.copyDonationNumber = copyDonationNumber;
+
+document.addEventListener("DOMContentLoaded", function () {
+  setTimeout(function () {
+    ensureDonationEditorInAdmin();
+
+    if (document.getElementById("donationsBox")) {
+      loadDonationPage();
+    }
+  }, 1000);
+});
