@@ -3,17 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin | Juntos Hacia Dios</title>
+
+  <title>Panel de administración | Juntos Hacia Dios</title>
+  <meta name="description" content="Panel privado para administrar artistas, categorías, canciones y donaciones de Juntos Hacia Dios.">
+
   <link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body class="admin-page">
 
 <header class="hero small-hero">
   <nav class="navbar">
     <h2>JHD Admin</h2>
 
-    <div class="nav-menu">
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">
+      ☰ Menú
+    </button>
+
+    <div class="nav-menu" id="navMenu">
       <a href="index.html" class="nav-link">Inicio</a>
       <a href="canciones.html" class="nav-link">Canciones</a>
       <a href="artistas.html" class="nav-link">Artistas</a>
@@ -26,536 +33,181 @@
 
   <div class="hero-content">
     <h1>Panel de administración</h1>
-    <p>Agrega, edita y elimina artistas, categorías y canciones</p>
+    <p class="hero-description">
+      Agrega, edita y elimina artistas, categorías y canciones.
+    </p>
   </div>
 </header>
 
-<section class="section" id="loginSection">
-  <div class="song-card">
-    <h2>Iniciar sesión</h2>
+<main>
 
-    <input id="adminEmail" type="email" placeholder="Correo" class="admin-input">
-    <input id="adminPassword" type="password" placeholder="Contraseña" class="admin-input">
+  <!-- LOGIN -->
+  <section class="section" id="adminLoginSection">
+    <div class="song-card" id="adminLoginBox">
+      <h2>Iniciar sesión</h2>
 
-    <button class="song-btn" onclick="loginAdmin()">Entrar</button>
+      <p style="color:var(--secondary); margin-bottom:18px;">
+        Acceso privado para administrar el contenido.
+      </p>
 
-    <p id="loginMessage" style="margin-top:20px; color:var(--secondary);"></p>
-  </div>
-</section>
+      <input id="adminEmailInput" type="email" placeholder="Correo electrónico">
+      <input id="adminPasswordInput" type="password" placeholder="Contraseña">
 
-<section class="section" id="adminPanel" style="display:none;">
-
-  <div class="song-card">
-    <h2>Bienvenido</h2>
-    <p id="adminUser" style="margin-top:15px; color:var(--secondary);"></p>
-    <button class="song-btn" onclick="logoutAdmin()">Cerrar sesión</button>
-  </div>
-
-  <div class="song-grid" style="margin-top:40px;">
-
-    <article class="song-card">
-      <h2 id="artistFormTitle">Agregar artista</h2>
-
-      <input id="artistNameInput" placeholder="Nombre del artista" class="admin-input">
-      <textarea id="artistDescriptionInput" placeholder="Descripción del artista" class="admin-textarea"></textarea>
-      <input id="artistAvatarInput" placeholder="URL foto de perfil" class="admin-input">
-      <input id="artistCoverInput" placeholder="URL imagen de portada" class="admin-input">
-
-      <button class="song-btn" onclick="saveArtist()">Guardar artista</button>
-      <button class="song-btn secondary-btn" onclick="cancelArtistEdit()" id="cancelArtistBtn" style="display:none;">Cancelar edición</button>
-    </article>
-
-    <article class="song-card">
-      <h2 id="categoryFormTitle">Agregar categoría</h2>
-
-      <input id="categoryNameInput" placeholder="Nombre de la categoría" class="admin-input">
-      <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría" class="admin-textarea"></textarea>
-
-      <button class="song-btn" onclick="saveCategory()">Guardar categoría</button>
-      <button class="song-btn secondary-btn" onclick="cancelCategoryEdit()" id="cancelCategoryBtn" style="display:none;">Cancelar edición</button>
-    </article>
-
-  </div>
-
-  <div class="song-card" style="margin-top:40px;">
-    <h2 id="songFormTitle">Agregar canción</h2>
-
-    <input id="songTitleInput" placeholder="Título de la canción" class="admin-input">
-
-    <select id="songArtistSelect" class="admin-input">
-      <option value="">Selecciona artista</option>
-    </select>
-
-    <select id="songCategorySelect" class="admin-input">
-      <option value="">Selecciona categoría</option>
-    </select>
-
-    <input id="songToneInput" placeholder="Tono, ejemplo: G" class="admin-input">
-    <input id="songDifficultyInput" placeholder="Dificultad, ejemplo: Fácil" class="admin-input">
-
-    <textarea id="songLyricsInput" placeholder="Letra con acordes" class="admin-textarea big-textarea"></textarea>
-
-    <input id="tutorialGuitarInput" placeholder="Link tutorial guitarra" class="admin-input">
-    <input id="tutorialPianoInput" placeholder="Link tutorial piano" class="admin-input">
-
-    <button class="song-btn" onclick="saveSong()">Guardar canción</button>
-    <button class="song-btn secondary-btn" onclick="cancelSongEdit()" id="cancelSongBtn" style="display:none;">Cancelar edición</button>
-  </div>
-
-  <section class="section">
-    <h2>Datos guardados</h2>
-
-    <div class="song-grid">
-      <div class="song-card">
-        <h3>Artistas</h3>
-        <div id="artistsList"></div>
+      <div style="margin-top:16px;">
+        <button class="song-btn" type="button" onclick="loginAdmin()">Iniciar sesión</button>
       </div>
 
-      <div class="song-card">
-        <h3>Categorías</h3>
-        <div id="categoriesList"></div>
-      </div>
-
-      <div class="song-card">
-        <h3>Canciones</h3>
-        <div id="songsList"></div>
-      </div>
+      <p id="adminLoginMessage" style="color:var(--secondary); margin-top:15px;"></p>
     </div>
   </section>
 
-</section>
+  <!-- PANEL ADMIN -->
+  <section class="section" id="adminPanel" style="display:none;">
+
+    <div class="song-card" style="margin-bottom:28px;">
+      <h2>Bienvenido</h2>
+
+      <p id="adminUserText" style="color:var(--secondary); margin-top:12px;">
+        Sesión iniciada.
+      </p>
+
+      <button class="song-btn" type="button" onclick="logoutAdmin()" style="margin-top:16px;">
+        Cerrar sesión
+      </button>
+    </div>
+
+    <div class="admin-grid">
+
+      <!-- ARTISTA -->
+      <div class="song-card" id="artistFormCard">
+        <h2 id="artistFormTitle">Agregar artista</h2>
+
+        <input id="artistNameInput" type="text" placeholder="Nombre del artista">
+
+        <textarea id="artistDescriptionInput" placeholder="Descripción del artista"></textarea>
+
+        <!-- Campos ocultos para no romper funciones antiguas -->
+        <input id="artistAvatarInput" type="hidden" value="">
+        <input id="artistCoverInput" type="hidden" value="">
+
+        <!-- Aquí app.js insertará el editor de portada tipo mesh -->
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+          <button class="song-btn" type="button" onclick="saveArtist()">
+            Guardar artista
+          </button>
+
+          <button class="song-btn" type="button" onclick="cancelArtistEdit()">
+            Cancelar edición
+          </button>
+        </div>
+      </div>
+
+      <!-- CATEGORÍA -->
+      <div class="song-card" id="categoryFormCard">
+        <h2>Agregar categoría</h2>
+
+        <input id="categoryNameInput" type="text" placeholder="Nombre de la categoría">
+
+        <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría"></textarea>
+
+        <div style="margin-top:16px;">
+          <button class="song-btn" type="button" onclick="saveCategory()">
+            Guardar categoría
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CANCIÓN -->
+    <div class="song-card" id="songFormCard" style="margin-top:28px;">
+      <h2>Agregar canción</h2>
+
+      <input id="songTitleInput" type="text" placeholder="Título de la canción">
+
+      <select id="songArtistInput">
+        <option value="">Selecciona artista</option>
+      </select>
+
+      <select id="songCategoryInput">
+        <option value="">Selecciona categoría</option>
+      </select>
+
+      <input id="songToneInput" type="text" placeholder="Tono, ejemplo: G">
+
+      <input id="songDifficultyInput" type="text" placeholder="Dificultad, ejemplo: Fácil">
+
+      <div id="lyricsSectionToolbar" class="lyrics-toolbar">
+        <h3>Apartados de la canción</h3>
+
+        <div class="toolbar-buttons">
+          <button type="button" onclick="insertSectionTitle('Intro')">Intro</button>
+          <button type="button" onclick="insertSectionTitle('Verso 1')">Verso 1</button>
+          <button type="button" onclick="insertSectionTitle('Pre Coro')">Pre Coro</button>
+          <button type="button" onclick="insertSectionTitle('Coro')">Coro</button>
+          <button type="button" onclick="insertSectionTitle('Verso 2')">Verso 2</button>
+          <button type="button" onclick="insertSectionTitle('Puente')">Puente</button>
+          <button type="button" onclick="insertSectionTitle('Interludio')">Interludio</button>
+          <button type="button" onclick="insertSectionTitle('Final')">Final</button>
+        </div>
+      </div>
+
+      <textarea id="songLyricsInput" placeholder="Letra y acordes. Ejemplo:
+[Verso 1]
+(D)Quiero caminar contigo Mar(G)ía"></textarea>
+
+      <input id="songTutorialGuitarInput" type="url" placeholder="Tutorial guitarra, enlace opcional">
+      <input id="songTutorialPianoInput" type="url" placeholder="Tutorial teclado, enlace opcional">
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+        <button class="song-btn" type="button" onclick="saveSong()">
+          Guardar canción
+        </button>
+
+        <button class="song-btn" type="button" onclick="cancelSongEdit()">
+          Cancelar edición
+        </button>
+      </div>
+
+      <div id="jhdLyricsPreview" style="margin-top:24px;">
+        <h3>Vista previa</h3>
+        <div id="jhdLyricsPreviewContent"></div>
+      </div>
+    </div>
+
+    <!-- LISTAS ADMIN -->
+    <div class="admin-grid" style="margin-top:28px;">
+
+      <div class="song-card">
+        <h2>Artistas registrados</h2>
+        <div id="adminArtistList">
+          <p style="color:var(--secondary);">Cargando artistas...</p>
+        </div>
+      </div>
+
+      <div class="song-card">
+        <h2>Categorías registradas</h2>
+        <div id="adminCategoryList">
+          <p style="color:var(--secondary);">Cargando categorías...</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="song-card" style="margin-top:28px;">
+      <h2>Canciones registradas</h2>
+      <div id="adminSongList">
+        <p style="color:var(--secondary);">Cargando canciones...</p>
+      </div>
+    </div>
+
+  </section>
+
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
-
-<script>
-let editingArtistId = null;
-let editingCategoryId = null;
-let editingSongId = null;
-
-let cachedArtists = [];
-let cachedCategories = [];
-let cachedSongs = [];
-
-function slugify(text){
-  return text
-    .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
-}
-
-async function checkSession(){
-  const { data } = await supabaseClient.auth.getSession();
-
-  if(data.session){
-    showAdmin(data.session.user);
-  }
-}
-
-async function loginAdmin(){
-  const email = document.getElementById("adminEmail").value.trim();
-  const password = document.getElementById("adminPassword").value.trim();
-  const message = document.getElementById("loginMessage");
-
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if(error){
-    message.innerText = "No se pudo iniciar sesión: " + error.message;
-    return;
-  }
-
-  showAdmin(data.user);
-}
-
-async function logoutAdmin(){
-  await supabaseClient.auth.signOut();
-  document.getElementById("loginSection").style.display = "block";
-  document.getElementById("adminPanel").style.display = "none";
-}
-
-function showAdmin(user){
-  document.getElementById("loginSection").style.display = "none";
-  document.getElementById("adminPanel").style.display = "block";
-  document.getElementById("adminUser").innerText = "Sesión iniciada como: " + user.email;
-
-  loadAdminData();
-}
-
-/* ARTISTAS */
-
-async function saveArtist(){
-  const name = document.getElementById("artistNameInput").value.trim();
-  const description = document.getElementById("artistDescriptionInput").value.trim();
-  const avatar_url = document.getElementById("artistAvatarInput").value.trim();
-  const cover_url = document.getElementById("artistCoverInput").value.trim();
-
-  if(!name){
-    alert("Escribe el nombre del artista.");
-    return;
-  }
-
-  const artistData = {
-    name,
-    slug: slugify(name),
-    description,
-    avatar_url,
-    cover_url
-  };
-
-  let response;
-
-  if(editingArtistId){
-    response = await supabaseClient
-      .from("artists")
-      .update(artistData)
-      .eq("id", editingArtistId);
-  }else{
-    response = await supabaseClient
-      .from("artists")
-      .insert(artistData);
-  }
-
-  if(response.error){
-    alert("Error: " + response.error.message);
-    return;
-  }
-
-  alert(editingArtistId ? "Artista actualizado." : "Artista guardado.");
-  cancelArtistEdit();
-  loadAdminData();
-}
-
-function editArtist(id){
-  const artist = cachedArtists.find(item => item.id === id);
-  if(!artist) return;
-
-  editingArtistId = id;
-
-  document.getElementById("artistFormTitle").innerText = "Editar artista";
-  document.getElementById("artistNameInput").value = artist.name || "";
-  document.getElementById("artistDescriptionInput").value = artist.description || "";
-  document.getElementById("artistAvatarInput").value = artist.avatar_url || "";
-  document.getElementById("artistCoverInput").value = artist.cover_url || "";
-  document.getElementById("cancelArtistBtn").style.display = "inline-block";
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function cancelArtistEdit(){
-  editingArtistId = null;
-
-  document.getElementById("artistFormTitle").innerText = "Agregar artista";
-  document.getElementById("artistNameInput").value = "";
-  document.getElementById("artistDescriptionInput").value = "";
-  document.getElementById("artistAvatarInput").value = "";
-  document.getElementById("artistCoverInput").value = "";
-  document.getElementById("cancelArtistBtn").style.display = "none";
-}
-
-async function deleteArtist(id){
-  if(!confirm("¿Eliminar este artista? Las canciones relacionadas quedarán sin artista.")) return;
-
-  const { error } = await supabaseClient
-    .from("artists")
-    .delete()
-    .eq("id", id);
-
-  if(error){
-    alert("Error: " + error.message);
-    return;
-  }
-
-  loadAdminData();
-}
-
-/* CATEGORÍAS */
-
-async function saveCategory(){
-  const name = document.getElementById("categoryNameInput").value.trim();
-  const description = document.getElementById("categoryDescriptionInput").value.trim();
-
-  if(!name){
-    alert("Escribe el nombre de la categoría.");
-    return;
-  }
-
-  const categoryData = {
-    name,
-    slug: slugify(name),
-    description
-  };
-
-  let response;
-
-  if(editingCategoryId){
-    response = await supabaseClient
-      .from("categories")
-      .update(categoryData)
-      .eq("id", editingCategoryId);
-  }else{
-    response = await supabaseClient
-      .from("categories")
-      .insert(categoryData);
-  }
-
-  if(response.error){
-    alert("Error: " + response.error.message);
-    return;
-  }
-
-  alert(editingCategoryId ? "Categoría actualizada." : "Categoría guardada.");
-  cancelCategoryEdit();
-  loadAdminData();
-}
-
-function editCategory(id){
-  const category = cachedCategories.find(item => item.id === id);
-  if(!category) return;
-
-  editingCategoryId = id;
-
-  document.getElementById("categoryFormTitle").innerText = "Editar categoría";
-  document.getElementById("categoryNameInput").value = category.name || "";
-  document.getElementById("categoryDescriptionInput").value = category.description || "";
-  document.getElementById("cancelCategoryBtn").style.display = "inline-block";
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function cancelCategoryEdit(){
-  editingCategoryId = null;
-
-  document.getElementById("categoryFormTitle").innerText = "Agregar categoría";
-  document.getElementById("categoryNameInput").value = "";
-  document.getElementById("categoryDescriptionInput").value = "";
-  document.getElementById("cancelCategoryBtn").style.display = "none";
-}
-
-async function deleteCategory(id){
-  if(!confirm("¿Eliminar esta categoría? Las canciones relacionadas quedarán sin categoría.")) return;
-
-  const { error } = await supabaseClient
-    .from("categories")
-    .delete()
-    .eq("id", id);
-
-  if(error){
-    alert("Error: " + error.message);
-    return;
-  }
-
-  loadAdminData();
-}
-
-/* CANCIONES */
-
-async function saveSong(){
-  const title = document.getElementById("songTitleInput").value.trim();
-  const artist_id = document.getElementById("songArtistSelect").value;
-  const category_id = document.getElementById("songCategorySelect").value;
-  const tone = document.getElementById("songToneInput").value.trim();
-  const difficulty = document.getElementById("songDifficultyInput").value.trim();
-  const lyrics = document.getElementById("songLyricsInput").value.trim();
-  const tutorial_guitar = document.getElementById("tutorialGuitarInput").value.trim();
-  const tutorial_piano = document.getElementById("tutorialPianoInput").value.trim();
-
-  if(!title || !lyrics){
-    alert("La canción necesita título y letra.");
-    return;
-  }
-
-  const songData = {
-    title,
-    slug: slugify(title),
-    artist_id: artist_id || null,
-    category_id: category_id || null,
-    tone,
-    difficulty,
-    lyrics,
-    tutorial_guitar,
-    tutorial_piano,
-    updated_at: new Date().toISOString()
-  };
-
-  let response;
-
-  if(editingSongId){
-    response = await supabaseClient
-      .from("songs")
-      .update(songData)
-      .eq("id", editingSongId);
-  }else{
-    response = await supabaseClient
-      .from("songs")
-      .insert(songData);
-  }
-
-  if(response.error){
-    alert("Error: " + response.error.message);
-    return;
-  }
-
-  alert(editingSongId ? "Canción actualizada." : "Canción guardada.");
-  cancelSongEdit();
-  loadAdminData();
-}
-
-function editSong(id){
-  const song = cachedSongs.find(item => item.id === id);
-  if(!song) return;
-
-  editingSongId = id;
-
-  document.getElementById("songFormTitle").innerText = "Editar canción";
-  document.getElementById("songTitleInput").value = song.title || "";
-  document.getElementById("songArtistSelect").value = song.artist_id || "";
-  document.getElementById("songCategorySelect").value = song.category_id || "";
-  document.getElementById("songToneInput").value = song.tone || "";
-  document.getElementById("songDifficultyInput").value = song.difficulty || "";
-  document.getElementById("songLyricsInput").value = song.lyrics || "";
-  document.getElementById("tutorialGuitarInput").value = song.tutorial_guitar || "";
-  document.getElementById("tutorialPianoInput").value = song.tutorial_piano || "";
-  document.getElementById("cancelSongBtn").style.display = "inline-block";
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function cancelSongEdit(){
-  editingSongId = null;
-
-  document.getElementById("songFormTitle").innerText = "Agregar canción";
-  document.getElementById("songTitleInput").value = "";
-  document.getElementById("songArtistSelect").value = "";
-  document.getElementById("songCategorySelect").value = "";
-  document.getElementById("songToneInput").value = "";
-  document.getElementById("songDifficultyInput").value = "";
-  document.getElementById("songLyricsInput").value = "";
-  document.getElementById("tutorialGuitarInput").value = "";
-  document.getElementById("tutorialPianoInput").value = "";
-  document.getElementById("cancelSongBtn").style.display = "none";
-}
-
-async function deleteSong(id){
-  if(!confirm("¿Eliminar esta canción?")) return;
-
-  const { error } = await supabaseClient
-    .from("songs")
-    .delete()
-    .eq("id", id);
-
-  if(error){
-    alert("Error: " + error.message);
-    return;
-  }
-
-  loadAdminData();
-}
-
-/* CARGAR DATOS */
-
-async function loadAdminData(){
-  const { data: artists, error: artistsError } = await supabaseClient
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  const { data: categories, error: categoriesError } = await supabaseClient
-    .from("categories")
-    .select("*")
-    .order("name");
-
-  const { data: songs, error: songsError } = await supabaseClient
-    .from("songs")
-    .select("*")
-    .order("title");
-
-  if(artistsError || categoriesError || songsError){
-    alert("Error cargando datos.");
-    return;
-  }
-
-  cachedArtists = artists || [];
-  cachedCategories = categories || [];
-  cachedSongs = songs || [];
-
-  renderAdminData();
-}
-
-function renderAdminData(){
-  const artistSelect = document.getElementById("songArtistSelect");
-  const categorySelect = document.getElementById("songCategorySelect");
-
-  artistSelect.innerHTML = '<option value="">Selecciona artista</option>';
-  categorySelect.innerHTML = '<option value="">Selecciona categoría</option>';
-
-  const artistsList = document.getElementById("artistsList");
-  const categoriesList = document.getElementById("categoriesList");
-  const songsList = document.getElementById("songsList");
-
-  artistsList.innerHTML = "";
-  categoriesList.innerHTML = "";
-  songsList.innerHTML = "";
-
-  cachedArtists.forEach(artist => {
-    artistSelect.innerHTML += `<option value="${artist.id}">${artist.name}</option>`;
-
-    artistsList.innerHTML += `
-      <div class="admin-list-item">
-        <strong>${artist.name}</strong>
-        <div>
-          <button onclick="editArtist('${artist.id}')">Editar</button>
-          <button onclick="deleteArtist('${artist.id}')">Eliminar</button>
-        </div>
-      </div>
-    `;
-  });
-
-  cachedCategories.forEach(category => {
-    categorySelect.innerHTML += `<option value="${category.id}">${category.name}</option>`;
-
-    categoriesList.innerHTML += `
-      <div class="admin-list-item">
-        <strong>${category.name}</strong>
-        <div>
-          <button onclick="editCategory('${category.id}')">Editar</button>
-          <button onclick="deleteCategory('${category.id}')">Eliminar</button>
-        </div>
-      </div>
-    `;
-  });
-
-  cachedSongs.forEach(song => {
-    songsList.innerHTML += `
-      <div class="admin-list-item">
-        <strong>${song.title}</strong>
-        <div>
-          <button onclick="editSong('${song.id}')">Editar</button>
-          <button onclick="deleteSong('${song.id}')">Eliminar</button>
-        </div>
-      </div>
-    `;
-  });
-
-  if(cachedArtists.length === 0){
-    artistsList.innerHTML = "<p>No hay artistas todavía.</p>";
-  }
-
-  if(cachedCategories.length === 0){
-    categoriesList.innerHTML = "<p>No hay categorías todavía.</p>";
-  }
-
-  if(cachedSongs.length === 0){
-    songsList.innerHTML = "<p>No hay canciones todavía.</p>";
-  }
-}
-
-checkSession();
-</script>
-
 <script src="app.js"></script>
 
 </body>
