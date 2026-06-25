@@ -7,7 +7,7 @@
   <title>Panel de administración | Juntos Hacia Dios</title>
   <meta name="description" content="Panel privado para administrar artistas, categorías, canciones y donaciones de Juntos Hacia Dios.">
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 
 <body class="admin-page">
@@ -16,7 +16,7 @@
   <nav class="navbar">
     <h2>JHD Admin</h2>
 
-    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" type="button">
       ☰ Menú
     </button>
 
@@ -89,7 +89,6 @@
 
         <textarea id="artistDescriptionInput" placeholder="Descripción del artista"></textarea>
 
-        <!-- Editor mesh: app.js lo llena aquí -->
         <div id="artistMeshEditor"></div>
 
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
@@ -129,6 +128,7 @@
       <label style="display:block; color:var(--secondary); margin:12px 0 6px;">
         Sección del canto
       </label>
+
       <small style="display:block; color:var(--secondary); margin-bottom:8px;">
         Elige dónde aparecerá este canto.
       </small>
@@ -262,7 +262,7 @@
           </label>
 
           <div style="margin-top:16px;">
-            <button class="song-btn" type="button" onclick="saveDonationCard && saveDonationCard()">
+            <button class="song-btn" type="button" onclick="typeof saveDonationCard === 'function' && saveDonationCard()">
               Guardar donación
             </button>
           </div>
@@ -283,8 +283,8 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+<script src="supabase.js?v=10"></script>
+<script src="app.js?v=10"></script>
 
 </body>
 </html>
