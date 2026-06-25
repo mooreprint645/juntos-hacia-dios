@@ -1,18 +1,37 @@
 /* =========================================================
-   JUNTOS HACIA DIOS - APP.JS LIMPIO
+   JUNTOS HACIA DIOS - APP LIMPIA
+   Supabase + Admin + Canciones + Artistas + Mesh
 ========================================================= */
 
+/* ------------------------------
+   CONFIGURACIÓN
+------------------------------ */
 
-/* =========================================================
-   UTILIDADES GENERALES
-========================================================= */
+const ADMIN_EMAIL = "mooreprint645@gmail.com";
+
+let currentEditingArtistId = null;
+let currentEditingCategoryId = null;
+let currentEditingSongId = null;
+
+let originalLyrics = "";
+let transposeAmount = 0;
+let chordLanguage = "english";
+
+let meshPoints = [
+  { x: 18, y: 35, color: "#facc15", size: 90, opacity: 0.85 },
+  { x: 78, y: 30, color: "#38bdf8", size: 95, opacity: 0.70 },
+  { x: 45, y: 78, color: "#a855f7", size: 90, opacity: 0.65 }
+];
+
+let selectedMeshPoint = 0;
+let draggingMeshPoint = false;
+
+/* ------------------------------
+   HELPERS GENERALES
+------------------------------ */
 
 function getSupabase() {
-  if (typeof supabaseClient === "undefined") {
-    return null;
-  }
-
-  return supabaseClient;
+  return window.supabaseClient || null;
 }
 
 function escapeHTML(value) {
@@ -25,5952 +44,175 @@ function escapeHTML(value) {
 }
 
 function safeText(value, fallback = "") {
-  return value || fallback;
+  const text = String(value || "").trim();
+  return text || fallback;
 }
 
-function getInitial(text) {
-  if (!text) return "?";
-  return String(text).charAt(0).toUpperCase();
-}
+function safeUrl(value) {
+  const url = String(value || "").trim();
 
-function safeUrl(url) {
-  const value = String(url || "").trim();
+  if (!url) return "";
 
-  if (!value) return "";
-
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
+  if (url.startsWith("https://") || url.startsWith("http://")) {
+    return url;
   }
 
   return "";
 }
 
-function runWhenReady(callback) {
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", callback);
-  } else {
-    callback();
+function slugify(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getParam(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+function isAdminPage() {
+  return window.location.pathname.includes("admin.html") ||
+    !!document.getElementById("adminPanel");
+}
+
+function markAdminPage() {
+  if (isAdminPage()) {
+    document.body.classList.add("admin-page");
   }
 }
 
+function clamp(value, fallback, min, max) {
+  const number = Number(value);
 
-/* =========================================================
-   MODO CLARO / OSCURO
-========================================================= */
+  if (!Number.isFinite(number)) return fallback;
+
+  return Math.min(max, Math.max(min, number));
+}
+
+function safeHex(value, fallback = "#facc15") {
+  const hex = String(value || "").trim();
+
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    return hex.toLowerCase();
+  }
+
+  return fallback;
+}
+
+function hexToRgbParts(hex) {
+  const clean = safeHex(hex).replace("#", "");
+
+  return {
+    r: parseInt(clean.substring(0, 2), 16),
+    g: parseInt(clean.substring(2, 4), 16),
+    b: parseInt(clean.substring(4, 6), 16)
+  };
+}
+
+function hexToRgb(hex) {
+  const rgb = hexToRgbParts(hex);
+  return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+}
+
+function hexToRgba(hex, opacity) {
+  const rgb = hexToRgbParts(hex);
+  const safeOpacity = clamp(opacity, 0.75, 0, 1);
+
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeOpacity})`;
+}
+
+function getInitials(name) {
+  const clean = String(name || "").trim().replace(/\s+/g, " ");
+
+  if (!clean) return "?";
+
+  const words = clean.split(" ");
+
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+
+  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
+}
+
+/* ------------------------------
+   TEMA / MENÚ
+------------------------------ */
 
 function initTheme() {
-  const themeToggle = document.getElementById("themeToggle");
+  const savedTheme = localStorage.getItem("jhd-theme");
 
-  if (!themeToggle) return;
-
-  if (localStorage.getItem("theme") === "light") {
+  if (savedTheme === "light") {
     document.body.classList.add("light-mode");
-    themeToggle.textContent = "☀️";
-  } else {
-    themeToggle.textContent = "🌙";
   }
 
-  themeToggle.addEventListener("click", () => {
-    document.body.classList.toggle("light-mode");
-
-    if (document.body.classList.contains("light-mode")) {
-      themeToggle.textContent = "☀️";
-      localStorage.setItem("theme", "light");
-    } else {
-      themeToggle.textContent = "🌙";
-      localStorage.setItem("theme", "dark");
-    }
-  });
+  updateThemeButton();
 }
 
+function updateThemeButton() {
+  const button = document.getElementById("themeToggle");
 
-/* =========================================================
-   MENÚ HAMBURGUESA
-========================================================= */
+  if (!button) return;
 
-function initMobileMenu() {
-  const menuToggle = document.getElementById("menuToggle");
-  const navMenu = document.getElementById("navMenu");
-
-  if (!menuToggle || !navMenu) return;
-
-  menuToggle.setAttribute("aria-expanded", "false");
-  menuToggle.setAttribute("aria-controls", "navMenu");
-
-  menuToggle.addEventListener("click", () => {
-    navMenu.classList.toggle("show-menu");
-
-    const isOpen = navMenu.classList.contains("show-menu");
-
-    menuToggle.textContent = isOpen ? "✕ Cerrar" : "☰ Menú";
-    menuToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-  });
-
-  navMenu.querySelectorAll("a").forEach(link => {
-    link.addEventListener("click", () => {
-      navMenu.classList.remove("show-menu");
-      menuToggle.textContent = "☰ Menú";
-      menuToggle.setAttribute("aria-expanded", "false");
-    });
-  });
+  button.innerText = document.body.classList.contains("light-mode") ? "☀️" : "🌙";
 }
 
+function toggleTheme() {
+  document.body.classList.toggle("light-mode");
 
-/* =========================================================
-   TRANSPOSICIÓN Y CIFRADO
-========================================================= */
-
-let originalLyrics = "";
-let transposeAmount = 0;
-let chordLanguage = localStorage.getItem("chordLanguage") || "english";
-
-const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-
-const flats = {
-  Db: "C#",
-  Eb: "D#",
-  Gb: "F#",
-  Ab: "G#",
-  Bb: "A#"
-};
-
-const englishToSpanish = {
-  C: "Do",
-  "C#": "Do#",
-  D: "Re",
-  "D#": "Re#",
-  E: "Mi",
-  F: "Fa",
-  "F#": "Fa#",
-  G: "Sol",
-  "G#": "Sol#",
-  A: "La",
-  "A#": "La#",
-  B: "Si"
-};
-
-const chordPattern = "[A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\\/[A-G](?:#|b)?)?";
-
-function normalizeRoot(root) {
-  return flats[root] || root;
-}
-
-function transposeRoot(root, steps) {
-  const normalized = normalizeRoot(root);
-  const index = notes.indexOf(normalized);
-
-  if (index === -1) return root;
-
-  const newIndex = (index + steps + notes.length) % notes.length;
-
-  return notes[newIndex];
-}
-
-function formatRoot(root) {
-  if (chordLanguage === "spanish") {
-    return englishToSpanish[root] || root;
-  }
-
-  return root;
-}
-
-function transposeChord(chord, steps) {
-  const cleanChord = String(chord || "").trim();
-
-  const match = cleanChord.match(/^([A-G])(#|b)?(.*?)(?:\/([A-G](?:#|b)?))?$/);
-
-  if (!match) return cleanChord;
-
-  const root = match[1] + (match[2] || "");
-  const suffix = match[3] || "";
-  const bass = match[4] || "";
-
-  const newRoot = transposeRoot(root, steps);
-  const newBass = bass ? transposeRoot(bass, steps) : "";
-
-  return newRoot + suffix + (newBass ? "/" + newBass : "");
-}
-
-function formatChord(chord) {
-  const cleanChord = String(chord || "").trim();
-
-  const match = cleanChord.match(/^([A-G](?:#|b)?)(.*?)(?:\/([A-G](?:#|b)?))?$/);
-
-  if (!match) return cleanChord;
-
-  const root = normalizeRoot(match[1]);
-  const suffix = match[2] || "";
-  const bass = match[3] ? normalizeRoot(match[3]) : "";
-
-  return formatRoot(root) + suffix + (bass ? "/" + formatRoot(bass) : "");
-}
-
-function transposeAndFormatChord(chord, steps) {
-  const transposed = transposeChord(chord, steps);
-  return formatChord(transposed);
-}
-
-function isChordOnlyLine(line) {
-  const value = String(line || "").trim();
-
-  if (!value) return false;
-
-  const withoutParentheses = value.replace(
-    new RegExp("\\((" + chordPattern + ")\\)", "g"),
-    ""
+  localStorage.setItem(
+    "jhd-theme",
+    document.body.classList.contains("light-mode") ? "light" : "dark"
   );
 
-  const withoutChords = withoutParentheses.replace(
-    new RegExp("\\b" + chordPattern + "\\b", "g"),
-    ""
-  );
-
-  return withoutChords.replace(/[|\-–—.,/()\[\]\s]/g, "").length === 0;
+  updateThemeButton();
 }
 
-function transposeText(text, steps) {
-  return String(text || "")
-    .split("\n")
-    .map(line => {
-      let updatedLine = line.replace(
-        new RegExp("\\((" + chordPattern + ")\\)", "g"),
-        function(match, chord) {
-          return "(" + transposeAndFormatChord(chord, steps) + ")";
-        }
-      );
+function initMenu() {
+  const button = document.getElementById("menuToggle");
+  const menu = document.getElementById("navMenu");
 
-      if (isChordOnlyLine(line)) {
-        updatedLine = updatedLine.replace(
-          new RegExp("\\b" + chordPattern + "\\b", "g"),
-          function(chord) {
-            return transposeAndFormatChord(chord, steps);
-          }
-        );
-      }
+  if (!button || !menu) return;
 
-      return updatedLine;
-    })
-    .join("\n");
-}
-
-function transposeSong(steps) {
-  transposeAmount += steps;
-  showLyrics();
-}
-
-function resetTranspose() {
-  transposeAmount = 0;
-  showLyrics();
-}
-
-function setChordLanguage(language) {
-  chordLanguage = language;
-  localStorage.setItem("chordLanguage", language);
-  showLyrics();
-}
-
-
-/* =========================================================
-   RENDER DE LETRA TIPO APP
-   [Verso 1] = apartado
-   (G) = acorde
-========================================================= */
-
-function cleanSectionTitle(line) {
-  return String(line || "")
-    .trim()
-    .replace(/^\[/, "")
-    .replace(/\]$/, "")
-    .replace(/:$/, "")
-    .trim();
-}
-
-function normalizeSectionTitle(title) {
-  return cleanSectionTitle(title)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function isSectionLine(line) {
-  const raw = String(line || "").trim();
-
-  return raw.startsWith("[") && raw.endsWith("]");
-}
-
-function getChipClass(title) {
-  const t = normalizeSectionTitle(title);
-
-  if (t.includes("intro") || t.includes("introduccion")) return "chip-intro";
-  if (t.includes("verso")) return "chip-verso";
-  if (t.includes("estrofa")) return "chip-estrofa";
-  if (t.includes("pre coro") || t.includes("precoro")) return "chip-precoro";
-  if (t.includes("coro")) return "chip-coro";
-  if (t.includes("puente") || t.includes("bridge")) return "chip-puente";
-  if (t.includes("interludio")) return "chip-interludio";
-  if (t.includes("intermedio") || t.includes("instrumental") || t.includes("solo")) return "chip-intermedio";
-  if (t.includes("final") || t.includes("outro")) return "chip-final";
-
-  return "chip-default";
-}
-
-function getChipLabel(title) {
-  const t = normalizeSectionTitle(title);
-
-  const numMatch = t.match(/\d+/);
-  const num = numMatch ? numMatch[0] : "";
-
-  if (t.includes("intro") || t.includes("introduccion")) return num ? `I${num}` : "I";
-  if (t.includes("verso")) return num ? `V${num}` : "V";
-  if (t.includes("estrofa")) return num ? `E${num}` : "E";
-  if (t.includes("pre coro") || t.includes("precoro")) return num ? `PC${num}` : "PC";
-  if (t.includes("coro final")) return "CF";
-  if (t.includes("coro")) return num ? `C${num}` : "C";
-  if (t.includes("puente") || t.includes("bridge")) return "P";
-  if (t.includes("interludio")) return "INT";
-  if (t.includes("intermedio")) return "IM";
-  if (t.includes("instrumental")) return "INS";
-  if (t.includes("solo")) return "S";
-  if (t.includes("final") || t.includes("outro")) return "F";
-
-  return title.length > 10 ? title.substring(0, 10) : title;
-}
-
-function parseLyricsSections(text) {
-  const lines = String(text || "").split("\n");
-  const sections = [];
-  let currentSection = null;
-
-  lines.forEach(line => {
-    const trimmed = line.trim();
-
-    if (trimmed && isSectionLine(trimmed)) {
-      if (currentSection) {
-        sections.push(currentSection);
-      }
-
-      currentSection = {
-        title: cleanSectionTitle(trimmed),
-        lines: []
-      };
-    } else {
-      if (!currentSection) {
-        currentSection = {
-          title: "Letra",
-          lines: []
-        };
-      }
-
-      currentSection.lines.push(line);
-    }
-  });
-
-  if (currentSection) {
-    sections.push(currentSection);
-  }
-
-  return sections.filter(section => {
-    return section.title || section.lines.join("").trim();
+  button.addEventListener("click", () => {
+    menu.classList.toggle("open");
   });
 }
 
-function renderChordLine(line) {
-  const value = String(line || "");
-
-  const regex = /(^|\s)([^\s()]*?)\(([^)]+)\)([^\s()]*)/g;
-
-  let html = "";
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(value)) !== null) {
-    const separator = match[1] || "";
-    const prefix = match[2] || "";
-    const chord = match[3] || "";
-    const suffix = match[4] || "";
-
-    html += escapeHTML(value.slice(lastIndex, match.index));
-    html += escapeHTML(separator);
-
-    if (prefix && suffix) {
-      html += `
-        <span class="chord-split-word">
-          <span class="chord-token">${escapeHTML(chord)}</span>
-          <span class="word-prefix">${escapeHTML(prefix)}</span>
-          <span class="word-token">${escapeHTML(suffix)}</span>
-        </span>
-      `;
-    } else if (suffix) {
-      html += `
-        <span class="chord-word">
-          <span class="chord-token">${escapeHTML(chord)}</span>
-          <span class="word-token">${escapeHTML(suffix)}</span>
-        </span>
-      `;
-    } else {
-      html += `<span class="chord-alone">${escapeHTML(chord)}</span>`;
-    }
-
-    lastIndex = regex.lastIndex;
-  }
-
-  html += escapeHTML(value.slice(lastIndex));
-
-  return html;
-}
-
-function renderLyricsLines(lines) {
-  return lines.map(line => {
-    if (line.trim() === "") {
-      return `<span class="lyrics-app-line lyrics-empty-line"></span>`;
-    }
-
-    return `<span class="lyrics-app-line">${renderChordLine(line)}</span>`;
-  }).join("");
-}
-
-function renderLyricsHTML(text) {
-  if (!text || !String(text).trim()) {
-    return `
-      <div class="lyrics-app-view">
-        <div class="lyrics-app-section">
-          <div class="lyrics-app-chip chip-default">TXT</div>
-          <div class="lyrics-app-content">
-            <span class="lyrics-app-line">No hay letra disponible todavía.</span>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  const sections = parseLyricsSections(text);
-
-  return `
-    <div class="lyrics-app-view">
-      ${sections.map(section => {
-        const chipClass = getChipClass(section.title);
-        const chipLabel = getChipLabel(section.title);
-
-        return `
-          <div class="lyrics-app-section">
-            <div class="lyrics-app-chip ${chipClass}" title="${escapeHTML(section.title)}">
-              ${escapeHTML(chipLabel)}
-            </div>
-
-            <div class="lyrics-app-content">
-              ${renderLyricsLines(section.lines)}
-            </div>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
-}
-
-function showLyrics() {
-  const lyricsBox = document.getElementById("songLyrics");
-
-  if (lyricsBox) {
-    const transposedText = transposeText(originalLyrics, transposeAmount);
-    lyricsBox.innerHTML = renderLyricsHTML(transposedText);
-  }
-
-  const label = document.getElementById("chordLanguageLabel");
-
-  if (label) {
-    label.innerText = chordLanguage === "spanish"
-      ? "Cifrado actual: Español"
-      : "Cifrado actual: Inglés";
-  }
-}
-
-
-/* =========================================================
-   INICIO - CANCIONES RECIENTES
-========================================================= */
-
-async function loadHomeSongs() {
-  const homeSongList = document.getElementById("homeSongList");
-
-  if (!homeSongList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Intenta actualizar la página más tarde.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select("*, artists(name, slug), categories(name, slug)")
-    .order("created_at", { ascending: false })
-    .limit(6);
-
-  if (error) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Intenta actualizar la página más tarde.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán cantos, letras y acordes.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  homeSongList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryName = song.categories ? song.categories.name : "Sin categoría";
-
-    homeSongList.innerHTML += `
-      <article class="song-card" data-title="${escapeHTML(`${title} ${artistName} ${categoryName}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>✝ ${escapeHTML(categoryName)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-function searchHomeSongs() {
-  const input = document.getElementById("homeSearch");
-  const cards = document.querySelectorAll("#homeSongList .song-card");
-  const noResults = document.getElementById("noHomeResults");
-
-  if (!input || cards.length === 0) return;
-
-  const value = input.value.toLowerCase().trim();
-  let found = 0;
-
-  cards.forEach(card => {
-    const title = card.dataset.title || "";
-
-    if (title.includes(value)) {
-      card.style.display = "block";
-      found++;
-    } else {
-      card.style.display = "none";
-    }
-  });
-
-  if (noResults) {
-    noResults.style.display = found === 0 ? "block" : "none";
-  }
-}
-
-
-/* =========================================================
-   CANCIONES PÚBLICAS
-========================================================= */
-
-async function loadPublicSongs() {
-  const songList = document.getElementById("songList");
-
-  if (!songList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Intenta actualizar la página más tarde.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select("*, artists(name, slug), categories(name, slug)")
-    .order("title");
-
-  if (error) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Intenta actualizar la página más tarde.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán cantos, letras y acordes.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  songList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryName = song.categories ? song.categories.name : "Sin categoría";
-
-    songList.innerHTML += `
-      <article class="song-card"
-        data-category="${escapeHTML(categoryName.toLowerCase())}"
-        data-title="${escapeHTML(`${title} ${artistName} ${categoryName}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>✝ ${escapeHTML(categoryName)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-
-  const songSearch = document.getElementById("songSearch");
-  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
-
-  if (songSearch && initialQuery) {
-    songSearch.value = initialQuery.toLowerCase();
-    filterSongCards();
-  }
-}
-
-function filterSongCards() {
-  const songSearch = document.getElementById("songSearch");
-  const cards = document.querySelectorAll("#songList .song-card");
-  const noResults = document.getElementById("noResults");
-
-  if (!songSearch) return;
-
-  const value = songSearch.value.toLowerCase().trim();
-  let found = 0;
-
-  cards.forEach(card => {
-    const title = card.dataset.title || "";
-
-    if (title.includes(value)) {
-      card.style.display = "block";
-      found++;
-    } else {
-      card.style.display = "none";
-    }
-  });
-
-  if (noResults) {
-    noResults.style.display = found === 0 ? "block" : "none";
-  }
-}
-
-function filterSongs(category) {
-  const cards = document.querySelectorAll("#songList .song-card");
-  const noResults = document.getElementById("noResults");
-
-  let found = 0;
-
-  cards.forEach(card => {
-    const data = card.dataset.category || "";
-
-    if (category === "todos" || data.includes(category)) {
-      card.style.display = "block";
-      found++;
-    } else {
-      card.style.display = "none";
-    }
-  });
-
-  if (noResults) {
-    noResults.style.display = found === 0 ? "block" : "none";
-  }
-}
-
-
-/* =========================================================
-   CANTO INDIVIDUAL
-========================================================= */
-
-async function loadSingleSong() {
-  const songTitle = document.getElementById("songTitle");
-  const songInfo = document.getElementById("songInfo");
-
-  if (!songTitle || !songInfo) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songTitle.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "No se especificó ningún canto.";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select("*, artists(name, slug), categories(name, slug)")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !data) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
-    return;
-  }
-
-  const artistName = data.artists ? data.artists.name : "Sin artista";
-  const categoryName = data.categories ? data.categories.name : "Sin categoría";
-
-  songTitle.innerText = data.title || "Sin título";
-  songInfo.innerText = `${artistName} · ${categoryName} · Tono ${safeText(data.tone, "No definido")}`;
-
-  originalLyrics = data.lyrics || "";
-  transposeAmount = 0;
-  showLyrics();
-
-  const tutorialGuitar = document.getElementById("tutorialGuitar");
-  const tutorialPiano = document.getElementById("tutorialPiano");
-
-  if (tutorialGuitar) {
-    const guitarUrl = safeUrl(data.tutorial_guitar);
-    tutorialGuitar.href = guitarUrl || "#";
-    tutorialGuitar.style.display = guitarUrl ? "inline-block" : "none";
-  }
-
-  if (tutorialPiano) {
-    const pianoUrl = safeUrl(data.tutorial_piano);
-    tutorialPiano.href = pianoUrl || "#";
-    tutorialPiano.style.display = pianoUrl ? "inline-block" : "none";
-  }
-}
-
-
-/* =========================================================
-   ARTISTAS
-========================================================= */
-
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando artistas</h3>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán artistas y ministerios.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-    const avatar = safeUrl(artist.avatar_url);
-
-    const avatarContent = avatar
-      ? `<img src="${escapeHTML(avatar)}" alt="${escapeHTML(name)}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`
-      : getInitial(name);
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar">${avatarContent}</div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "Artista / Ministerio";
-
-  const avatar = safeUrl(artist.avatar_url);
-
-  if (artistAvatar) {
-    if (avatar) {
-      artistAvatar.innerHTML = `<img src="${escapeHTML(avatar)}" alt="${escapeHTML(artist.name)}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
-    } else {
-      artistAvatar.innerText = getInitial(artist.name);
-    }
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select("*, categories(name)")
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán cantos para este artista.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryName = song.categories ? song.categories.name : "Sin categoría";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>✝ ${escapeHTML(categoryName)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-
-/* =========================================================
-   CATEGORÍAS
-========================================================= */
-
-async function loadPublicCategories() {
-  const categoryList = document.getElementById("categoryList");
-
-  if (!categoryList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    categoryList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("categories")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    categoryList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando categorías</h3>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    categoryList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay categorías todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán categorías.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  categoryList.innerHTML = "";
-
-  data.forEach(category => {
-    const name = category.name || "Sin nombre";
-
-    categoryList.innerHTML += `
-      <article class="song-card category-card" data-title="${escapeHTML(`${name} ${category.description || ""}`.toLowerCase())}">
-        <div class="category-icon">🎵</div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(category.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="canciones.html?buscar=${encodeURIComponent(name)}">Ver cantos</a>
-      </article>
-    `;
-  });
-}
-
-
-/* =========================================================
-   DONACIONES PÚBLICAS
-========================================================= */
-
-function donationRow(label, value, canCopy = false) {
-  const rawValue = String(value || "").trim();
-
-  if (!rawValue) return "";
-
-  const encoded = encodeURIComponent(rawValue);
-
-  return `
-    <div class="donation-row">
-      <span class="donation-label">${escapeHTML(label)}</span>
-      <span class="donation-value">${escapeHTML(rawValue)}</span>
-      ${canCopy ? `<button class="copy-btn" onclick="copyDonationText(decodeURIComponent('${encoded}'))">Copiar</button>` : ""}
-    </div>
-  `;
-}
-
-async function copyDonationText(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    alert("Dato copiado");
-  } catch (error) {
-    alert("No se pudo copiar. Selecciona el texto manualmente.");
-  }
-}
-
-async function loadPublicDonationCards() {
-  const donationCardsList = document.getElementById("donationCardsList");
-
-  if (!donationCardsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    donationCardsList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("donation_cards")
-    .select("*")
-    .eq("is_active", true)
-    .order("display_order", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    donationCardsList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando donaciones</h3>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    donationCardsList.innerHTML = `
-      <div class="song-card">
-        <h3>Muy pronto</h3>
-        <p style="color:var(--secondary); margin-top:12px;">
-          Próximamente se agregarán formas de apoyar este proyecto.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  donationCardsList.innerHTML = "";
-
-  data.forEach(card => {
-    const link = safeUrl(card.link_url);
-
-    donationCardsList.innerHTML += `
-      <article class="song-card donation-card">
-        <span class="donation-badge">${escapeHTML(card.payment_type || "Donación")}</span>
-
-        <h3>${escapeHTML(card.title || "Donación")}</h3>
-
-        ${card.description ? `<p>${escapeHTML(card.description)}</p>` : ""}
-
-        <div class="donation-info">
-          ${donationRow("Nombre", card.account_name)}
-          ${donationRow("Banco", card.bank_name)}
-          ${donationRow("Cuenta", card.account_number, true)}
-          ${donationRow("CLABE", card.clabe, true)}
-          ${donationRow("Tarjeta", card.card_number, true)}
-          ${donationRow("Teléfono", card.phone, true)}
-        </div>
-
-        ${link ? `
-          <div class="donation-link">
-            <a class="song-btn" href="${escapeHTML(link)}" target="_blank" rel="noopener">
-              Abrir enlace
-            </a>
-          </div>
-        ` : ""}
-
-        ${card.note ? `
-          <div class="donation-note">
-            ${escapeHTML(card.note)}
-          </div>
-        ` : ""}
-      </article>
-    `;
-  });
-}
-
-
-/* =========================================================
-   ADMIN - APARTADOS, ACORDES Y VISTA PREVIA
-========================================================= */
-
-function insertSongSection(sectionName) {
-  const textarea = document.getElementById("songLyricsInput");
-
-  if (!textarea) {
-    alert("No se encontró el campo de letra.");
-    return;
-  }
-
-  const start = textarea.selectionStart || 0;
-  const end = textarea.selectionEnd || 0;
-  const currentValue = textarea.value || "";
-
-  const before = currentValue.substring(0, start);
-  const after = currentValue.substring(end);
-
-  const needsLineBefore = before.length > 0 && !before.endsWith("\n");
-  const textToInsert = `${needsLineBefore ? "\n\n" : ""}[${sectionName}]\n`;
-
-  textarea.value = before + textToInsert + after;
-  textarea.focus();
-
-  const newPosition = before.length + textToInsert.length;
-  textarea.selectionStart = newPosition;
-  textarea.selectionEnd = newPosition;
-
-  updateLyricsPreview();
-}
-
-function insertSongTemplate() {
-  const textarea = document.getElementById("songLyricsInput");
-
-  if (!textarea) {
-    alert("No se encontró el campo de letra.");
-    return;
-  }
-
-  const template = `[Intro]
-
-
-[Verso 1]
-
-
-[Pre Coro]
-
-
-[Coro]
-
-
-[Verso 2]
-
-
-[Puente]
-
-
-[Coro Final]
-
-
-[Final]
-
-`;
-
-  if (textarea.value.trim()) {
-    textarea.value = textarea.value.trimEnd() + "\n\n" + template;
-  } else {
-    textarea.value = template;
-  }
-
-  textarea.focus();
-  updateLyricsPreview();
-}
-
-function createLyricsToolbar() {
-  const textarea = document.getElementById("songLyricsInput");
-
-  if (!textarea) return;
-  if (document.getElementById("jhdLyricsToolbar")) return;
-
-  const toolbar = document.createElement("div");
-  toolbar.id = "jhdLyricsToolbar";
-  toolbar.className = "section-toolbar-box";
-
-  toolbar.innerHTML = `
-    <div class="section-toolbar-title">Apartados de la canción</div>
-
-    <div class="section-toolbar">
-      <button type="button" class="section-chip" onclick="insertSongSection('Intro')">Intro</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Verso 1')">Verso 1</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Pre Coro')">Pre Coro</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Coro')">Coro</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Verso 2')">Verso 2</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Verso 3')">Verso 3</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Puente')">Puente</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Interludio')">Interludio</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Coro Final')">Coro Final</button>
-      <button type="button" class="section-chip" onclick="insertSongSection('Final')">Final</button>
-      <button type="button" class="section-chip section-template-btn" onclick="insertSongTemplate()">Plantilla completa</button>
-    </div>
-
-    <p class="lyrics-helper">
-      Usa [ ] para apartados y ( ) para acordes. Ejemplo: [Verso 1] y (G)María.
-    </p>
-  `;
-
-  textarea.parentNode.insertBefore(toolbar, textarea);
-}
-
-function isValidChord(chord) {
-  return /^[A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?$/.test(chord);
-}
-
-function insertChordAtCursor(chordValue) {
-  const textarea = document.getElementById("songLyricsInput");
-
-  if (!textarea) {
-    alert("No se encontró el campo de letra.");
-    return;
-  }
-
-  const chordInput = document.getElementById("jhdCustomChordInput");
-  const chordRaw = String(chordValue || (chordInput ? chordInput.value : "") || "").trim();
-
-  if (!chordRaw) {
-    alert("Escribe o selecciona un acorde.");
-    return;
-  }
-
-  const cleanChord = chordRaw.replace(/[()]/g, "").trim();
-
-  if (!isValidChord(cleanChord)) {
-    alert("Ese acorde no parece válido. Ejemplo: G, Bm, F#m, C/E");
-    return;
-  }
-
-  const value = textarea.value || "";
-  const cursor = textarea.selectionStart || 0;
-  const insertText = `(${cleanChord})`;
-
-  textarea.value = value.slice(0, cursor) + insertText + value.slice(cursor);
-  textarea.focus();
-
-  const newCursor = cursor + insertText.length;
-  textarea.setSelectionRange(newCursor, newCursor);
-
-  updateLyricsPreview();
-}
-
-function createChordHelper() {
-  const textarea = document.getElementById("songLyricsInput");
-
-  if (!textarea) return;
-  if (document.getElementById("jhdChordHelperBox")) return;
-
-  const box = document.createElement("div");
-  box.id = "jhdChordHelperBox";
-  box.className = "chord-helper-box";
-
-  box.innerHTML = `
-    <div class="chord-helper-title">Asistente de acordes</div>
-
-    <div class="chord-helper-help">
-      Coloca el cursor antes de la palabra o sílaba donde cambia el acorde y presiona un acorde.
-      Se insertará como (G), (D), (Em), etc.
-    </div>
-
-    <div class="chord-helper-row">
-      <button type="button" class="chord-helper-btn" onclick="insertChordAtCursor('G')">G</button>
-      <button type="button" class="chord-helper-btn" onclick="insertChordAtCursor('D')">D</button>
-      <button type="button" class="chord-helper-btn" onclick="insertChordAtCursor('Em')">Em</button>
-      <button type="button" class="chord-helper-btn" onclick="insertChordAtCursor('C')">C</button>
-      <button type="button" class="chord-helper-btn" onclick="insertChordAtCursor('Am')">Am</button>
-      <button type="button" class="chord-helper-btn" onclick="insertChordAtCursor('F')">F</button>
-      <button type="button" class="chord-helper-btn" onclick="insertChordAtCursor('Bm')">Bm</button>
-      <button type="button" class="chord-helper-btn" onclick="insertChordAtCursor('A')">A</button>
-
-      <input id="jhdCustomChordInput" class="chord-helper-input" type="text" placeholder="Otro: F#m">
-
-      <button type="button" class="chord-helper-main-btn" onclick="insertChordAtCursor()">
-        Insertar acorde
-      </button>
-    </div>
-  `;
-
-  const toolbar = document.getElementById("jhdLyricsToolbar");
-
-  if (toolbar) {
-    toolbar.parentNode.insertBefore(box, toolbar.nextSibling);
-  } else {
-    textarea.parentNode.insertBefore(box, textarea);
-  }
-}
-
-function createLyricsPreview() {
-  const textarea = document.getElementById("songLyricsInput");
-
-  if (!textarea) return;
-  if (document.getElementById("jhdLyricsPreviewWrapper")) return;
-
-  const wrapper = document.createElement("div");
-  wrapper.id = "jhdLyricsPreviewWrapper";
-
-  wrapper.innerHTML = `
-    <div class="lyrics-preview-tools">
-      <button type="button" class="lyrics-preview-btn" onclick="showLyricsPreview()">
-        Ver vista previa
-      </button>
-
-      <button type="button" class="lyrics-preview-btn secondary" onclick="updateLyricsPreview()">
-        Actualizar vista previa
-      </button>
-
-      <button type="button" class="lyrics-preview-btn secondary" onclick="hideLyricsPreview()">
-        Ocultar vista previa
-      </button>
-    </div>
-
-    <div class="lyrics-preview-box" id="jhdLyricsPreviewBox" style="display:none;">
-      <h4>Vista previa de la canción</h4>
-      <div class="lyrics-preview-content" id="jhdLyricsPreviewContent">
-        Aquí aparecerá la vista previa.
-      </div>
-    </div>
-  `;
-
-  textarea.parentNode.insertBefore(wrapper, textarea.nextSibling);
-
-  textarea.addEventListener("input", () => {
-    const previewBox = document.getElementById("jhdLyricsPreviewBox");
-
-    if (previewBox && previewBox.classList.contains("show")) {
-      updateLyricsPreview();
-    }
-  });
-}
-
-function updateLyricsPreview() {
-  const textarea = document.getElementById("songLyricsInput");
-  const previewContent = document.getElementById("jhdLyricsPreviewContent");
-
-  if (!textarea || !previewContent) return;
-
-  previewContent.innerHTML = renderLyricsHTML(textarea.value);
-}
-
-function showLyricsPreview() {
-  const previewBox = document.getElementById("jhdLyricsPreviewBox");
-
-  if (!previewBox) return;
-
-  previewBox.classList.add("show");
-  previewBox.style.display = "block";
-  updateLyricsPreview();
-}
-
-function hideLyricsPreview() {
-  const previewBox = document.getElementById("jhdLyricsPreviewBox");
-
-  if (!previewBox) return;
-
-  previewBox.classList.remove("show");
-  previewBox.style.display = "none";
-}
-
-function initAdminLyricsTools() {
-  createLyricsToolbar();
-  createChordHelper();
-  createLyricsPreview();
-
-  setTimeout(createLyricsToolbar, 500);
-  setTimeout(createChordHelper, 700);
-  setTimeout(createLyricsPreview, 900);
-
-  setTimeout(createLyricsToolbar, 1500);
-  setTimeout(createChordHelper, 1700);
-  setTimeout(createLyricsPreview, 1900);
-}
-
-
-/* =========================================================
-   ADMIN - DONACIONES
-========================================================= */
-
-let editingDonationId = null;
-
-function setupDonationAdminSection() {
-  const adminPanel = document.getElementById("adminPanel");
-
-  if (!adminPanel) return;
-  if (document.getElementById("donationAdminSection")) return;
-
-  const section = document.createElement("section");
-  section.className = "section";
-  section.id = "donationAdminSection";
-
-  section.innerHTML = `
-    <h2>Donaciones</h2>
-
-    <div class="song-grid">
-      <div class="song-card">
-        <h3 id="donationFormTitle">Agregar tarjeta de donación</h3>
-
-        <div class="donation-admin-form">
-          <input id="donationTitleInput" type="text" placeholder="Título, ejemplo: Transferencia bancaria">
-
-          <select id="donationTypeInput">
-            <option value="Transferencia">Transferencia</option>
-            <option value="Depósito">Depósito</option>
-            <option value="Tarjeta">Tarjeta</option>
-            <option value="Link externo">Link externo</option>
-            <option value="Otro">Otro</option>
-          </select>
-
-          <input id="donationAccountNameInput" type="text" placeholder="Nombre del titular">
-          <input id="donationBankInput" type="text" placeholder="Banco">
-
-          <input id="donationAccountInput" type="text" placeholder="Número de cuenta">
-          <input id="donationClabeInput" type="text" placeholder="CLABE">
-
-          <input id="donationCardInput" type="text" placeholder="Número de tarjeta">
-          <input id="donationPhoneInput" type="text" placeholder="Teléfono">
-
-          <input id="donationOrderInput" type="number" placeholder="Orden, ejemplo: 1">
-
-          <label class="donation-active-row">
-            <input id="donationActiveInput" type="checkbox" checked>
-            Mostrar esta tarjeta en la página pública
-          </label>
-
-          <input class="donation-admin-wide" id="donationLinkInput" type="url" placeholder="Link externo opcional">
-
-          <textarea class="donation-admin-wide" id="donationDescriptionInput" placeholder="Descripción breve"></textarea>
-
-          <textarea class="donation-admin-wide" id="donationNoteInput" placeholder="Nota opcional"></textarea>
-        </div>
-
-        <button class="song-btn" onclick="saveDonationCard()">Guardar tarjeta</button>
-        <button class="song-btn secondary-btn" onclick="cancelDonationEdit()">Cancelar edición</button>
-      </div>
-
-      <div class="song-card">
-        <h3>Tarjetas de donación guardadas</h3>
-        <div id="adminDonationCardsList">
-          <p style="color:var(--secondary); margin-top:12px;">Cargando...</p>
-        </div>
-      </div>
-    </div>
-  `;
-
-  adminPanel.appendChild(section);
-  loadAdminDonationCards();
-}
-
-function getDonationFormData() {
-  return {
-    title: String(document.getElementById("donationTitleInput").value || "").trim(),
-    payment_type: String(document.getElementById("donationTypeInput").value || "").trim(),
-    account_name: String(document.getElementById("donationAccountNameInput").value || "").trim(),
-    bank_name: String(document.getElementById("donationBankInput").value || "").trim(),
-    account_number: String(document.getElementById("donationAccountInput").value || "").trim(),
-    clabe: String(document.getElementById("donationClabeInput").value || "").trim(),
-    card_number: String(document.getElementById("donationCardInput").value || "").trim(),
-    phone: String(document.getElementById("donationPhoneInput").value || "").trim(),
-    link_url: String(document.getElementById("donationLinkInput").value || "").trim(),
-    description: String(document.getElementById("donationDescriptionInput").value || "").trim(),
-    note: String(document.getElementById("donationNoteInput").value || "").trim(),
-    display_order: Number(document.getElementById("donationOrderInput").value || 0),
-    is_active: document.getElementById("donationActiveInput").checked,
-    updated_at: new Date().toISOString()
-  };
-}
-
-function clearDonationForm() {
-  editingDonationId = null;
-
-  const title = document.getElementById("donationFormTitle");
-
-  if (title) {
-    title.innerText = "Agregar tarjeta de donación";
-  }
-
-  [
-    "donationTitleInput",
-    "donationAccountNameInput",
-    "donationBankInput",
-    "donationAccountInput",
-    "donationClabeInput",
-    "donationCardInput",
-    "donationPhoneInput",
-    "donationLinkInput",
-    "donationDescriptionInput",
-    "donationNoteInput",
-    "donationOrderInput"
-  ].forEach(id => {
-    const input = document.getElementById(id);
-
-    if (input) {
-      input.value = "";
-    }
-  });
-
-  const typeInput = document.getElementById("donationTypeInput");
-  const activeInput = document.getElementById("donationActiveInput");
-
-  if (typeInput) typeInput.value = "Transferencia";
-  if (activeInput) activeInput.checked = true;
-}
-
-async function saveDonationCard() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const payload = getDonationFormData();
-
-  if (!payload.title) {
-    alert("Escribe un título para la tarjeta de donación");
-    return;
-  }
-
-  let result;
-
-  if (editingDonationId) {
-    result = await client
-      .from("donation_cards")
-      .update(payload)
-      .eq("id", editingDonationId);
-  } else {
-    result = await client
-      .from("donation_cards")
-      .insert([payload]);
-  }
-
-  if (result.error) {
-    alert("Error al guardar: " + result.error.message);
-    return;
-  }
-
-  alert("Tarjeta guardada");
-  clearDonationForm();
-  loadAdminDonationCards();
-  loadPublicDonationCards();
-}
-
-async function loadAdminDonationCards() {
-  const list = document.getElementById("adminDonationCardsList");
-
-  if (!list) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    list.innerHTML = `<p style="color:var(--secondary);">No se pudo conectar.</p>`;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("donation_cards")
-    .select("*")
-    .order("display_order", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  if (error) {
-    list.innerHTML = `
-      <p style="color:var(--secondary);">
-        Inicia sesión para administrar donaciones.
-      </p>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    list.innerHTML = `<p style="color:var(--secondary);">No hay tarjetas todavía.</p>`;
-    return;
-  }
-
-  list.innerHTML = "";
-
-  data.forEach(card => {
-    list.innerHTML += `
-      <div class="admin-list-item">
-        <div>
-          <strong>${escapeHTML(card.title)}</strong>
-          <p style="color:var(--secondary); margin-top:6px;">
-            ${escapeHTML(card.payment_type || "Donación")} ·
-            ${card.is_active ? "Visible" : "Oculta"} ·
-            Orden: ${card.display_order || 0}
-          </p>
-        </div>
-
-        <div>
-          <button onclick="editDonationCard('${card.id}')">Editar</button>
-          <button onclick="deleteDonationCard('${card.id}')">Eliminar</button>
-        </div>
-      </div>
-    `;
-  });
-}
-
-async function editDonationCard(id) {
-  const client = getSupabase();
-
-  if (!client) return;
-
-  const { data, error } = await client
-    .from("donation_cards")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error || !data) {
-    alert("No se pudo cargar la tarjeta");
-    return;
-  }
-
-  editingDonationId = id;
-
-  document.getElementById("donationFormTitle").innerText = "Editando tarjeta de donación";
-  document.getElementById("donationTitleInput").value = data.title || "";
-  document.getElementById("donationTypeInput").value = data.payment_type || "Transferencia";
-  document.getElementById("donationAccountNameInput").value = data.account_name || "";
-  document.getElementById("donationBankInput").value = data.bank_name || "";
-  document.getElementById("donationAccountInput").value = data.account_number || "";
-  document.getElementById("donationClabeInput").value = data.clabe || "";
-  document.getElementById("donationCardInput").value = data.card_number || "";
-  document.getElementById("donationPhoneInput").value = data.phone || "";
-  document.getElementById("donationLinkInput").value = data.link_url || "";
-  document.getElementById("donationDescriptionInput").value = data.description || "";
-  document.getElementById("donationNoteInput").value = data.note || "";
-  document.getElementById("donationOrderInput").value = data.display_order || 0;
-  document.getElementById("donationActiveInput").checked = data.is_active;
-
-  document.getElementById("donationTitleInput").scrollIntoView({
-    behavior: "smooth",
-    block: "center"
-  });
-}
-
-function cancelDonationEdit() {
-  clearDonationForm();
-}
-
-async function deleteDonationCard(id) {
-  const confirmDelete = confirm("¿Eliminar esta tarjeta de donación?");
-
-  if (!confirmDelete) return;
-
-  const client = getSupabase();
-
-  if (!client) return;
-
-  const { error } = await client
-    .from("donation_cards")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    alert("Error al eliminar: " + error.message);
-    return;
-  }
-
-  alert("Tarjeta eliminada");
-  clearDonationForm();
-  loadAdminDonationCards();
-  loadPublicDonationCards();
-}
-
-
-/* =========================================================
-   BUSCADORES
-========================================================= */
-
-function initSearchHandlers() {
-  const homeSearch = document.getElementById("homeSearch");
-  const songSearch = document.getElementById("songSearch");
-  const artistSearch = document.getElementById("artistSearch");
-  const categorySearch = document.getElementById("categorySearch");
-
-  if (homeSearch) {
-    homeSearch.addEventListener("keyup", searchHomeSongs);
-  }
-
-  if (songSearch) {
-    songSearch.addEventListener("keyup", filterSongCards);
-  }
-
-  if (artistSearch) {
-    artistSearch.addEventListener("keyup", () => {
-      const value = artistSearch.value.toLowerCase().trim();
-      const cards = document.querySelectorAll("#artistList .song-card");
-      const noResults = document.getElementById("noArtistResults");
-      let found = 0;
-
-      cards.forEach(card => {
-        const title = card.dataset.title || "";
-
-        if (title.includes(value)) {
-          card.style.display = "block";
-          found++;
-        } else {
-          card.style.display = "none";
-        }
-      });
-
-      if (noResults) {
-        noResults.style.display = found === 0 ? "block" : "none";
-      }
-    });
-  }
-
-  if (categorySearch) {
-    categorySearch.addEventListener("keyup", () => {
-      const value = categorySearch.value.toLowerCase().trim();
-      const cards = document.querySelectorAll("#categoryList .song-card");
-      const noResults = document.getElementById("noCategoryResults");
-      let found = 0;
-
-      cards.forEach(card => {
-        const title = card.dataset.title || "";
-
-        if (title.includes(value)) {
-          card.style.display = "block";
-          found++;
-        } else {
-          card.style.display = "none";
-        }
-      });
-
-      if (noResults) {
-        noResults.style.display = found === 0 ? "block" : "none";
-      }
-    });
-  }
-}
-
-
-/* =========================================================
-   INICIALIZACIÓN
-========================================================= */
-
-function initDonationAuthListener() {
-  const client = getSupabase();
-
-  if (!client || !client.auth) return;
-
-  client.auth.onAuthStateChange(() => {
-    setupDonationAdminSection();
-    loadAdminDonationCards();
-    initAdminLyricsTools();
-  });
-}
-
-function initApp() {
-  initTheme();
-  initMobileMenu();
-  initSearchHandlers();
-
-  loadHomeSongs();
-  loadPublicSongs();
-  loadSingleSong();
-  loadPublicArtists();
-  loadArtistProfile();
-  loadPublicCategories();
-  loadPublicDonationCards();
-
-  initAdminLyricsTools();
-  setupDonationAdminSection();
-  initDonationAuthListener();
-}
-
-runWhenReady(initApp);
-
-
-/* =========================================================
-   FUNCIONES GLOBALES PARA BOTONES HTML
-========================================================= */
-
-window.transposeSong = transposeSong;
-window.resetTranspose = resetTranspose;
-window.setChordLanguage = setChordLanguage;
-
-window.searchHomeSongs = searchHomeSongs;
-window.filterSongCards = filterSongCards;
-window.filterSongs = filterSongs;
-
-window.insertSongSection = insertSongSection;
-window.insertSongTemplate = insertSongTemplate;
-window.insertChordAtCursor = insertChordAtCursor;
-
-window.showLyricsPreview = showLyricsPreview;
-window.hideLyricsPreview = hideLyricsPreview;
-window.updateLyricsPreview = updateLyricsPreview;
-
-window.copyDonationText = copyDonationText;
-window.saveDonationCard = saveDonationCard;
-window.editDonationCard = editDonationCard;
-window.deleteDonationCard = deleteDonationCard;
-window.cancelDonationEdit = cancelDonationEdit;
-/* =========================================================
-   MULTICATEGORÍAS POR CANCIÓN
-   Usa tabla: song_categories
-========================================================= */
-
-function getSongCategories(song) {
-  if (!song || !Array.isArray(song.song_categories)) {
-    return [];
-  }
-
-  return song.song_categories
-    .map(item => item.categories)
-    .filter(Boolean);
-}
-
-function getSongCategoryNames(song) {
-  const categories = getSongCategories(song);
-
-  if (categories.length > 0) {
-    return categories.map(category => category.name).join(", ");
-  }
-
-  if (song.categories && song.categories.name) {
-    return song.categories.name;
-  }
-
-  return "Sin categoría";
-}
-
-function getSongCategorySearchText(song) {
-  const categories = getSongCategories(song);
-
-  if (categories.length > 0) {
-    return categories.map(category => category.name).join(" ").toLowerCase();
-  }
-
-  if (song.categories && song.categories.name) {
-    return song.categories.name.toLowerCase();
-  }
-
-  return "";
-}
-
-/* Inicio - canciones recientes con varias categorías */
-async function loadHomeSongs() {
-  const homeSongList = document.getElementById("homeSongList");
-
-  if (!homeSongList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .order("created_at", { ascending: false })
-    .limit(6);
-
-  if (error) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán cantos, letras y acordes.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  homeSongList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryNames = getSongCategoryNames(song);
-
-    homeSongList.innerHTML += `
-      <article class="song-card" data-title="${escapeHTML(`${title} ${artistName} ${categoryNames}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* Página canciones con varias categorías */
-async function loadPublicSongs() {
-  const songList = document.getElementById("songList");
-
-  if (!songList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .order("title");
-
-  if (error) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryNames = getSongCategoryNames(song);
-    const categorySearchText = getSongCategorySearchText(song);
-
-    songList.innerHTML += `
-      <article class="song-card"
-        data-category="${escapeHTML(categorySearchText)}"
-        data-title="${escapeHTML(`${title} ${artistName} ${categoryNames}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-
-  const songSearch = document.getElementById("songSearch");
-  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
-
-  if (songSearch && initialQuery) {
-    songSearch.value = initialQuery.toLowerCase();
-    filterSongCards();
-  }
-}
-
-/* Página canto individual con varias categorías */
-async function loadSingleSong() {
-  const songTitle = document.getElementById("songTitle");
-  const songInfo = document.getElementById("songInfo");
-
-  if (!songTitle || !songInfo) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songTitle.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "No se especificó ningún canto.";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("slug", slug)
-    .single();
-
-  if (error || !data) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
-    return;
-  }
-
-  const artistName = data.artists ? data.artists.name : "Sin artista";
-  const categoryNames = getSongCategoryNames(data);
-
-  songTitle.innerText = data.title || "Sin título";
-  songInfo.innerText = `${artistName} · ${categoryNames} · Tono ${safeText(data.tone, "No definido")}`;
-
-  originalLyrics = data.lyrics || "";
-  transposeAmount = 0;
-  showLyrics();
-
-  const tutorialGuitar = document.getElementById("tutorialGuitar");
-  const tutorialPiano = document.getElementById("tutorialPiano");
-
-  if (tutorialGuitar) {
-    const guitarUrl = safeUrl(data.tutorial_guitar);
-    tutorialGuitar.href = guitarUrl || "#";
-    tutorialGuitar.style.display = guitarUrl ? "inline-block" : "none";
-  }
-
-  if (tutorialPiano) {
-    const pianoUrl = safeUrl(data.tutorial_piano);
-    tutorialPiano.href = pianoUrl || "#";
-    tutorialPiano.style.display = pianoUrl ? "inline-block" : "none";
-  }
-}
-
-/* Perfil de artista con varias categorías */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "Artista / Ministerio";
-
-  const avatar = safeUrl(artist.avatar_url);
-
-  if (artistAvatar) {
-    if (avatar) {
-      artistAvatar.innerHTML = `<img src="${escapeHTML(avatar)}" alt="${escapeHTML(artist.name)}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
-    } else {
-      artistAvatar.innerText = getInitial(artist.name);
-    }
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = getSongCategoryNames(song);
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-/* =========================================================
-   MULTICATEGORÍAS POR CANCIÓN
-   Usa tabla: song_categories
-========================================================= */
-
-function getSongCategories(song) {
-  if (!song || !Array.isArray(song.song_categories)) {
-    return [];
-  }
-
-  return song.song_categories
-    .map(item => item.categories)
-    .filter(Boolean);
-}
-
-function getSongCategoryNames(song) {
-  const categories = getSongCategories(song);
-
-  if (categories.length > 0) {
-    return categories.map(category => category.name).join(", ");
-  }
-
-  if (song.categories && song.categories.name) {
-    return song.categories.name;
-  }
-
-  return "Sin categoría";
-}
-
-function getSongCategorySearchText(song) {
-  const categories = getSongCategories(song);
-
-  if (categories.length > 0) {
-    return categories.map(category => category.name).join(" ").toLowerCase();
-  }
-
-  if (song.categories && song.categories.name) {
-    return song.categories.name.toLowerCase();
-  }
-
-  return "";
-}
-
-/* Inicio - canciones recientes con varias categorías */
-async function loadHomeSongs() {
-  const homeSongList = document.getElementById("homeSongList");
-
-  if (!homeSongList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .order("created_at", { ascending: false })
-    .limit(6);
-
-  if (error) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán cantos, letras y acordes.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  homeSongList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryNames = getSongCategoryNames(song);
-
-    homeSongList.innerHTML += `
-      <article class="song-card" data-title="${escapeHTML(`${title} ${artistName} ${categoryNames}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* Página canciones con varias categorías */
-async function loadPublicSongs() {
-  const songList = document.getElementById("songList");
-
-  if (!songList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .order("title");
-
-  if (error) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryNames = getSongCategoryNames(song);
-    const categorySearchText = getSongCategorySearchText(song);
-
-    songList.innerHTML += `
-      <article class="song-card"
-        data-category="${escapeHTML(categorySearchText)}"
-        data-title="${escapeHTML(`${title} ${artistName} ${categoryNames}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-
-  const songSearch = document.getElementById("songSearch");
-  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
-
-  if (songSearch && initialQuery) {
-    songSearch.value = initialQuery.toLowerCase();
-    filterSongCards();
-  }
-}
-
-/* Página canto individual con varias categorías */
-async function loadSingleSong() {
-  const songTitle = document.getElementById("songTitle");
-  const songInfo = document.getElementById("songInfo");
-
-  if (!songTitle || !songInfo) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songTitle.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "No se especificó ningún canto.";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("slug", slug)
-    .single();
-
-  if (error || !data) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
-    return;
-  }
-
-  const artistName = data.artists ? data.artists.name : "Sin artista";
-  const categoryNames = getSongCategoryNames(data);
-
-  songTitle.innerText = data.title || "Sin título";
-  songInfo.innerText = `${artistName} · ${categoryNames} · Tono ${safeText(data.tone, "No definido")}`;
-
-  originalLyrics = data.lyrics || "";
-  transposeAmount = 0;
-  showLyrics();
-
-  const tutorialGuitar = document.getElementById("tutorialGuitar");
-  const tutorialPiano = document.getElementById("tutorialPiano");
-
-  if (tutorialGuitar) {
-    const guitarUrl = safeUrl(data.tutorial_guitar);
-    tutorialGuitar.href = guitarUrl || "#";
-    tutorialGuitar.style.display = guitarUrl ? "inline-block" : "none";
-  }
-
-  if (tutorialPiano) {
-    const pianoUrl = safeUrl(data.tutorial_piano);
-    tutorialPiano.href = pianoUrl || "#";
-    tutorialPiano.style.display = pianoUrl ? "inline-block" : "none";
-  }
-}
-
-/* Perfil de artista con varias categorías */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "Artista / Ministerio";
-
-  const avatar = safeUrl(artist.avatar_url);
-
-  if (artistAvatar) {
-    if (avatar) {
-      artistAvatar.innerHTML = `<img src="${escapeHTML(avatar)}" alt="${escapeHTML(artist.name)}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
-    } else {
-      artistAvatar.innerText = getInitial(artist.name);
-    }
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = getSongCategoryNames(song);
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-/* =========================================================
-   REFUERZO - DETECTAR SELECTOR DE CATEGORÍA EN ADMIN
-========================================================= */
-
-function jhdFindSongCategorySelect() {
-  const possibleSelectors = [
-    "#songCategoryInput",
-    "#categoryInput",
-    "#songCategorySelect",
-    "#categorySelect",
-    "#songCategory",
-    "#category",
-    "select[name='category_id']",
-    "select[name='category']"
-  ];
-
-  for (const selector of possibleSelectors) {
-    const found = document.querySelector(selector);
-    if (found) return found;
-  }
-
-  const allSelects = Array.from(document.querySelectorAll("select"));
-
-  const categorySelect = allSelects.find(select => {
-    const text = select.innerText.toLowerCase();
-    const placeholder = select.options && select.options[0]
-      ? select.options[0].textContent.toLowerCase()
-      : "";
-
-    return text.includes("categoría") || placeholder.includes("categoría");
-  });
-
-  return categorySelect || null;
-}
-
-setTimeout(() => {
-  if (typeof jhdInitMultiCategoryAdmin === "function") {
-    jhdInitMultiCategoryAdmin();
-  }
-}, 500);
-
-setTimeout(() => {
-  if (typeof jhdInitMultiCategoryAdmin === "function") {
-    jhdInitMultiCategoryAdmin();
-  }
-}, 1500);
-
-setTimeout(() => {
-  if (typeof jhdInitMultiCategoryAdmin === "function") {
-    jhdInitMultiCategoryAdmin();
-  }
-}, 3000);
-/* =========================================================
-   DESACTIVAR ASISTENTE DE ACORDES
-   Seguiremos usando acordes manuales con ( )
-========================================================= */
-
-function createChordHelper() {
-  const oldBox = document.getElementById("jhdChordHelperBox");
-
-  if (oldBox) {
-    oldBox.remove();
-  }
-}
-
-function insertChordAtCursor() {
-  alert("El asistente de acordes fue desactivado. Escribe los acordes manualmente con paréntesis, ejemplo: (G)María o Mar(G)ía.");
-}
-
-setTimeout(() => {
-  const oldBox = document.getElementById("jhdChordHelperBox");
-
-  if (oldBox) {
-    oldBox.remove();
-  }
-}, 500);
-
-setTimeout(() => {
-  const oldBox = document.getElementById("jhdChordHelperBox");
-
-  if (oldBox) {
-    oldBox.remove();
-  }
-}, 1500);
-/* =========================================================
-   EXPLORAR SIN "AMBOS"
-   Católico / Cristiano / Todos con filtros de temas
-========================================================= */
-
-window.jhdActiveExploreFilter = "";
-
-function jhdNormalizeSongType(value) {
-  const text = String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-
-  if (text.includes("catolico")) return "catolico";
-  if (text.includes("cristiano")) return "cristiano";
-
-  return "";
-}
-
-function jhdGetSongTypeLabel(type) {
-  const value = jhdNormalizeSongType(type);
-
-  if (value === "catolico") return "Católico";
-  if (value === "cristiano") return "Cristiano";
-
-  return "Sin tipo";
-}
-
-function jhdGetCurrentTypeFilter() {
-  const params = new URLSearchParams(window.location.search);
-  return jhdNormalizeSongType(params.get("tipo"));
-}
-
-function jhdApplyTypeFilter(query) {
-  const type = jhdGetCurrentTypeFilter();
-
-  if (type === "catolico") {
-    return query.eq("song_type", "catolico");
-  }
-
-  if (type === "cristiano") {
-    return query.eq("song_type", "cristiano");
-  }
-
-  return query;
-}
-
-function jhdUpdateSongPageTitle() {
-  const type = jhdGetCurrentTypeFilter();
-
-  const pageTitle =
-    document.getElementById("pageTitle") ||
-    document.querySelector(".section h2") ||
-    document.querySelector("h1");
-
-  if (!pageTitle) return;
-
-  if (type === "catolico") {
-    pageTitle.innerText = "Cantos Católicos";
-  } else if (type === "cristiano") {
-    pageTitle.innerText = "Cantos Cristianos";
-  } else {
-    pageTitle.innerText = "Explorar canciones";
-  }
-}
-
-function jhdSlugifyFilter(text) {
-  return String(text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function jhdGetCategoriesFromSong(song) {
-  if (typeof getSongCategories === "function") {
-    const multi = getSongCategories(song);
-
-    if (multi.length > 0) {
-      return multi;
-    }
-  }
-
-  if (song.categories) {
-    return [song.categories];
-  }
-
-  return [];
-}
-
-function jhdGetCategoryNamesFromSong(song) {
-  const categories = jhdGetCategoriesFromSong(song);
-
-  if (categories.length === 0) {
-    return "Sin categoría";
-  }
-
-  return categories.map(category => category.name).join(", ");
-}
-
-function jhdGetCategorySlugTextFromSong(song) {
-  const categories = jhdGetCategoriesFromSong(song);
-
-  return categories
-    .map(category => {
-      return [
-        category.name || "",
-        category.slug || "",
-        jhdSlugifyFilter(category.name || "")
-      ].join(" ");
-    })
-    .join(" ")
-    .toLowerCase();
-}
-
-function jhdBuildExploreFilterBar(songs) {
-  const songList = document.getElementById("songList");
-
-  if (!songList) return;
-
-  let filterBox = document.getElementById("jhdExploreFilterBox");
-
-  if (!filterBox) {
-    filterBox = document.createElement("div");
-    filterBox.id = "jhdExploreFilterBox";
-    filterBox.className = "explore-filter-box";
-    songList.parentNode.insertBefore(filterBox, songList);
-  }
-
-  const type = jhdGetCurrentTypeFilter();
-
-  let help = "Filtra por tema o uso. Aquí se mezclan cantos católicos y cristianos.";
-
-  if (type === "catolico") {
-    help = "Filtra solo dentro de cantos católicos.";
-  }
-
-  if (type === "cristiano") {
-    help = "Filtra solo dentro de cantos cristianos.";
-  }
-
-  const categoryMap = new Map();
-
-  songs.forEach(song => {
-    const categories = jhdGetCategoriesFromSong(song);
-
-    categories.forEach(category => {
-      if (!category || !category.name) return;
-
-      const slug = category.slug || jhdSlugifyFilter(category.name);
-
-      categoryMap.set(slug, {
-        slug,
-        name: category.name
-      });
-    });
-  });
-
-  const categories = Array.from(categoryMap.values())
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  filterBox.innerHTML = `
-    <div class="explore-filter-title">Filtros</div>
-    <div class="explore-filter-help">${escapeHTML(help)}</div>
-
-    <div class="explore-filter-list">
-      <button class="explore-filter-chip active" type="button" onclick="jhdSetExploreFilter('')">
-        Todos
-      </button>
-
-      ${categories.map(category => `
-        <button class="explore-filter-chip" type="button" onclick="jhdSetExploreFilter('${escapeHTML(category.slug)}')">
-          ${escapeHTML(category.name)}
-        </button>
-      `).join("")}
-    </div>
-  `;
-}
-
-function jhdSetExploreFilter(filterValue) {
-  window.jhdActiveExploreFilter = String(filterValue || "").toLowerCase();
-
-  document.querySelectorAll(".explore-filter-chip").forEach(button => {
-    button.classList.remove("active");
-  });
-
-  document.querySelectorAll(".explore-filter-chip").forEach(button => {
-    const onclick = button.getAttribute("onclick") || "";
-
-    if (!window.jhdActiveExploreFilter && onclick.includes("jhdSetExploreFilter('')")) {
-      button.classList.add("active");
-    }
-
-    if (window.jhdActiveExploreFilter && onclick.includes(window.jhdActiveExploreFilter)) {
-      button.classList.add("active");
-    }
-  });
-
-  filterSongCards();
-}
-
-function filterSongCards() {
-  const songSearch = document.getElementById("songSearch");
-  const cards = document.querySelectorAll("#songList .song-card");
-  const noResults = document.getElementById("noResults");
-
-  const value = songSearch ? songSearch.value.toLowerCase().trim() : "";
-  const activeFilter = String(window.jhdActiveExploreFilter || "").toLowerCase();
-
-  let found = 0;
-
-  cards.forEach(card => {
-    const title = card.dataset.title || "";
-    const category = card.dataset.category || "";
-
-    const matchesSearch = !value || title.includes(value);
-    const matchesCategory = !activeFilter || category.includes(activeFilter);
-
-    if (matchesSearch && matchesCategory) {
-      card.style.display = "block";
-      found++;
-    } else {
-      card.style.display = "none";
-    }
-  });
-
-  if (noResults) {
-    noResults.style.display = found === 0 ? "block" : "none";
-  }
-}
-
-/* Admin: selector solo Católico / Cristiano */
-function jhdFindSongTitleInput() {
-  return document.querySelector(
-    "#songTitleInput, #titleInput, input[name='title'], input[placeholder*='Título']"
-  );
-}
-
-function jhdFindSongSlugInput() {
-  return document.querySelector(
-    "#songSlugInput, #slugInput, input[name='slug']"
-  );
-}
-
-function jhdSlugifyText(text) {
-  return String(text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function jhdGetCurrentSongSlug() {
-  const slugInput = jhdFindSongSlugInput();
-
-  if (slugInput && slugInput.value.trim()) {
-    return slugInput.value.trim();
-  }
-
-  const titleInput = jhdFindSongTitleInput();
-
-  if (titleInput && titleInput.value.trim()) {
-    return jhdSlugifyText(titleInput.value.trim());
-  }
-
-  return "";
-}
-
-function jhdLoadSongTypeSelector() {
-  const titleInput = jhdFindSongTitleInput();
-
-  if (!titleInput) return;
-
-  let box = document.getElementById("jhdSongTypeBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdSongTypeBox";
-    box.className = "multi-category-box";
-    titleInput.parentNode.insertBefore(box, titleInput.nextSibling);
-  }
-
-  box.innerHTML = `
-    <div class="multi-category-title">Sección del canto</div>
-
-    <div class="multi-category-help">
-      Elige dónde aparecerá este canto.
-    </div>
-
-    <select id="jhdSongTypeInput">
-      <option value="catolico">Católico</option>
-      <option value="cristiano">Cristiano</option>
-    </select>
-  `;
-}
-
-function jhdGetSelectedSongType() {
-  const input = document.getElementById("jhdSongTypeInput");
-
-  if (!input) return "catolico";
-
-  return jhdNormalizeSongType(input.value) || "catolico";
-}
-
-async function jhdSaveSongTypeBySlug() {
-  const client = getSupabase();
-
-  if (!client) return;
-
-  const slug = jhdGetCurrentSongSlug();
-  const songType = jhdGetSelectedSongType();
-
-  if (!slug) return;
-
-  const { error } = await client
-    .from("songs")
-    .update({ song_type: songType })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("La canción se guardó, pero hubo error guardando la sección del canto: " + error.message);
-  }
-}
-
-async function jhdLoadSongTypeForSong(songIdOrSlug) {
-  const client = getSupabase();
-
-  if (!client || !songIdOrSlug) return;
-
-  const input = document.getElementById("jhdSongTypeInput");
-
-  if (!input) return;
-
-  const value = String(songIdOrSlug);
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-
-  let query = client
-    .from("songs")
-    .select("song_type");
-
-  if (isUuid) {
-    query = query.eq("id", value);
-  } else {
-    query = query.eq("slug", value);
-  }
-
-  const { data, error } = await query.single();
-
-  if (!error && data && data.song_type) {
-    input.value = jhdNormalizeSongType(data.song_type) || "catolico";
-  }
-}
-
-function jhdPatchSaveSongTypeNoAmbos() {
-  if (window.jhdSongTypeNoAmbosPatched) return;
-  window.jhdSongTypeNoAmbosPatched = true;
-
-  if (typeof window.saveSong === "function") {
-    const previousSaveSong = window.saveSong;
-
-    window.saveSong = async function() {
-      await previousSaveSong.apply(this, arguments);
-
-      setTimeout(async () => {
-        await jhdSaveSongTypeBySlug();
-      }, 900);
-    };
-  }
-
-  if (typeof window.editSong === "function") {
-    const previousEditSong = window.editSong;
-
-    window.editSong = async function(songId) {
-      await previousEditSong.apply(this, arguments);
-
-      setTimeout(async () => {
-        jhdLoadSongTypeSelector();
-        await jhdLoadSongTypeForSong(songId);
-      }, 900);
-    };
-  }
-}
-
-function jhdInitSongTypeNoAmbos() {
-  jhdLoadSongTypeSelector();
-  jhdPatchSaveSongTypeNoAmbos();
-
-  setTimeout(jhdLoadSongTypeSelector, 700);
-  setTimeout(jhdPatchSaveSongTypeNoAmbos, 900);
-
-  setTimeout(jhdLoadSongTypeSelector, 1600);
-  setTimeout(jhdPatchSaveSongTypeNoAmbos, 1800);
-}
-
-/* Página canciones: todos o solo católico/cristiano */
-async function loadPublicSongs() {
-  const songList = document.getElementById("songList");
-
-  if (!songList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  jhdUpdateSongPageTitle();
-
-  let query = client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .order("title");
-
-  query = jhdApplyTypeFilter(query);
-
-  const { data, error } = await query;
-
-  if (error) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Todavía no hay cantos en esta sección.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  jhdBuildExploreFilterBar(data);
-
-  songList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryNames = jhdGetCategoryNamesFromSong(song);
-    const categorySlugText = jhdGetCategorySlugTextFromSong(song);
-    const typeLabel = jhdGetSongTypeLabel(song.song_type);
-
-    songList.innerHTML += `
-      <article class="song-card"
-        data-category="${escapeHTML(categorySlugText)}"
-        data-title="${escapeHTML(`${title} ${artistName} ${categoryNames} ${typeLabel}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-
-  const songSearch = document.getElementById("songSearch");
-  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
-
-  if (songSearch && initialQuery) {
-    songSearch.value = initialQuery.toLowerCase();
-  }
-
-  filterSongCards();
-}
-
-/* Canto individual: mostrar sección */
-async function loadSingleSong() {
-  const songTitle = document.getElementById("songTitle");
-  const songInfo = document.getElementById("songInfo");
-
-  if (!songTitle || !songInfo) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songTitle.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "No se especificó ningún canto.";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      categories(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("slug", slug)
-    .single();
-
-  if (error || !data) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
-    return;
-  }
-
-  const artistName = data.artists ? data.artists.name : "Sin artista";
-  const categoryNames = jhdGetCategoryNamesFromSong(data);
-  const typeLabel = jhdGetSongTypeLabel(data.song_type);
-
-  songTitle.innerText = data.title || "Sin título";
-  songInfo.innerText = `${artistName} · ${typeLabel} · ${categoryNames} · Tono ${safeText(data.tone, "No definido")}`;
-
-  originalLyrics = data.lyrics || "";
-  transposeAmount = 0;
-  showLyrics();
-
-  const tutorialGuitar = document.getElementById("tutorialGuitar");
-  const tutorialPiano = document.getElementById("tutorialPiano");
-
-  if (tutorialGuitar) {
-    const guitarUrl = safeUrl(data.tutorial_guitar);
-    tutorialGuitar.href = guitarUrl || "#";
-    tutorialGuitar.style.display = guitarUrl ? "inline-block" : "none";
-  }
-
-  if (tutorialPiano) {
-    const pianoUrl = safeUrl(data.tutorial_piano);
-    tutorialPiano.href = pianoUrl || "#";
-    tutorialPiano.style.display = pianoUrl ? "inline-block" : "none";
-  }
-}
-
-document.addEventListener("DOMContentLoaded", jhdInitSongTypeNoAmbos);
-setTimeout(jhdInitSongTypeNoAmbos, 1200);
-setTimeout(jhdInitSongTypeNoAmbos, 2500);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    loadPublicSongs();
-    loadSingleSong();
-  }, 500);
-});
-
-window.jhdSetExploreFilter = jhdSetExploreFilter;
-/* =========================================================
-   CORRECCIÓN ERROR RELACIÓN DUPLICADA SONGS / CATEGORIES
-   Usar solo song_categories -> categories
-========================================================= */
-
-function jhdGetCategoriesFromSong(song) {
-  if (song && Array.isArray(song.song_categories)) {
-    const multi = song.song_categories
-      .map(item => item.categories)
-      .filter(Boolean);
-
-    if (multi.length > 0) {
-      return multi;
-    }
-  }
-
-  return [];
-}
-
-function jhdGetCategoryNamesFromSong(song) {
-  const categories = jhdGetCategoriesFromSong(song);
-
-  if (categories.length === 0) {
-    return "Sin categoría";
-  }
-
-  return categories.map(category => category.name).join(", ");
-}
-
-function jhdGetCategorySlugTextFromSong(song) {
-  const categories = jhdGetCategoriesFromSong(song);
-
-  return categories
-    .map(category => {
-      return [
-        category.name || "",
-        category.slug || "",
-        jhdSlugifyFilter(category.name || "")
-      ].join(" ");
-    })
-    .join(" ")
-    .toLowerCase();
-}
-
-/* Inicio - canciones recientes */
-async function loadHomeSongs() {
-  const homeSongList = document.getElementById("homeSongList");
-
-  if (!homeSongList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .order("created_at", { ascending: false })
-    .limit(6);
-
-  if (error) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    homeSongList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán cantos, letras y acordes.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  homeSongList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryNames = jhdGetCategoryNamesFromSong(song);
-    const typeLabel = jhdGetSongTypeLabel(song.song_type);
-
-    homeSongList.innerHTML += `
-      <article class="song-card" data-title="${escapeHTML(`${title} ${artistName} ${categoryNames} ${typeLabel}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* Página canciones */
-async function loadPublicSongs() {
-  const songList = document.getElementById("songList");
-
-  if (!songList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  jhdUpdateSongPageTitle();
-
-  let query = client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .order("title");
-
-  query = jhdApplyTypeFilter(query);
-
-  const { data, error } = await query;
-
-  if (error) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando canciones</h3>
-        <p style="color:var(--secondary); margin-top:15px;">${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    songList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Todavía no hay cantos en esta sección.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  jhdBuildExploreFilterBar(data);
-
-  songList.innerHTML = "";
-
-  data.forEach(song => {
-    const title = song.title || "Sin título";
-    const artistName = song.artists ? song.artists.name : "Sin artista";
-    const categoryNames = jhdGetCategoryNamesFromSong(song);
-    const categorySlugText = jhdGetCategorySlugTextFromSong(song);
-    const typeLabel = jhdGetSongTypeLabel(song.song_type);
-
-    songList.innerHTML += `
-      <article class="song-card"
-        data-category="${escapeHTML(categorySlugText)}"
-        data-title="${escapeHTML(`${title} ${artistName} ${categoryNames} ${typeLabel}`.toLowerCase())}">
-        <h3>🎵 ${escapeHTML(title)}</h3>
-        <p>👤 ${escapeHTML(artistName)}</p>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-
-  const songSearch = document.getElementById("songSearch");
-  const initialQuery = new URLSearchParams(window.location.search).get("buscar");
-
-  if (songSearch && initialQuery) {
-    songSearch.value = initialQuery.toLowerCase();
-  }
-
-  filterSongCards();
-}
-
-/* Canto individual */
-async function loadSingleSong() {
-  const songTitle = document.getElementById("songTitle");
-  const songInfo = document.getElementById("songInfo");
-
-  if (!songTitle || !songInfo) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    songTitle.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "No se especificó ningún canto.";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name, slug),
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("slug", slug)
-    .single();
-
-  if (error || !data) {
-    songTitle.innerText = "Canto no encontrado";
-    songInfo.innerText = "Este canto todavía no existe o fue eliminado.";
-    return;
-  }
-
-  const artistName = data.artists ? data.artists.name : "Sin artista";
-  const categoryNames = jhdGetCategoryNamesFromSong(data);
-  const typeLabel = jhdGetSongTypeLabel(data.song_type);
-
-  songTitle.innerText = data.title || "Sin título";
-  songInfo.innerText = `${artistName} · ${typeLabel} · ${categoryNames} · Tono ${safeText(data.tone, "No definido")}`;
-
-  originalLyrics = data.lyrics || "";
-  transposeAmount = 0;
-  showLyrics();
-
-  const tutorialGuitar = document.getElementById("tutorialGuitar");
-  const tutorialPiano = document.getElementById("tutorialPiano");
-
-  if (tutorialGuitar) {
-    const guitarUrl = safeUrl(data.tutorial_guitar);
-    tutorialGuitar.href = guitarUrl || "#";
-    tutorialGuitar.style.display = guitarUrl ? "inline-block" : "none";
-  }
-
-  if (tutorialPiano) {
-    const pianoUrl = safeUrl(data.tutorial_piano);
-    tutorialPiano.href = pianoUrl || "#";
-    tutorialPiano.style.display = pianoUrl ? "inline-block" : "none";
-  }
-}
-
-/* Perfil de artista */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "Artista / Ministerio";
-
-  const avatar = safeUrl(artist.avatar_url);
-
-  if (artistAvatar) {
-    if (avatar) {
-      artistAvatar.innerHTML = `<img src="${escapeHTML(avatar)}" alt="${escapeHTML(artist.name)}" loading="lazy" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
-    } else {
-      artistAvatar.innerText = getInitial(artist.name);
-    }
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = jhdGetCategoryNamesFromSong(song);
-    const typeLabel = jhdGetSongTypeLabel(song.song_type);
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* Recargar con funciones corregidas */
-runWhenReady(() => {
-  setTimeout(() => {
-    loadHomeSongs();
-    loadPublicSongs();
-    loadSingleSong();
-    loadArtistProfile();
-  }, 600);
-});
-/* =========================================================
-   ARTISTAS SIN COPYRIGHT
-   Usar iniciales y portada de color, no imágenes
-========================================================= */
-
-function jhdGetArtistInitials(name) {
-  const clean = String(name || "")
-    .trim()
-    .replace(/\s+/g, " ");
-
-  if (!clean) return "?";
-
-  const words = clean.split(" ");
-
-  if (words.length === 1) {
-    return words[0].substring(0, 2).toUpperCase();
-  }
-
-  return words
-    .slice(0, 3)
-    .map(word => word.charAt(0))
-    .join("")
-    .toUpperCase();
-}
-
-/* Página artistas con iniciales */
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando artistas</h3>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán artistas y ministerios.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-    const initials = jhdGetArtistInitials(name);
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar">${escapeHTML(initials)}</div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-/* Perfil de artista con iniciales y portada de color */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-  const artistHero = document.querySelector(".artist-profile-hero");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "ARTISTA / MINISTERIO";
-
-  if (artistAvatar) {
-    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  if (artistHero && songsData && songsData.length > 0) {
-    const firstType = songsData[0].song_type;
-
-    artistHero.classList.remove("profile-catolico", "profile-cristiano");
-
-    if (firstType === "catolico") {
-      artistHero.classList.add("profile-catolico");
-    }
-
-    if (firstType === "cristiano") {
-      artistHero.classList.add("profile-cristiano");
-    }
-  }
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán cantos para este artista.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
-      ? jhdGetCategoryNamesFromSong(song)
-      : "Sin categoría";
-
-    const typeLabel = typeof jhdGetSongTypeLabel === "function"
-      ? jhdGetSongTypeLabel(song.song_type)
-      : "Sin tipo";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-runWhenReady(() => {
-  setTimeout(() => {
-    loadPublicArtists();
-    loadArtistProfile();
-  }, 700);
-});
-/* =========================================================
-   ARTISTAS - COLORES Y DEGRADADOS EDITABLES
-========================================================= */
-
-function jhdGetArtistInitials(name) {
-  const clean = String(name || "").trim().replace(/\s+/g, " ");
-
-  if (!clean) return "?";
-
-  const words = clean.split(" ");
-
-  if (words.length === 1) {
-    return words[0].substring(0, 2).toUpperCase();
-  }
-
-  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
-}
-
-function jhdSafeColor(value, fallback) {
-  const color = String(value || "").trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
-    return color;
-  }
-
-  return fallback;
-}
-
-function jhdSafeDirection(value) {
-  const direction = String(value || "").trim();
-
-  const allowed = ["90deg", "120deg", "135deg", "160deg", "180deg", "220deg", "270deg"];
-
-  return allowed.includes(direction) ? direction : "135deg";
-}
-
-function jhdArtistColors(artist) {
-  return {
-    c1: jhdSafeColor(artist.gradient_color_1, "#0b1324"),
-    c2: jhdSafeColor(artist.gradient_color_2, "#1d3557"),
-    c3: jhdSafeColor(artist.gradient_color_3, "#111827"),
-    angle: jhdSafeDirection(artist.gradient_direction)
-  };
-}
-
-function jhdApplyArtistColorsToHero(artist) {
-  const hero = document.querySelector(".artist-profile-hero");
-
-  if (!hero) return;
-
-  const colors = jhdArtistColors(artist);
-
-  hero.style.setProperty("--artist-c1", colors.c1);
-  hero.style.setProperty("--artist-c2", colors.c2);
-  hero.style.setProperty("--artist-c3", colors.c3);
-  hero.style.setProperty("--artist-angle", colors.angle);
-}
-
-function jhdArtistAvatarStyle(artist) {
-  const colors = jhdArtistColors(artist);
-
-  return `--artist-c1:${colors.c1}; --artist-c2:${colors.c2}; --artist-c3:${colors.c3};`;
-}
-
-/* Página artistas con iniciales y colores */
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán artistas y ministerios.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-    const initials = jhdGetArtistInitials(name);
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar" style="${jhdArtistAvatarStyle(artist)}">${escapeHTML(initials)}</div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-/* Perfil de artista con degradado editable */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  jhdApplyArtistColorsToHero(artist);
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "ARTISTA / MINISTERIO";
-
-  if (artistAvatar) {
-    artistAvatar.style.cssText += jhdArtistAvatarStyle(artist);
-    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-        <p style="color:var(--secondary); margin-top:15px;">
-          Muy pronto se agregarán cantos para este artista.
-        </p>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
-      ? jhdGetCategoryNamesFromSong(song)
-      : "Sin categoría";
-
-    const typeLabel = typeof jhdGetSongTypeLabel === "function"
-      ? jhdGetSongTypeLabel(song.song_type)
-      : "Sin tipo";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* =========================================================
-   ADMIN - EDITAR COLORES DEL ARTISTA
-========================================================= */
-
-function jhdFindArtistNameInput() {
-  return document.querySelector(
-    "#artistNameInput, #artistName, #newArtistName, input[name='artist_name'], input[placeholder*='Nombre del artista'], input[placeholder*='Nombre del ministerio']"
-  );
-}
-
-function jhdFindArtistSlugInput() {
-  return document.querySelector(
-    "#artistSlugInput, #artistSlug, #newArtistSlug, input[name='artist_slug'], input[placeholder*='Slug del artista'], input[placeholder*='slug']"
-  );
-}
-
-function jhdArtistSlugFromAdmin() {
-  const slugInput = jhdFindArtistSlugInput();
-
-  if (slugInput && slugInput.value.trim()) {
-    return slugInput.value.trim();
-  }
-
-  const nameInput = jhdFindArtistNameInput();
-
-  if (nameInput && nameInput.value.trim()) {
-    return jhdSlugifyText(nameInput.value.trim());
-  }
-
-  return "";
-}
-
-function jhdUpdateGradientPreview() {
-  const preview = document.getElementById("jhdArtistGradientPreview");
-  const c1 = document.getElementById("jhdArtistColor1");
-  const c2 = document.getElementById("jhdArtistColor2");
-  const c3 = document.getElementById("jhdArtistColor3");
-  const angle = document.getElementById("jhdArtistGradientDirection");
-
-  if (!preview || !c1 || !c2 || !c3 || !angle) return;
-
-  preview.style.background = `linear-gradient(${angle.value}, ${c1.value}, ${c2.value} 50%, ${c3.value})`;
-}
-
-function jhdLoadArtistGradientAdminBox() {
-  const nameInput = jhdFindArtistNameInput();
-
-  if (!nameInput) return;
-  if (document.getElementById("jhdArtistGradientBox")) return;
-
-  const box = document.createElement("div");
-  box.id = "jhdArtistGradientBox";
-  box.className = "artist-gradient-admin";
-
-  box.innerHTML = `
-    <div class="artist-gradient-admin-title">Colores del perfil</div>
-
-    <div class="artist-gradient-admin-help">
-      Elige los colores del degradado del artista. No necesitas imágenes ni portada.
-    </div>
-
-    <div class="artist-gradient-controls">
-      <label>
-        Color 1
-        <input type="color" id="jhdArtistColor1" value="#0b1324" oninput="jhdUpdateGradientPreview()">
-      </label>
-
-      <label>
-        Color 2
-        <input type="color" id="jhdArtistColor2" value="#1d3557" oninput="jhdUpdateGradientPreview()">
-      </label>
-
-      <label>
-        Color 3
-        <input type="color" id="jhdArtistColor3" value="#111827" oninput="jhdUpdateGradientPreview()">
-      </label>
-
-      <label>
-        Dirección
-        <select id="jhdArtistGradientDirection" onchange="jhdUpdateGradientPreview()">
-          <option value="90deg">Horizontal</option>
-          <option value="135deg" selected>Diagonal</option>
-          <option value="180deg">Vertical</option>
-          <option value="220deg">Diagonal inversa</option>
-          <option value="270deg">Horizontal inverso</option>
-        </select>
-      </label>
-    </div>
-
-    <div class="artist-gradient-preview" id="jhdArtistGradientPreview"></div>
-
-    <button type="button" class="song-btn" style="margin-top:14px;" onclick="jhdSaveArtistGradientColors()">
-      Guardar colores del artista
-    </button>
-  `;
-
-  nameInput.parentNode.insertBefore(box, nameInput.nextSibling);
-
-  jhdUpdateGradientPreview();
-}
-
-async function jhdSaveArtistGradientColors() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const slug = jhdArtistSlugFromAdmin();
-
-  if (!slug) {
-    alert("Primero escribe el nombre o slug del artista.");
-    return;
-  }
-
-  const c1 = document.getElementById("jhdArtistColor1").value;
-  const c2 = document.getElementById("jhdArtistColor2").value;
-  const c3 = document.getElementById("jhdArtistColor3").value;
-  const angle = document.getElementById("jhdArtistGradientDirection").value;
-
-  const { error } = await client
-    .from("artists")
-    .update({
-      gradient_color_1: c1,
-      gradient_color_2: c2,
-      gradient_color_3: c3,
-      gradient_direction: angle
-    })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("No se pudieron guardar los colores: " + error.message);
-    return;
-  }
-
-  alert("Colores guardados");
-}
-
-function jhdInitArtistGradientAdmin() {
-  jhdLoadArtistGradientAdminBox();
-
-  setTimeout(jhdLoadArtistGradientAdminBox, 800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 1800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 3000);
-}
-
-document.addEventListener("DOMContentLoaded", jhdInitArtistGradientAdmin);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    loadPublicArtists();
-    loadArtistProfile();
-    jhdInitArtistGradientAdmin();
-  }, 800);
-});
-
-window.jhdUpdateGradientPreview = jhdUpdateGradientPreview;
-window.jhdSaveArtistGradientColors = jhdSaveArtistGradientColors;
-/* =========================================================
-   ARTISTAS - DEGRADADO EDITABLE SOLO EN ADMIN
-   Con colores, marcadores y ángulo libre
-========================================================= */
-
-function jhdIsAdminPage() {
-  return window.location.pathname.includes("admin.html") ||
-    !!document.getElementById("adminPanel");
-}
-
-function jhdRemovePublicGradientEditor() {
-  if (!jhdIsAdminPage()) {
-    const box = document.getElementById("jhdArtistGradientBox");
-    if (box) box.remove();
-  }
-}
-
-function jhdGetArtistInitials(name) {
-  const clean = String(name || "").trim().replace(/\s+/g, " ");
-
-  if (!clean) return "?";
-
-  const words = clean.split(" ");
-
-  if (words.length === 1) {
-    return words[0].substring(0, 2).toUpperCase();
-  }
-
-  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
-}
-
-function jhdSafeColor(value, fallback) {
-  const color = String(value || "").trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
-    return color;
-  }
-
-  return fallback;
-}
-
-function jhdClampNumber(value, fallback, min, max) {
-  const number = Number(value);
-
-  if (Number.isFinite(number)) {
-    return Math.min(max, Math.max(min, number));
-  }
-
-  return fallback;
-}
-
-function jhdArtistGradientData(artist) {
-  return {
-    c1: jhdSafeColor(artist.gradient_color_1, "#0b1324"),
-    c2: jhdSafeColor(artist.gradient_color_2, "#1d3557"),
-    c3: jhdSafeColor(artist.gradient_color_3, "#111827"),
-    s1: jhdClampNumber(artist.gradient_stop_1, 0, 0, 100),
-    s2: jhdClampNumber(artist.gradient_stop_2, 50, 0, 100),
-    s3: jhdClampNumber(artist.gradient_stop_3, 100, 0, 100),
-    angle: jhdClampNumber(artist.gradient_angle, 135, 0, 360)
-  };
-}
-
-function jhdGradientString(data) {
-  return `linear-gradient(${data.angle}deg, ${data.c1} ${data.s1}%, ${data.c2} ${data.s2}%, ${data.c3} ${data.s3}%)`;
-}
-
-function jhdApplyArtistGradientToHero(artist) {
-  const hero = document.querySelector(".artist-profile-hero");
-
-  if (!hero) return;
-
-  const data = jhdArtistGradientData(artist);
-
-  hero.style.setProperty("--artist-c1", data.c1);
-  hero.style.setProperty("--artist-c2", data.c2);
-  hero.style.setProperty("--artist-c3", data.c3);
-  hero.style.setProperty("--artist-s1", `${data.s1}%`);
-  hero.style.setProperty("--artist-s2", `${data.s2}%`);
-  hero.style.setProperty("--artist-s3", `${data.s3}%`);
-  hero.style.setProperty("--artist-angle", `${data.angle}deg`);
-}
-
-function jhdArtistInlineVars(artist) {
-  const data = jhdArtistGradientData(artist);
-
-  return `
-    --artist-c1:${data.c1};
-    --artist-c2:${data.c2};
-    --artist-c3:${data.c3};
-    --artist-s1:${data.s1}%;
-    --artist-s2:${data.s2}%;
-    --artist-s3:${data.s3}%;
-    --artist-angle:${data.angle}deg;
-  `;
-}
-
-/* Página pública de artistas: iniciales y color */
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-    const initials = jhdGetArtistInitials(name);
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
-          ${escapeHTML(initials)}
-        </div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-/* Perfil público de artista: degradado del artista */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  jhdApplyArtistGradientToHero(artist);
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "ARTISTA / MINISTERIO";
-
-  if (artistAvatar) {
-    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
-    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
-      ? jhdGetCategoryNamesFromSong(song)
-      : "Sin categoría";
-
-    const typeLabel = typeof jhdGetSongTypeLabel === "function"
-      ? jhdGetSongTypeLabel(song.song_type)
-      : "Sin tipo";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* Buscar inputs reales del formulario de artista */
-function jhdFindArtistNameInput() {
-  return document.querySelector(
-    "input#artistNameInput, input#newArtistName, input[name='artist_name'], input[placeholder*='Nombre del artista'], input[placeholder*='Nombre del ministerio']"
-  );
-}
-
-function jhdFindArtistSlugInput() {
-  return document.querySelector(
-    "input#artistSlugInput, input#newArtistSlug, input[name='artist_slug'], input[placeholder*='Slug del artista'], input[placeholder*='slug']"
-  );
-}
-
-function jhdArtistSlugFromAdmin() {
-  const slugInput = jhdFindArtistSlugInput();
-
-  if (slugInput && slugInput.value.trim()) {
-    return slugInput.value.trim();
-  }
-
-  const nameInput = jhdFindArtistNameInput();
-
-  if (nameInput && nameInput.value.trim()) {
-    return jhdSlugifyText(nameInput.value.trim());
-  }
-
-  return "";
-}
-
-function jhdReadGradientAdminValues() {
-  return {
-    c1: document.getElementById("jhdArtistColor1").value,
-    c2: document.getElementById("jhdArtistColor2").value,
-    c3: document.getElementById("jhdArtistColor3").value,
-    s1: Number(document.getElementById("jhdArtistStop1").value),
-    s2: Number(document.getElementById("jhdArtistStop2").value),
-    s3: Number(document.getElementById("jhdArtistStop3").value),
-    angle: Number(document.getElementById("jhdArtistAngle").value)
-  };
-}
-
-function jhdUpdateGradientPreview() {
-  const preview = document.getElementById("jhdArtistGradientPreview");
-
-  if (!preview) return;
-
-  const data = jhdReadGradientAdminValues();
-
-  document.getElementById("jhdArtistStop1Label").innerText = `${data.s1}%`;
-  document.getElementById("jhdArtistStop2Label").innerText = `${data.s2}%`;
-  document.getElementById("jhdArtistStop3Label").innerText = `${data.s3}%`;
-  document.getElementById("jhdArtistAngleLabel").innerText = `${data.angle}°`;
-
-  preview.style.background = jhdGradientString(data);
-}
-
-function jhdLoadArtistGradientAdminBox() {
-  if (!jhdIsAdminPage()) {
-    jhdRemovePublicGradientEditor();
-    return;
-  }
-
-  const nameInput = jhdFindArtistNameInput();
-
-  if (!nameInput) return;
-
-  let box = document.getElementById("jhdArtistGradientBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdArtistGradientBox";
-    nameInput.parentNode.insertBefore(box, nameInput.nextSibling);
-  }
-
-  box.innerHTML = `
-    <div class="artist-gradient-admin-title">Colores del perfil</div>
-
-    <div class="artist-gradient-admin-help">
-      Elige colores y mueve los marcadores para decidir dónde empieza y termina cada tono del degradado.
-    </div>
-
-    <div class="artist-gradient-controls">
-      <div class="artist-gradient-control">
-        <label>Color 1</label>
-        <input type="color" id="jhdArtistColor1" value="#0b1324" oninput="jhdUpdateGradientPreview()">
-        <label>Posición <span id="jhdArtistStop1Label">0%</span></label>
-        <input type="range" id="jhdArtistStop1" min="0" max="100" value="0" oninput="jhdUpdateGradientPreview()">
-      </div>
-
-      <div class="artist-gradient-control">
-        <label>Color 2</label>
-        <input type="color" id="jhdArtistColor2" value="#1d3557" oninput="jhdUpdateGradientPreview()">
-        <label>Posición <span id="jhdArtistStop2Label">50%</span></label>
-        <input type="range" id="jhdArtistStop2" min="0" max="100" value="50" oninput="jhdUpdateGradientPreview()">
-      </div>
-
-      <div class="artist-gradient-control">
-        <label>Color 3</label>
-        <input type="color" id="jhdArtistColor3" value="#111827" oninput="jhdUpdateGradientPreview()">
-        <label>Posición <span id="jhdArtistStop3Label">100%</span></label>
-        <input type="range" id="jhdArtistStop3" min="0" max="100" value="100" oninput="jhdUpdateGradientPreview()">
-      </div>
-    </div>
-
-    <div class="artist-gradient-angle">
-      <label>Ángulo del degradado <span id="jhdArtistAngleLabel">135°</span></label>
-      <input type="range" id="jhdArtistAngle" min="0" max="360" value="135" oninput="jhdUpdateGradientPreview()">
-    </div>
-
-    <div class="artist-gradient-preview" id="jhdArtistGradientPreview"></div>
-
-    <button type="button" class="song-btn" style="margin-top:14px;" onclick="jhdSaveArtistGradientColors()">
-      Guardar colores del artista
-    </button>
-  `;
-
-  jhdUpdateGradientPreview();
-}
-
-async function jhdSaveArtistGradientColors() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const slug = jhdArtistSlugFromAdmin();
-
-  if (!slug) {
-    alert("Primero escribe el nombre o slug del artista.");
-    return;
-  }
-
-  const data = jhdReadGradientAdminValues();
-
-  const { error } = await client
-    .from("artists")
-    .update({
-      gradient_color_1: data.c1,
-      gradient_color_2: data.c2,
-      gradient_color_3: data.c3,
-      gradient_stop_1: data.s1,
-      gradient_stop_2: data.s2,
-      gradient_stop_3: data.s3,
-      gradient_angle: data.angle
-    })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("No se pudieron guardar los colores: " + error.message);
-    return;
-  }
-
-  alert("Colores guardados");
-}
-
-function jhdInitArtistGradientAdmin() {
-  jhdRemovePublicGradientEditor();
-
-  if (!jhdIsAdminPage()) return;
-
-  jhdLoadArtistGradientAdminBox();
-
-  setTimeout(jhdLoadArtistGradientAdminBox, 800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 1800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 3000);
-}
-
-document.addEventListener("DOMContentLoaded", jhdInitArtistGradientAdmin);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    jhdRemovePublicGradientEditor();
-    jhdInitArtistGradientAdmin();
-    loadPublicArtists();
-    loadArtistProfile();
-  }, 800);
-});
-
-window.jhdUpdateGradientPreview = jhdUpdateGradientPreview;
-window.jhdSaveArtistGradientColors = jhdSaveArtistGradientColors;
-/* =========================================================
-   ARTISTAS - DEGRADADO EDITABLE SOLO EN ADMIN
-========================================================= */
-
-function jhdIsAdminPage() {
-  return window.location.pathname.includes("admin.html") ||
-    !!document.getElementById("adminPanel");
-}
-
-function jhdRemovePublicGradientEditor() {
-  if (!jhdIsAdminPage()) {
-    const box = document.getElementById("jhdArtistGradientBox");
-    if (box) box.remove();
-  }
-}
-
-function jhdGetArtistInitials(name) {
-  const clean = String(name || "").trim().replace(/\s+/g, " ");
-  if (!clean) return "?";
-
-  const words = clean.split(" ");
-
-  if (words.length === 1) {
-    return words[0].substring(0, 2).toUpperCase();
-  }
-
-  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
-}
-
-function jhdSafeColor(value, fallback) {
-  const color = String(value || "").trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
-    return color;
-  }
-
-  return fallback;
-}
-
-function jhdClampNumber(value, fallback, min, max) {
-  const number = Number(value);
-
-  if (Number.isFinite(number)) {
-    return Math.min(max, Math.max(min, number));
-  }
-
-  return fallback;
-}
-
-function jhdArtistGradientData(artist) {
-  return {
-    c1: jhdSafeColor(artist.gradient_color_1, "#0b1324"),
-    c2: jhdSafeColor(artist.gradient_color_2, "#1d3557"),
-    c3: jhdSafeColor(artist.gradient_color_3, "#111827"),
-    s1: jhdClampNumber(artist.gradient_stop_1, 0, 0, 100),
-    s2: jhdClampNumber(artist.gradient_stop_2, 50, 0, 100),
-    s3: jhdClampNumber(artist.gradient_stop_3, 100, 0, 100),
-    angle: jhdClampNumber(artist.gradient_angle, 135, 0, 360)
-  };
-}
-
-function jhdGradientString(data) {
-  return `linear-gradient(${data.angle}deg, ${data.c1} ${data.s1}%, ${data.c2} ${data.s2}%, ${data.c3} ${data.s3}%)`;
-}
-
-function jhdApplyArtistGradientToHero(artist) {
-  const hero = document.querySelector(".artist-profile-hero");
-  if (!hero) return;
-
-  const data = jhdArtistGradientData(artist);
-
-  hero.style.setProperty("--artist-c1", data.c1);
-  hero.style.setProperty("--artist-c2", data.c2);
-  hero.style.setProperty("--artist-c3", data.c3);
-  hero.style.setProperty("--artist-s1", `${data.s1}%`);
-  hero.style.setProperty("--artist-s2", `${data.s2}%`);
-  hero.style.setProperty("--artist-s3", `${data.s3}%`);
-  hero.style.setProperty("--artist-angle", `${data.angle}deg`);
-}
-
-function jhdArtistInlineVars(artist) {
-  const data = jhdArtistGradientData(artist);
-
-  return `
-    --artist-c1:${data.c1};
-    --artist-c2:${data.c2};
-    --artist-c3:${data.c3};
-    --artist-s1:${data.s1}%;
-    --artist-s2:${data.s2}%;
-    --artist-s3:${data.s3}%;
-    --artist-angle:${data.angle}deg;
-  `;
-}
-
-/* Página pública de artistas: iniciales */
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-    const initials = jhdGetArtistInitials(name);
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
-          ${escapeHTML(initials)}
-        </div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-/* Perfil público de artista */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  jhdApplyArtistGradientToHero(artist);
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "ARTISTA / MINISTERIO";
-
-  if (artistAvatar) {
-    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
-    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
-      ? jhdGetCategoryNamesFromSong(song)
-      : "Sin categoría";
-
-    const typeLabel = typeof jhdGetSongTypeLabel === "function"
-      ? jhdGetSongTypeLabel(song.song_type)
-      : "Sin tipo";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* Buscar inputs del formulario de artista SOLO en admin */
-function jhdFindArtistNameInput() {
-  if (!jhdIsAdminPage()) return null;
-
-  return document.querySelector(
-    "input#artistNameInput, input#newArtistName, input[name='artist_name'], input[placeholder*='Nombre del artista'], input[placeholder*='Nombre del ministerio']"
-  );
-}
-
-function jhdFindArtistSlugInput() {
-  if (!jhdIsAdminPage()) return null;
-
-  return document.querySelector(
-    "input#artistSlugInput, input#newArtistSlug, input[name='artist_slug'], input[placeholder*='Slug del artista'], input[placeholder*='slug']"
-  );
-}
-
-function jhdArtistSlugFromAdmin() {
-  const slugInput = jhdFindArtistSlugInput();
-
-  if (slugInput && slugInput.value.trim()) {
-    return slugInput.value.trim();
-  }
-
-  const nameInput = jhdFindArtistNameInput();
-
-  if (nameInput && nameInput.value.trim()) {
-    return jhdSlugifyText(nameInput.value.trim());
-  }
-
-  return "";
-}
-
-function jhdReadGradientAdminValues() {
-  return {
-    c1: document.getElementById("jhdArtistColor1").value,
-    c2: document.getElementById("jhdArtistColor2").value,
-    c3: document.getElementById("jhdArtistColor3").value,
-    s1: Number(document.getElementById("jhdArtistStop1").value),
-    s2: Number(document.getElementById("jhdArtistStop2").value),
-    s3: Number(document.getElementById("jhdArtistStop3").value),
-    angle: Number(document.getElementById("jhdArtistAngle").value)
-  };
-}
-
-function jhdUpdateGradientPreview() {
-  const preview = document.getElementById("jhdArtistGradientPreview");
-  if (!preview) return;
-
-  const data = jhdReadGradientAdminValues();
-
-  document.getElementById("jhdArtistStop1Label").innerText = `${data.s1}%`;
-  document.getElementById("jhdArtistStop2Label").innerText = `${data.s2}%`;
-  document.getElementById("jhdArtistStop3Label").innerText = `${data.s3}%`;
-  document.getElementById("jhdArtistAngleLabel").innerText = `${data.angle}°`;
-
-  preview.style.background = jhdGradientString(data);
-}
-
-function jhdLoadArtistGradientAdminBox() {
-  if (!jhdIsAdminPage()) {
-    jhdRemovePublicGradientEditor();
-    return;
-  }
-
-  const nameInput = jhdFindArtistNameInput();
-
-  if (!nameInput) return;
-
-  let box = document.getElementById("jhdArtistGradientBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdArtistGradientBox";
-    nameInput.parentNode.insertBefore(box, nameInput.nextSibling);
-  }
-
-  box.innerHTML = `
-    <div class="artist-gradient-admin-title">Colores del perfil</div>
-
-    <div class="artist-gradient-admin-help">
-      Elige colores y mueve los marcadores para decidir dónde empieza y termina cada tono del degradado.
-    </div>
-
-    <div class="artist-gradient-controls">
-      <div class="artist-gradient-control">
-        <label>Color 1</label>
-        <input type="color" id="jhdArtistColor1" value="#0b1324" oninput="jhdUpdateGradientPreview()">
-        <label>Posición <span id="jhdArtistStop1Label">0%</span></label>
-        <input type="range" id="jhdArtistStop1" min="0" max="100" value="0" oninput="jhdUpdateGradientPreview()">
-      </div>
-
-      <div class="artist-gradient-control">
-        <label>Color 2</label>
-        <input type="color" id="jhdArtistColor2" value="#1d3557" oninput="jhdUpdateGradientPreview()">
-        <label>Posición <span id="jhdArtistStop2Label">50%</span></label>
-        <input type="range" id="jhdArtistStop2" min="0" max="100" value="50" oninput="jhdUpdateGradientPreview()">
-      </div>
-
-      <div class="artist-gradient-control">
-        <label>Color 3</label>
-        <input type="color" id="jhdArtistColor3" value="#111827" oninput="jhdUpdateGradientPreview()">
-        <label>Posición <span id="jhdArtistStop3Label">100%</span></label>
-        <input type="range" id="jhdArtistStop3" min="0" max="100" value="100" oninput="jhdUpdateGradientPreview()">
-      </div>
-    </div>
-
-    <div class="artist-gradient-angle">
-      <label>Ángulo del degradado <span id="jhdArtistAngleLabel">135°</span></label>
-      <input type="range" id="jhdArtistAngle" min="0" max="360" value="135" oninput="jhdUpdateGradientPreview()">
-    </div>
-
-    <div class="artist-gradient-preview" id="jhdArtistGradientPreview"></div>
-
-    <button type="button" class="song-btn" style="margin-top:14px;" onclick="jhdSaveArtistGradientColors()">
-      Guardar colores del artista
-    </button>
-  `;
-
-  jhdUpdateGradientPreview();
-}
-
-async function jhdSaveArtistGradientColors() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const slug = jhdArtistSlugFromAdmin();
-
-  if (!slug) {
-    alert("Primero escribe el nombre o slug del artista.");
-    return;
-  }
-
-  const data = jhdReadGradientAdminValues();
-
-  const { error } = await client
-    .from("artists")
-    .update({
-      gradient_color_1: data.c1,
-      gradient_color_2: data.c2,
-      gradient_color_3: data.c3,
-      gradient_stop_1: data.s1,
-      gradient_stop_2: data.s2,
-      gradient_stop_3: data.s3,
-      gradient_angle: data.angle
-    })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("No se pudieron guardar los colores: " + error.message);
-    return;
-  }
-
-  alert("Colores guardados");
-}
-
-function jhdInitArtistGradientAdmin() {
-  jhdRemovePublicGradientEditor();
-
-  if (!jhdIsAdminPage()) return;
-
-  jhdLoadArtistGradientAdminBox();
-
-  setTimeout(jhdLoadArtistGradientAdminBox, 800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 1800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 3000);
-}
-
-document.addEventListener("DOMContentLoaded", jhdInitArtistGradientAdmin);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    jhdRemovePublicGradientEditor();
-    jhdInitArtistGradientAdmin();
-    loadPublicArtists();
-    loadArtistProfile();
-  }, 800);
-});
-
-window.jhdUpdateGradientPreview = jhdUpdateGradientPreview;
-window.jhdSaveArtistGradientColors = jhdSaveArtistGradientColors;
-/* =========================================================
-   FIX FINAL - EDITOR DE DEGRADADO SOLO EN ADMIN
-========================================================= */
-
-function jhdIsAdminPage() {
-  return window.location.pathname.includes("admin.html") ||
-    !!document.getElementById("adminPanel");
-}
-
-function jhdMarkAdminBody() {
-  if (jhdIsAdminPage()) {
-    document.body.classList.add("admin-page");
-  }
-}
-
-function jhdRemovePublicGradientEditor() {
-  if (!jhdIsAdminPage()) {
-    const box = document.getElementById("jhdArtistGradientBox");
-    if (box) box.remove();
-  }
-}
-
-function jhdGetArtistInitials(name) {
-  const clean = String(name || "").trim().replace(/\s+/g, " ");
-
-  if (!clean) return "?";
-
-  const words = clean.split(" ");
-
-  if (words.length === 1) {
-    return words[0].substring(0, 2).toUpperCase();
-  }
-
-  return words
-    .slice(0, 3)
-    .map(word => word.charAt(0))
-    .join("")
-    .toUpperCase();
-}
-
-function jhdSafeColor(value, fallback) {
-  const color = String(value || "").trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
-    return color;
-  }
-
-  return fallback;
-}
-
-function jhdClampNumber(value, fallback, min, max) {
-  const number = Number(value);
-
-  if (Number.isFinite(number)) {
-    return Math.min(max, Math.max(min, number));
-  }
-
-  return fallback;
-}
-
-function jhdArtistGradientData(artist) {
-  return {
-    c1: jhdSafeColor(artist.gradient_color_1 || artist.color_start, "#0b1324"),
-    c2: jhdSafeColor(artist.gradient_color_2, "#1d3557"),
-    c3: jhdSafeColor(artist.gradient_color_3 || artist.color_end, "#111827"),
-    s1: jhdClampNumber(artist.gradient_stop_1, 0, 0, 100),
-    s2: jhdClampNumber(artist.gradient_stop_2, 50, 0, 100),
-    s3: jhdClampNumber(artist.gradient_stop_3, 100, 0, 100),
-    angle: jhdClampNumber(artist.gradient_angle, 135, 0, 360)
-  };
-}
-
-function jhdGradientString(data) {
-  return `linear-gradient(${data.angle}deg, ${data.c1} ${data.s1}%, ${data.c2} ${data.s2}%, ${data.c3} ${data.s3}%)`;
-}
-
-function jhdApplyArtistGradientToHero(artist) {
-  const hero = document.querySelector(".artist-profile-hero");
-
-  if (!hero) return;
-
-  const data = jhdArtistGradientData(artist);
-
-  hero.style.setProperty("--artist-c1", data.c1);
-  hero.style.setProperty("--artist-c2", data.c2);
-  hero.style.setProperty("--artist-c3", data.c3);
-  hero.style.setProperty("--artist-s1", `${data.s1}%`);
-  hero.style.setProperty("--artist-s2", `${data.s2}%`);
-  hero.style.setProperty("--artist-s3", `${data.s3}%`);
-  hero.style.setProperty("--artist-angle", `${data.angle}deg`);
-}
-
-function jhdArtistInlineVars(artist) {
-  const data = jhdArtistGradientData(artist);
-
-  return `
-    --artist-c1:${data.c1};
-    --artist-c2:${data.c2};
-    --artist-c3:${data.c3};
-    --artist-s1:${data.s1}%;
-    --artist-s2:${data.s2}%;
-    --artist-s3:${data.s3}%;
-    --artist-angle:${data.angle}deg;
-  `;
-}
-
-/* Encuentra la tarjeta real de editar/agregar artista */
-function jhdFindArtistFormCard() {
-  if (!jhdIsAdminPage()) return null;
-
-  const headings = Array.from(document.querySelectorAll("h2, h3"));
-
-  const artistHeading = headings.find(h => {
-    const text = h.innerText.toLowerCase();
-    return text.includes("agregar artista") || text.includes("editar artista");
-  });
-
-  if (!artistHeading) return null;
-
-  return artistHeading.closest(".song-card") || artistHeading.parentElement;
-}
-
-function jhdFindArtistNameInput() {
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return null;
-
-  const inputs = Array.from(card.querySelectorAll("input"));
-
-  return inputs.find(input => {
-    const ph = String(input.placeholder || "").toLowerCase();
-    const type = String(input.type || "").toLowerCase();
-
-    return type !== "color" &&
-      !ph.includes("url") &&
-      !ph.includes("foto") &&
-      !ph.includes("portada") &&
-      !ph.includes("imagen");
-  }) || null;
-}
-
-function jhdFindArtistSlugInput() {
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return null;
-
-  return card.querySelector("input[name='slug'], input#artistSlugInput, input#newArtistSlug");
-}
-
-function jhdArtistSlugFromAdmin() {
-  const slugInput = jhdFindArtistSlugInput();
-
-  if (slugInput && slugInput.value.trim()) {
-    return slugInput.value.trim();
-  }
-
-  const nameInput = jhdFindArtistNameInput();
-
-  if (nameInput && nameInput.value.trim()) {
-    return jhdSlugifyText(nameInput.value.trim());
-  }
-
-  return "";
-}
-
-function jhdReadGradientAdminValues() {
-  return {
-    c1: document.getElementById("jhdArtistColor1").value,
-    c2: document.getElementById("jhdArtistColor2").value,
-    c3: document.getElementById("jhdArtistColor3").value,
-    s1: Number(document.getElementById("jhdArtistStop1").value),
-    s2: Number(document.getElementById("jhdArtistStop2").value),
-    s3: Number(document.getElementById("jhdArtistStop3").value),
-    angle: Number(document.getElementById("jhdArtistAngle").value)
-  };
-}
-
-function jhdUpdateGradientPreview() {
-  const preview = document.getElementById("jhdArtistGradientPreview");
-
-  if (!preview) return;
-
-  const data = jhdReadGradientAdminValues();
-
-  document.getElementById("jhdArtistStop1Label").innerText = `${data.s1}%`;
-  document.getElementById("jhdArtistStop2Label").innerText = `${data.s2}%`;
-  document.getElementById("jhdArtistStop3Label").innerText = `${data.s3}%`;
-  document.getElementById("jhdArtistAngleLabel").innerText = `${data.angle}°`;
-
-  preview.style.background = jhdGradientString(data);
-}
-
-function jhdLoadArtistGradientAdminBox() {
-  if (!jhdIsAdminPage()) {
-    jhdRemovePublicGradientEditor();
-    return;
-  }
-
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return;
-
-  let box = document.getElementById("jhdArtistGradientBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdArtistGradientBox";
-
-    const buttons = Array.from(card.querySelectorAll("button"));
-    const firstButton = buttons[0];
-
-    if (firstButton) {
-      card.insertBefore(box, firstButton);
-    } else {
-      card.appendChild(box);
-    }
-  }
-
-  box.innerHTML = `
-    <div class="artist-gradient-admin-title">Colores del perfil</div>
-
-    <div class="artist-gradient-admin-help">
-      Elige colores y mueve los marcadores para decidir cómo se mezclan en el perfil del artista.
-    </div>
-
-    <div class="artist-gradient-controls">
-      <div class="artist-gradient-control">
-        <label>Color 1</label>
-        <input type="color" id="jhdArtistColor1" value="#0b1324" oninput="jhdUpdateGradientPreview()">
-        <label>Marcador <span id="jhdArtistStop1Label">0%</span></label>
-        <input type="range" id="jhdArtistStop1" min="0" max="100" value="0" oninput="jhdUpdateGradientPreview()">
-      </div>
-
-      <div class="artist-gradient-control">
-        <label>Color 2</label>
-        <input type="color" id="jhdArtistColor2" value="#1d3557" oninput="jhdUpdateGradientPreview()">
-        <label>Marcador <span id="jhdArtistStop2Label">50%</span></label>
-        <input type="range" id="jhdArtistStop2" min="0" max="100" value="50" oninput="jhdUpdateGradientPreview()">
-      </div>
-
-      <div class="artist-gradient-control">
-        <label>Color 3</label>
-        <input type="color" id="jhdArtistColor3" value="#111827" oninput="jhdUpdateGradientPreview()">
-        <label>Marcador <span id="jhdArtistStop3Label">100%</span></label>
-        <input type="range" id="jhdArtistStop3" min="0" max="100" value="100" oninput="jhdUpdateGradientPreview()">
-      </div>
-    </div>
-
-    <div class="artist-gradient-angle">
-      <label>Ángulo del degradado <span id="jhdArtistAngleLabel">135°</span></label>
-      <input type="range" id="jhdArtistAngle" min="0" max="360" value="135" oninput="jhdUpdateGradientPreview()">
-    </div>
-
-    <div class="artist-gradient-preview" id="jhdArtistGradientPreview"></div>
-
-    <button type="button" class="song-btn artist-gradient-save-btn" onclick="jhdSaveArtistGradientColors()">
-      Guardar colores del artista
-    </button>
-  `;
-
-  jhdUpdateGradientPreview();
-}
-
-async function jhdSaveArtistGradientColors() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const slug = jhdArtistSlugFromAdmin();
-
-  if (!slug) {
-    alert("Primero escribe el nombre del artista.");
-    return;
-  }
-
-  const data = jhdReadGradientAdminValues();
-
-  const { error } = await client
-    .from("artists")
-    .update({
-      gradient_color_1: data.c1,
-      gradient_color_2: data.c2,
-      gradient_color_3: data.c3,
-      gradient_stop_1: data.s1,
-      gradient_stop_2: data.s2,
-      gradient_stop_3: data.s3,
-      gradient_angle: data.angle,
-      color_start: data.c1,
-      color_end: data.c3
-    })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("No se pudieron guardar los colores: " + error.message);
-    return;
-  }
-
-  alert("Colores guardados");
-}
-
-/* Página pública artistas */
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
-          ${escapeHTML(jhdGetArtistInitials(name))}
-        </div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-/* Perfil público artista */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  jhdApplyArtistGradientToHero(artist);
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "ARTISTA / MINISTERIO";
-
-  if (artistAvatar) {
-    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
-    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
-      ? jhdGetCategoryNamesFromSong(song)
-      : "Sin categoría";
-
-    const typeLabel = typeof jhdGetSongTypeLabel === "function"
-      ? jhdGetSongTypeLabel(song.song_type)
-      : "Sin tipo";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-function jhdInitArtistGradientAdmin() {
-  jhdMarkAdminBody();
-  jhdRemovePublicGradientEditor();
-
-  if (!jhdIsAdminPage()) return;
-
-  jhdLoadArtistGradientAdminBox();
-
-  setTimeout(jhdLoadArtistGradientAdminBox, 800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 1800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 3000);
-}
-
-document.addEventListener("DOMContentLoaded", jhdInitArtistGradientAdmin);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    jhdMarkAdminBody();
-    jhdRemovePublicGradientEditor();
-    jhdInitArtistGradientAdmin();
-    loadPublicArtists();
-    loadArtistProfile();
-  }, 900);
-});
-
-window.jhdUpdateGradientPreview = jhdUpdateGradientPreview;
-window.jhdSaveArtistGradientColors = jhdSaveArtistGradientColors;
-/* =========================================================
-   DEGRADADO LIBRE TIPO ILLUSTRATOR
-   Varios puntos de color + posición + ángulo
-========================================================= */
-
-let jhdGradientStops = [
-  { color: "#0b1324", position: 0 },
-  { color: "#1d3557", position: 50 },
-  { color: "#111827", position: 100 }
-];
-
-let jhdGradientAngle = 135;
-
-function jhdIsAdminPage() {
-  return window.location.pathname.includes("admin.html") ||
-    !!document.getElementById("adminPanel");
-}
-
-function jhdMarkAdminBody() {
-  if (jhdIsAdminPage()) {
-    document.body.classList.add("admin-page");
-  }
-}
-
-function jhdSafeHex(value, fallback = "#111827") {
-  const hex = String(value || "").trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-    return hex.toLowerCase();
-  }
-
-  return fallback;
-}
-
-function jhdHexToRgb(hex) {
-  const clean = jhdSafeHex(hex).replace("#", "");
-
-  const r = parseInt(clean.substring(0, 2), 16);
-  const g = parseInt(clean.substring(2, 4), 16);
-  const b = parseInt(clean.substring(4, 6), 16);
-
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
-function jhdClampPosition(value) {
-  const number = Number(value);
-
-  if (!Number.isFinite(number)) return 0;
-
-  return Math.min(100, Math.max(0, number));
-}
-
-function jhdNormalizeStops(stops) {
-  if (!Array.isArray(stops) || stops.length === 0) {
-    return [
-      { color: "#0b1324", position: 0 },
-      { color: "#1d3557", position: 50 },
-      { color: "#111827", position: 100 }
-    ];
-  }
-
-  return stops
-    .map(stop => ({
-      color: jhdSafeHex(stop.color, "#111827"),
-      position: jhdClampPosition(stop.position)
-    }))
-    .sort((a, b) => a.position - b.position);
-}
-
-function jhdBuildGradientString(stops = jhdGradientStops, angle = jhdGradientAngle) {
-  const safeStops = jhdNormalizeStops(stops);
-
-  const parts = safeStops.map(stop => `${stop.color} ${stop.position}%`);
-
-  return `linear-gradient(${Number(angle) || 135}deg, ${parts.join(", ")})`;
-}
-
-function jhdApplyGradientToHero(artist) {
-  const hero = document.querySelector(".artist-profile-hero");
-
-  if (!hero) return;
-
-  const stops = jhdNormalizeStops(artist.gradient_stops);
-  const angle = Number(artist.gradient_angle || 135);
-
-  hero.style.setProperty("--artist-gradient", jhdBuildGradientString(stops, angle));
-}
-
-function jhdArtistInlineVars(artist) {
-  const stops = jhdNormalizeStops(artist.gradient_stops);
-  const angle = Number(artist.gradient_angle || 135);
-
-  return `--artist-gradient:${jhdBuildGradientString(stops, angle)};`;
-}
-
-function jhdGetArtistInitials(name) {
-  const clean = String(name || "").trim().replace(/\s+/g, " ");
-
-  if (!clean) return "?";
-
-  const words = clean.split(" ");
-
-  if (words.length === 1) {
-    return words[0].substring(0, 2).toUpperCase();
-  }
-
-  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
-}
-
-/* PUBLICO: lista de artistas */
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
-          ${escapeHTML(jhdGetArtistInitials(name))}
-        </div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-/* PUBLICO: perfil de artista */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  jhdApplyGradientToHero(artist);
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "ARTISTA / MINISTERIO";
-
-  if (artistAvatar) {
-    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
-    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
-      ? jhdGetCategoryNamesFromSong(song)
-      : "Sin categoría";
-
-    const typeLabel = typeof jhdGetSongTypeLabel === "function"
-      ? jhdGetSongTypeLabel(song.song_type)
-      : "Sin tipo";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* ADMIN: localizar tarjeta de artista */
-function jhdFindArtistFormCard() {
-  if (!jhdIsAdminPage()) return null;
-
-  const headings = Array.from(document.querySelectorAll("h2, h3"));
-
-  const artistHeading = headings.find(h => {
-    const text = h.innerText.toLowerCase();
-    return text.includes("agregar artista") || text.includes("editar artista");
-  });
-
-  if (!artistHeading) return null;
-
-  return artistHeading.closest(".song-card") || artistHeading.parentElement;
-}
-
-function jhdFindArtistNameInput() {
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return null;
-
-  const inputs = Array.from(card.querySelectorAll("input"));
-
-  return inputs.find(input => {
-    const ph = String(input.placeholder || "").toLowerCase();
-    const type = String(input.type || "").toLowerCase();
-
-    return type !== "color" &&
-      !ph.includes("url") &&
-      !ph.includes("foto") &&
-      !ph.includes("portada") &&
-      !ph.includes("imagen");
-  }) || null;
-}
-
-function jhdArtistSlugFromAdmin() {
-  const nameInput = jhdFindArtistNameInput();
-
-  if (nameInput && nameInput.value.trim()) {
-    return jhdSlugifyText(nameInput.value.trim());
-  }
-
-  return "";
-}
-
-/* ADMIN: editor libre */
-function jhdRenderGradientStopRows() {
-  const list = document.getElementById("jhdGradientStopList");
-
-  if (!list) return;
-
-  jhdGradientStops = jhdNormalizeStops(jhdGradientStops);
-
-  list.innerHTML = "";
-
-  jhdGradientStops.forEach((stop, index) => {
-    list.innerHTML += `
-      <div class="gradient-stop-row">
-        <input type="color" value="${escapeHTML(stop.color)}" oninput="jhdUpdateStopColor(${index}, this.value)">
-
-        <input type="text" value="${escapeHTML(stop.color)}" oninput="jhdUpdateStopColor(${index}, this.value)" placeholder="#FACC15">
-
-        <span class="gradient-stop-position-label" id="jhdStopLabel${index}">
-          ${stop.position}%
-        </span>
-
-        <input type="range" min="0" max="100" value="${stop.position}" oninput="jhdUpdateStopPosition(${index}, this.value)">
-
-        <button type="button" class="gradient-stop-delete" onclick="jhdDeleteGradientStop(${index})">
-          ×
-        </button>
-
-        <div class="gradient-stop-rgb">
-          ${jhdHexToRgb(stop.color)}
-        </div>
-      </div>
-    `;
-  });
-
-  jhdUpdateGradientPreview();
-}
-
-function jhdUpdateGradientPreview() {
-  const preview = document.getElementById("jhdArtistGradientPreview");
-  const angleLabel = document.getElementById("jhdArtistAngleLabel");
-
-  if (!preview) return;
-
-  if (angleLabel) {
-    angleLabel.innerText = `${jhdGradientAngle}°`;
-  }
-
-  preview.style.background = jhdBuildGradientString(jhdGradientStops, jhdGradientAngle);
-}
-
-function jhdUpdateStopColor(index, value) {
-  jhdGradientStops[index].color = jhdSafeHex(value, jhdGradientStops[index].color);
-  jhdRenderGradientStopRows();
-}
-
-function jhdUpdateStopPosition(index, value) {
-  jhdGradientStops[index].position = jhdClampPosition(value);
-  jhdRenderGradientStopRows();
-}
-
-function jhdAddGradientStop() {
-  jhdGradientStops.push({
-    color: "#facc15",
-    position: 50
-  });
-
-  jhdRenderGradientStopRows();
-}
-
-function jhdDeleteGradientStop(index) {
-  if (jhdGradientStops.length <= 2) {
-    alert("Deja al menos 2 colores para el degradado.");
-    return;
-  }
-
-  jhdGradientStops.splice(index, 1);
-  jhdRenderGradientStopRows();
-}
-
-function jhdUpdateGradientAngle(value) {
-  jhdGradientAngle = Math.min(360, Math.max(0, Number(value) || 0));
-  jhdUpdateGradientPreview();
-}
-
-function jhdLoadArtistGradientAdminBox() {
-  if (!jhdIsAdminPage()) return;
-
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return;
-
-  let box = document.getElementById("jhdArtistGradientBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdArtistGradientBox";
-
-    const buttons = Array.from(card.querySelectorAll("button"));
-    const firstButton = buttons[0];
-
-    if (firstButton) {
-      card.insertBefore(box, firstButton);
-    } else {
-      card.appendChild(box);
-    }
-  }
-
-  box.innerHTML = `
-    <div class="artist-gradient-admin-title">Degradado del artista</div>
-
-    <div class="artist-gradient-admin-help">
-      Agrega los puntos de color que quieras. Cada punto tiene color exacto, RGB equivalente y posición dentro del degradado.
-    </div>
-
-    <div class="gradient-free-angle">
-      <label>Ángulo <span id="jhdArtistAngleLabel">${jhdGradientAngle}°</span></label>
-      <input type="range" min="0" max="360" value="${jhdGradientAngle}" oninput="jhdUpdateGradientAngle(this.value)">
-    </div>
-
-    <div class="artist-gradient-preview" id="jhdArtistGradientPreview"></div>
-
-    <div class="gradient-free-toolbar">
-      <button type="button" onclick="jhdAddGradientStop()">+ Agregar punto</button>
-      <button type="button" onclick="jhdSaveArtistFreeGradient()">Guardar degradado</button>
-    </div>
-
-    <div class="gradient-stop-list" id="jhdGradientStopList"></div>
-  `;
-
-  jhdRenderGradientStopRows();
-}
-
-async function jhdSaveArtistFreeGradient() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const slug = jhdArtistSlugFromAdmin();
-
-  if (!slug) {
-    alert("Primero escribe el nombre del artista.");
-    return;
-  }
-
-  const safeStops = jhdNormalizeStops(jhdGradientStops);
-
-  const { error } = await client
-    .from("artists")
-    .update({
-      gradient_stops: safeStops,
-      gradient_angle: jhdGradientAngle
-    })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("No se pudo guardar el degradado: " + error.message);
-    return;
-  }
-
-  alert("Degradado guardado");
-}
-
-function jhdInitFreeGradientEditor() {
-  jhdMarkAdminBody();
-
-  if (!jhdIsAdminPage()) return;
-
-  jhdLoadArtistGradientAdminBox();
-
-  setTimeout(jhdLoadArtistGradientAdminBox, 800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 1800);
-  setTimeout(jhdLoadArtistGradientAdminBox, 3000);
-}
-
-document.addEventListener("DOMContentLoaded", jhdInitFreeGradientEditor);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    jhdInitFreeGradientEditor();
-    loadPublicArtists();
-    loadArtistProfile();
-  }, 900);
-});
-
-window.jhdUpdateStopColor = jhdUpdateStopColor;
-window.jhdUpdateStopPosition = jhdUpdateStopPosition;
-window.jhdAddGradientStop = jhdAddGradientStop;
-window.jhdDeleteGradientStop = jhdDeleteGradientStop;
-window.jhdUpdateGradientAngle = jhdUpdateGradientAngle;
-window.jhdSaveArtistFreeGradient = jhdSaveArtistFreeGradient;
-/* =========================================================
-   PORTADA POR PUNTOS - ARTISTAS
-========================================================= */
-
-let jhdPointGradientPoints = [
-  { x: 22, y: 32, color: "#facc15", size: 45, opacity: 0.75 },
-  { x: 78, y: 28, color: "#1d4ed8", size: 55, opacity: 0.55 }
-];
-
-let jhdSelectedPointIndex = 0;
-
-function jhdIsAdminPage() {
-  return window.location.pathname.includes("admin.html") ||
-    !!document.getElementById("adminPanel");
-}
-
-function jhdMarkAdminBody() {
-  if (jhdIsAdminPage()) {
-    document.body.classList.add("admin-page");
-  }
-}
-
-function jhdSafeHex(value, fallback = "#facc15") {
-  const hex = String(value || "").trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-    return hex.toLowerCase();
-  }
-
-  return fallback;
-}
-
-function jhdHexToRgbParts(hex) {
-  const clean = jhdSafeHex(hex).replace("#", "");
-
-  return {
-    r: parseInt(clean.substring(0, 2), 16),
-    g: parseInt(clean.substring(2, 4), 16),
-    b: parseInt(clean.substring(4, 6), 16)
-  };
-}
-
-function jhdHexToRgb(hex) {
-  const rgb = jhdHexToRgbParts(hex);
-  return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-}
-
-function jhdHexToRgba(hex, opacity) {
-  const rgb = jhdHexToRgbParts(hex);
-  const safeOpacity = Math.min(1, Math.max(0, Number(opacity) || 0.7));
-
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeOpacity})`;
-}
-
-function jhdClamp(value, fallback, min, max) {
-  const number = Number(value);
-
-  if (!Number.isFinite(number)) return fallback;
-
-  return Math.min(max, Math.max(min, number));
-}
-
-function jhdNormalizePointGradient(points) {
+/* ------------------------------
+   MESH GRADIENT
+------------------------------ */
+
+function normalizeMeshPoints(points) {
   if (!Array.isArray(points) || points.length === 0) {
     return [
-      { x: 22, y: 32, color: "#facc15", size: 45, opacity: 0.75 },
-      { x: 78, y: 28, color: "#1d4ed8", size: 55, opacity: 0.55 }
+      { x: 18, y: 35, color: "#facc15", size: 90, opacity: 0.85 },
+      { x: 78, y: 30, color: "#38bdf8", size: 95, opacity: 0.70 },
+      { x: 45, y: 78, color: "#a855f7", size: 90, opacity: 0.65 }
     ];
   }
 
   return points.map(point => ({
-    x: jhdClamp(point.x, 50, 0, 100),
-    y: jhdClamp(point.y, 50, 0, 100),
-    color: jhdSafeHex(point.color, "#facc15"),
-    size: jhdClamp(point.size, 45, 10, 100),
-    opacity: jhdClamp(point.opacity, 0.75, 0.05, 1)
+    x: clamp(point.x, 50, 0, 100),
+    y: clamp(point.y, 50, 0, 100),
+    color: safeHex(point.color, "#facc15"),
+    size: clamp(point.size, 90, 20, 180),
+    opacity: clamp(point.opacity, 0.75, 0.05, 1)
   }));
 }
 
-function jhdBuildPointGradient(points) {
-  const safePoints = jhdNormalizePointGradient(points);
+function buildMeshGradient(points) {
+  const safePoints = normalizeMeshPoints(points);
 
   const layers = safePoints.map(point => {
-    const strong = jhdHexToRgba(point.color, point.opacity);
-    const soft = jhdHexToRgba(point.color, point.opacity * 0.35);
+    const strong = hexToRgba(point.color, point.opacity);
+    const mid = hexToRgba(point.color, point.opacity * 0.55);
+    const soft = hexToRgba(point.color, point.opacity * 0.22);
 
-    return `radial-gradient(circle at ${point.x}% ${point.y}%, ${strong} 0%, ${soft} 18%, transparent ${point.size}%)`;
+    return `radial-gradient(circle at ${point.x}% ${point.y}%, ${strong} 0%, ${mid} 32%, ${soft} 56%, transparent ${point.size}%)`;
   });
 
   layers.push("linear-gradient(135deg, #0b1020, #111827)");
@@ -5978,791 +220,24 @@ function jhdBuildPointGradient(points) {
   return layers.join(", ");
 }
 
-function jhdGetArtistInitials(name) {
-  const clean = String(name || "").trim().replace(/\s+/g, " ");
-
-  if (!clean) return "?";
-
-  const words = clean.split(" ");
-
-  if (words.length === 1) {
-    return words[0].substring(0, 2).toUpperCase();
-  }
-
-  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
+function getArtistGradient(artist) {
+  return buildMeshGradient(artist.gradient_points);
 }
 
-function jhdGetArtistPointGradient(artist) {
-  const points = jhdNormalizePointGradient(artist.gradient_points);
-  return jhdBuildPointGradient(points);
+function artistInlineGradient(artist) {
+  return `--artist-mesh-gradient:${getArtistGradient(artist)};`;
 }
 
-function jhdApplyArtistGradientToHero(artist) {
+function applyArtistGradientToHero(artist) {
   const hero = document.querySelector(".artist-profile-hero");
 
   if (!hero) return;
 
-  hero.style.setProperty("--artist-point-gradient", jhdGetArtistPointGradient(artist));
+  hero.style.setProperty("--artist-mesh-gradient", getArtistGradient(artist));
 }
 
-function jhdArtistInlineVars(artist) {
-  return `--artist-point-gradient:${jhdGetArtistPointGradient(artist)};`;
-}
-
-/* Página pública artistas */
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
-          ${escapeHTML(jhdGetArtistInitials(name))}
-        </div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-/* Perfil público artista */
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  jhdApplyArtistGradientToHero(artist);
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "ARTISTA / MINISTERIO";
-
-  if (artistAvatar) {
-    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
-    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
-      ? jhdGetCategoryNamesFromSong(song)
-      : "Sin categoría";
-
-    const typeLabel = typeof jhdGetSongTypeLabel === "function"
-      ? jhdGetSongTypeLabel(song.song_type)
-      : "Sin tipo";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* Admin */
-function jhdFindArtistFormCard() {
-  if (!jhdIsAdminPage()) return null;
-
-  const headings = Array.from(document.querySelectorAll("h2, h3"));
-
-  const artistHeading = headings.find(h => {
-    const text = h.innerText.toLowerCase();
-    return text.includes("agregar artista") || text.includes("editar artista");
-  });
-
-  if (!artistHeading) return null;
-
-  return artistHeading.closest(".song-card") || artistHeading.parentElement;
-}
-
-function jhdFindArtistNameInput() {
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return null;
-
-  const inputs = Array.from(card.querySelectorAll("input"));
-
-  return inputs.find(input => {
-    const ph = String(input.placeholder || "").toLowerCase();
-    const type = String(input.type || "").toLowerCase();
-
-    return type !== "color" &&
-      !ph.includes("url") &&
-      !ph.includes("foto") &&
-      !ph.includes("portada") &&
-      !ph.includes("imagen");
-  }) || null;
-}
-
-function jhdArtistSlugFromAdmin() {
-  const nameInput = jhdFindArtistNameInput();
-
-  if (nameInput && nameInput.value.trim()) {
-    return jhdSlugifyText(nameInput.value.trim());
-  }
-
-  return "";
-}
-
-function jhdRenderPointCanvas() {
-  const canvas = document.getElementById("jhdPointGradientCanvas");
-
-  if (!canvas) return;
-
-  jhdPointGradientPoints = jhdNormalizePointGradient(jhdPointGradientPoints);
-
-  canvas.style.background = jhdBuildPointGradient(jhdPointGradientPoints);
-
-  const empty = jhdPointGradientPoints.length === 0
-    ? `<div class="point-gradient-empty">Toca aquí para agregar un punto</div>`
-    : "";
-
-  const dots = jhdPointGradientPoints.map((point, index) => `
-    <button
-      type="button"
-      class="point-gradient-dot ${index === jhdSelectedPointIndex ? "active" : ""}"
-      style="left:${point.x}%; top:${point.y}%; background:${point.color};"
-      onclick="event.stopPropagation(); jhdSelectGradientPoint(${index});"
-      aria-label="Punto de color ${index + 1}">
-    </button>
-  `).join("");
-
-  canvas.innerHTML = empty + dots;
-
-  jhdUpdatePointControls();
-}
-
-function jhdUpdatePointControls() {
-  const point = jhdPointGradientPoints[jhdSelectedPointIndex];
-
-  const panel = document.getElementById("jhdPointControlPanel");
-
-  if (!panel) return;
-
-  if (!point) {
-    panel.innerHTML = `
-      <div class="point-gradient-panel">
-        Toca el cuadro para agregar un punto.
-      </div>
-    `;
-    return;
-  }
-
-  panel.innerHTML = `
-    <div class="point-gradient-panel">
-      <label>Color del punto</label>
-      <input type="color" id="jhdPointColorPicker" value="${escapeHTML(point.color)}" oninput="jhdUpdateSelectedPointColor(this.value)">
-      <input type="text" id="jhdPointHexInput" value="${escapeHTML(point.color)}" oninput="jhdUpdateSelectedPointColor(this.value)">
-      <p style="color:var(--secondary); margin-top:8px;">${jhdHexToRgb(point.color)}</p>
-    </div>
-
-    <div class="point-gradient-panel">
-      <label>Tamaño / expansión <span id="jhdPointSizeLabel">${point.size}%</span></label>
-      <input type="range" min="10" max="100" value="${point.size}" oninput="jhdUpdateSelectedPointSize(this.value)">
-    </div>
-
-    <div class="point-gradient-panel">
-      <label>Intensidad <span id="jhdPointOpacityLabel">${Math.round(point.opacity * 100)}%</span></label>
-      <input type="range" min="5" max="100" value="${Math.round(point.opacity * 100)}" oninput="jhdUpdateSelectedPointOpacity(this.value)">
-    </div>
-
-    <div class="point-gradient-actions">
-      <button type="button" onclick="jhdSavePointGradient()">Guardar portada</button>
-      <button type="button" class="danger" onclick="jhdDeleteSelectedPoint()">Eliminar punto</button>
-      <button type="button" onclick="jhdResetPointGradient()">Reiniciar</button>
-    </div>
-  `;
-}
-
-function jhdAddPointFromCanvas(event) {
-  const canvas = document.getElementById("jhdPointGradientCanvas");
-
-  if (!canvas) return;
-
-  const rect = canvas.getBoundingClientRect();
-
-  const clientX = event.clientX || (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
-  const clientY = event.clientY || (event.touches && event.touches[0] ? event.touches[0].clientY : 0);
-
-  const x = Math.round(((clientX - rect.left) / rect.width) * 100);
-  const y = Math.round(((clientY - rect.top) / rect.height) * 100);
-
-  jhdPointGradientPoints.push({
-    x: jhdClamp(x, 50, 0, 100),
-    y: jhdClamp(y, 50, 0, 100),
-    color: "#facc15",
-    size: 45,
-    opacity: 0.75
-  });
-
-  jhdSelectedPointIndex = jhdPointGradientPoints.length - 1;
-
-  jhdRenderPointCanvas();
-}
-
-function jhdSelectGradientPoint(index) {
-  jhdSelectedPointIndex = index;
-  jhdRenderPointCanvas();
-}
-
-function jhdUpdateSelectedPointColor(value) {
-  const point = jhdPointGradientPoints[jhdSelectedPointIndex];
-
-  if (!point) return;
-
-  point.color = jhdSafeHex(value, point.color);
-  jhdRenderPointCanvas();
-}
-
-function jhdUpdateSelectedPointSize(value) {
-  const point = jhdPointGradientPoints[jhdSelectedPointIndex];
-
-  if (!point) return;
-
-  point.size = jhdClamp(value, 45, 10, 100);
-  jhdRenderPointCanvas();
-}
-
-function jhdUpdateSelectedPointOpacity(value) {
-  const point = jhdPointGradientPoints[jhdSelectedPointIndex];
-
-  if (!point) return;
-
-  point.opacity = jhdClamp(Number(value) / 100, 0.75, 0.05, 1);
-  jhdRenderPointCanvas();
-}
-
-function jhdDeleteSelectedPoint() {
-  if (jhdPointGradientPoints.length <= 1) {
-    alert("Deja al menos un punto de color.");
-    return;
-  }
-
-  jhdPointGradientPoints.splice(jhdSelectedPointIndex, 1);
-  jhdSelectedPointIndex = 0;
-  jhdRenderPointCanvas();
-}
-
-function jhdResetPointGradient() {
-  jhdPointGradientPoints = [
-    { x: 22, y: 32, color: "#facc15", size: 45, opacity: 0.75 },
-    { x: 78, y: 28, color: "#1d4ed8", size: 55, opacity: 0.55 }
-  ];
-
-  jhdSelectedPointIndex = 0;
-  jhdRenderPointCanvas();
-}
-
-async function jhdSavePointGradient() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const slug = jhdArtistSlugFromAdmin();
-
-  if (!slug) {
-    alert("Primero escribe el nombre del artista.");
-    return;
-  }
-
-  const safePoints = jhdNormalizePointGradient(jhdPointGradientPoints);
-
-  const { error } = await client
-    .from("artists")
-    .update({
-      gradient_points: safePoints,
-      avatar_url: "",
-      cover_url: ""
-    })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("No se pudo guardar la portada: " + error.message);
-    return;
-  }
-
-  alert("Portada guardada");
-}
-
-function jhdLoadPointGradientEditor() {
-  if (!jhdIsAdminPage()) return;
-
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return;
-
-  let box = document.getElementById("jhdArtistGradientBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdArtistGradientBox";
-
-    const buttons = Array.from(card.querySelectorAll("button"));
-    const firstButton = buttons[0];
-
-    if (firstButton) {
-      card.insertBefore(box, firstButton);
-    } else {
-      card.appendChild(box);
-    }
-  }
-
-  box.innerHTML = `
-    <div class="artist-gradient-admin-title">Portada por puntos</div>
-
-    <div class="artist-gradient-admin-help">
-      Toca dentro del cuadro para agregar un punto. Selecciona un punto para cambiar color, tamaño e intensidad.
-    </div>
-
-    <div class="point-gradient-canvas" id="jhdPointGradientCanvas" onclick="jhdAddPointFromCanvas(event)"></div>
-
-    <div class="point-gradient-controls" id="jhdPointControlPanel"></div>
-  `;
-
-  jhdRenderPointCanvas();
-}
-
-function jhdInitPointGradientEditor() {
-  jhdMarkAdminBody();
-
-  if (!jhdIsAdminPage()) return;
-
-  jhdLoadPointGradientEditor();
-
-  setTimeout(jhdLoadPointGradientEditor, 800);
-  setTimeout(jhdLoadPointGradientEditor, 1800);
-  setTimeout(jhdLoadPointGradientEditor, 3000);
-}
-
-document.addEventListener("DOMContentLoaded", jhdInitPointGradientEditor);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    jhdInitPointGradientEditor();
-    loadPublicArtists();
-    loadArtistProfile();
-  }, 900);
-});
-
-window.jhdAddPointFromCanvas = jhdAddPointFromCanvas;
-window.jhdSelectGradientPoint = jhdSelectGradientPoint;
-window.jhdUpdateSelectedPointColor = jhdUpdateSelectedPointColor;
-window.jhdUpdateSelectedPointSize = jhdUpdateSelectedPointSize;
-window.jhdUpdateSelectedPointOpacity = jhdUpdateSelectedPointOpacity;
-window.jhdDeleteSelectedPoint = jhdDeleteSelectedPoint;
-window.jhdResetPointGradient = jhdResetPointGradient;
-window.jhdSavePointGradient = jhdSavePointGradient;
-/* =========================================================
-   MESH GRADIENT - PORTADA DE ARTISTA
-   Tocar portada, mover puntos, color, tamaño e intensidad
-========================================================= */
-
-let jhdMeshPoints = [
-  { x: 18, y: 35, color: "#facc15", size: 75, opacity: 0.85 },
-  { x: 78, y: 30, color: "#38bdf8", size: 82, opacity: 0.70 },
-  { x: 45, y: 78, color: "#a855f7", size: 75, opacity: 0.65 }
-];
-
-let jhdSelectedMeshPoint = 0;
-let jhdDraggingMeshPoint = false;
-
-function jhdIsAdminPage() {
-  return window.location.pathname.includes("admin.html") ||
-    !!document.getElementById("adminPanel");
-}
-
-function jhdMarkAdminBody() {
-  if (jhdIsAdminPage()) {
-    document.body.classList.add("admin-page");
-  }
-}
-
-function jhdSafeHex(value, fallback = "#facc15") {
-  const hex = String(value || "").trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-    return hex.toLowerCase();
-  }
-
-  return fallback;
-}
-
-function jhdHexToRgbParts(hex) {
-  const clean = jhdSafeHex(hex).replace("#", "");
-
-  return {
-    r: parseInt(clean.substring(0, 2), 16),
-    g: parseInt(clean.substring(2, 4), 16),
-    b: parseInt(clean.substring(4, 6), 16)
-  };
-}
-
-function jhdHexToRgb(hex) {
-  const rgb = jhdHexToRgbParts(hex);
-  return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
-}
-
-function jhdHexToRgba(hex, opacity) {
-  const rgb = jhdHexToRgbParts(hex);
-  const safeOpacity = Math.min(1, Math.max(0, Number(opacity) || 0.75));
-
-  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeOpacity})`;
-}
-
-function jhdClamp(value, fallback, min, max) {
-  const number = Number(value);
-
-  if (!Number.isFinite(number)) return fallback;
-
-  return Math.min(max, Math.max(min, number));
-}
-
-function jhdNormalizeMeshPoints(points) {
-  if (!Array.isArray(points) || points.length === 0) {
-    return [
-      { x: 18, y: 35, color: "#facc15", size: 75, opacity: 0.85 },
-      { x: 78, y: 30, color: "#38bdf8", size: 82, opacity: 0.70 },
-      { x: 45, y: 78, color: "#a855f7", size: 75, opacity: 0.65 }
-    ];
-  }
-
-  return points.map(point => ({
-    x: jhdClamp(point.x, 50, 0, 100),
-    y: jhdClamp(point.y, 50, 0, 100),
-    color: jhdSafeHex(point.color, "#facc15"),
-    size: jhdClamp(point.size, 75, 20, 140),
-    opacity: jhdClamp(point.opacity, 0.75, 0.05, 1)
-  }));
-}
-
-function jhdBuildMeshGradient(points) {
-  const safePoints = jhdNormalizeMeshPoints(points);
-
-  const layers = safePoints.map(point => {
-    const strong = jhdHexToRgba(point.color, point.opacity);
-    const mid = jhdHexToRgba(point.color, point.opacity * 0.45);
-    const soft = jhdHexToRgba(point.color, point.opacity * 0.15);
-
-    return `radial-gradient(circle at ${point.x}% ${point.y}%, ${strong} 0%, ${mid} 24%, ${soft} 44%, transparent ${point.size}%)`;
-  });
-
-  layers.push("linear-gradient(135deg, #0b1020, #111827)");
-
-  return layers.join(", ");
-}
-
-function jhdGetArtistInitials(name) {
-  const clean = String(name || "").trim().replace(/\s+/g, " ");
-
-  if (!clean) return "?";
-
-  const words = clean.split(" ");
-
-  if (words.length === 1) {
-    return words[0].substring(0, 2).toUpperCase();
-  }
-
-  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
-}
-
-function jhdGetArtistMeshGradient(artist) {
-  const points = jhdNormalizeMeshPoints(artist.gradient_points);
-  return jhdBuildMeshGradient(points);
-}
-
-function jhdApplyArtistGradientToHero(artist) {
-  const hero = document.querySelector(".artist-profile-hero");
-
-  if (!hero) return;
-
-  hero.style.setProperty("--artist-mesh-gradient", jhdGetArtistMeshGradient(artist));
-}
-
-function jhdArtistInlineVars(artist) {
-  return `--artist-mesh-gradient:${jhdGetArtistMeshGradient(artist)};`;
-}
-
-/* =========================================================
-   PUBLICO - ARTISTAS
-========================================================= */
-
-async function loadPublicArtists() {
-  const artistList = document.getElementById("artistList");
-
-  if (!artistList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    artistList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  artistList.innerHTML = "";
-
-  data.forEach(artist => {
-    const name = artist.name || "Sin nombre";
-
-    artistList.innerHTML += `
-      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
-        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
-          ${escapeHTML(jhdGetArtistInitials(name))}
-        </div>
-        <h3>${escapeHTML(name)}</h3>
-        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
-        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
-      </article>
-    `;
-  });
-}
-
-async function loadArtistProfile() {
-  const artistName = document.getElementById("artistName");
-  const artistDescription = document.getElementById("artistDescription");
-  const artistTags = document.getElementById("artistTags");
-  const artistAvatar = document.getElementById("artistAvatar");
-  const artistSongsList = document.getElementById("artistSongsList");
-
-  if (!artistName || !artistSongsList) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    artistName.innerText = "No se pudo conectar";
-    return;
-  }
-
-  const slug = new URLSearchParams(window.location.search).get("id");
-
-  if (!slug) {
-    artistName.innerText = "Artista no encontrado";
-    return;
-  }
-
-  const { data: artist, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("slug", slug)
-    .single();
-
-  if (error || !artist) {
-    artistName.innerText = "Artista no encontrado";
-    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
-    return;
-  }
-
-  jhdApplyArtistGradientToHero(artist);
-
-  artistName.innerText = artist.name || "Sin nombre";
-  artistDescription.innerText = artist.description || "Sin descripción todavía.";
-  artistTags.innerText = "ARTISTA / MINISTERIO";
-
-  if (artistAvatar) {
-    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
-    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
-  }
-
-  const { data: songsData } = await client
-    .from("songs")
-    .select(`
-      *,
-      song_categories(
-        categories(id, name, slug)
-      )
-    `)
-    .eq("artist_id", artist.id)
-    .order("title");
-
-  artistSongsList.innerHTML = "";
-
-  if (!songsData || songsData.length === 0) {
-    artistSongsList.innerHTML = `
-      <div class="song-card">
-        <h3>No hay canciones todavía</h3>
-      </div>
-    `;
-    return;
-  }
-
-  songsData.forEach(song => {
-    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
-      ? jhdGetCategoryNamesFromSong(song)
-      : "Sin categoría";
-
-    const typeLabel = typeof jhdGetSongTypeLabel === "function"
-      ? jhdGetSongTypeLabel(song.song_type)
-      : "Sin tipo";
-
-    artistSongsList.innerHTML += `
-      <article class="song-card">
-        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
-        <p>🙏 ${escapeHTML(typeLabel)}</p>
-        <p>✝ ${escapeHTML(categoryNames)}</p>
-        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
-        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
-        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
-      </article>
-    `;
-  });
-}
-
-/* =========================================================
-   ADMIN - MESH EDITOR
-========================================================= */
-
-function jhdFindArtistFormCard() {
-  if (!jhdIsAdminPage()) return null;
-
-  const headings = Array.from(document.querySelectorAll("h2, h3"));
-
-  const artistHeading = headings.find(h => {
-    const text = h.innerText.toLowerCase();
-    return text.includes("agregar artista") || text.includes("editar artista");
-  });
-
-  if (!artistHeading) return null;
-
-  return artistHeading.closest(".song-card") || artistHeading.parentElement;
-}
-
-function jhdFindArtistNameInput() {
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return null;
-
-  const inputs = Array.from(card.querySelectorAll("input"));
-
-  return inputs.find(input => {
-    const ph = String(input.placeholder || "").toLowerCase();
-    const type = String(input.type || "").toLowerCase();
-
-    return type !== "color" &&
-      !ph.includes("url") &&
-      !ph.includes("foto") &&
-      !ph.includes("portada") &&
-      !ph.includes("imagen");
-  }) || null;
-}
-
-function jhdArtistSlugFromAdmin() {
-  const nameInput = jhdFindArtistNameInput();
-
-  if (nameInput && nameInput.value.trim()) {
-    return jhdSlugifyText(nameInput.value.trim());
-  }
-
-  return "";
-}
-
-function jhdMeshPointClientPosition(event) {
-  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
-
-  if (!canvasWrap) return null;
-
-  const rect = canvasWrap.getBoundingClientRect();
+function getPointerPositionPercent(event, element) {
+  const rect = element.getBoundingClientRect();
 
   const source = event.touches && event.touches[0]
     ? event.touches[0]
@@ -6772,713 +247,14 @@ function jhdMeshPointClientPosition(event) {
   const y = ((source.clientY - rect.top) / rect.height) * 100;
 
   return {
-    x: jhdClamp(Math.round(x), 50, 0, 100),
-    y: jhdClamp(Math.round(y), 50, 0, 100)
+    x: clamp(Math.round(x), 50, 0, 100),
+    y: clamp(Math.round(y), 50, 0, 100)
   };
 }
 
-function jhdRenderMeshEditor() {
-  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
-
-  if (!canvasWrap) return;
-
-  jhdMeshPoints = jhdNormalizeMeshPoints(jhdMeshPoints);
-
-  canvasWrap.style.background = jhdBuildMeshGradient(jhdMeshPoints);
-
-  const dots = jhdMeshPoints.map((point, index) => `
-    <button
-      type="button"
-      class="mesh-point ${index === jhdSelectedMeshPoint ? "active" : ""}"
-      style="left:${point.x}%; top:${point.y}%; background:${point.color};"
-      onpointerdown="jhdStartDragMeshPoint(event, ${index})"
-      onclick="event.stopPropagation(); jhdSelectMeshPoint(${index});">
-    </button>
-  `).join("");
-
-  const canvas = canvasWrap.querySelector("#jhdMeshCanvas");
-
-  canvasWrap.innerHTML = `<canvas id="jhdMeshCanvas"></canvas>${dots}`;
-
-  jhdUpdateMeshControls();
-}
-
-function jhdSelectMeshPoint(index) {
-  jhdSelectedMeshPoint = index;
-  jhdRenderMeshEditor();
-}
-
-function jhdAddMeshPoint(event) {
-  if (event.target.classList.contains("mesh-point")) return;
-
-  const position = jhdMeshPointClientPosition(event);
-
-  if (!position) return;
-
-  jhdMeshPoints.push({
-    x: position.x,
-    y: position.y,
-    color: "#facc15",
-    size: 80,
-    opacity: 0.75
-  });
-
-  jhdSelectedMeshPoint = jhdMeshPoints.length - 1;
-
-  jhdRenderMeshEditor();
-}
-
-function jhdStartDragMeshPoint(event, index) {
-  event.preventDefault();
-  event.stopPropagation();
-
-  jhdSelectedMeshPoint = index;
-  jhdDraggingMeshPoint = true;
-
-  window.addEventListener("pointermove", jhdMoveMeshPoint);
-  window.addEventListener("pointerup", jhdStopDragMeshPoint);
-
-  jhdRenderMeshEditor();
-}
-
-function jhdMoveMeshPoint(event) {
-  if (!jhdDraggingMeshPoint) return;
-
-  const position = jhdMeshPointClientPosition(event);
-
-  if (!position) return;
-
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) return;
-
-  point.x = position.x;
-  point.y = position.y;
-
-  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
-
-  if (canvasWrap) {
-    canvasWrap.style.background = jhdBuildMeshGradient(jhdMeshPoints);
-  }
-
-  const dot = document.querySelector(".mesh-point.active");
-
-  if (dot) {
-    dot.style.left = `${point.x}%`;
-    dot.style.top = `${point.y}%`;
-  }
-}
-
-function jhdStopDragMeshPoint() {
-  jhdDraggingMeshPoint = false;
-
-  window.removeEventListener("pointermove", jhdMoveMeshPoint);
-  window.removeEventListener("pointerup", jhdStopDragMeshPoint);
-
-  jhdRenderMeshEditor();
-}
-
-function jhdUpdateMeshControls() {
-  const panel = document.getElementById("jhdMeshControls");
-
-  if (!panel) return;
-
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) {
-    panel.innerHTML = `
-      <div class="mesh-panel">
-        Toca la portada para agregar un punto.
-      </div>
-    `;
-    return;
-  }
-
-  panel.innerHTML = `
-    <div class="mesh-panel">
-      <label>Color exacto</label>
-      <input type="color" value="${escapeHTML(point.color)}" oninput="jhdUpdateMeshPointColor(this.value)">
-      <input type="text" value="${escapeHTML(point.color)}" oninput="jhdUpdateMeshPointColor(this.value)" placeholder="#FACC15">
-      <p style="color:var(--secondary); margin-top:8px;">${jhdHexToRgb(point.color)}</p>
-    </div>
-
-    <div class="mesh-panel">
-      <label>Tamaño / mezcla <span id="jhdMeshSizeLabel">${point.size}%</span></label>
-      <input type="range" min="20" max="140" value="${point.size}" oninput="jhdUpdateMeshPointSize(this.value)">
-    </div>
-
-    <div class="mesh-panel">
-      <label>Intensidad <span id="jhdMeshOpacityLabel">${Math.round(point.opacity * 100)}%</span></label>
-      <input type="range" min="5" max="100" value="${Math.round(point.opacity * 100)}" oninput="jhdUpdateMeshPointOpacity(this.value)">
-    </div>
-
-    <div class="mesh-actions">
-      <button type="button" onclick="jhdSaveMeshGradient()">Guardar portada</button>
-      <button type="button" onclick="jhdResetMeshGradient()">Reiniciar</button>
-      <button type="button" class="danger" onclick="jhdDeleteMeshPoint()">Eliminar punto</button>
-    </div>
-  `;
-}
-
-function jhdUpdateMeshPointColor(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) return;
-
-  point.color = jhdSafeHex(value, point.color);
-
-  jhdRenderMeshEditor();
-}
-
-function jhdUpdateMeshPointSize(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) return;
-
-  point.size = jhdClamp(value, 80, 20, 140);
-
-  jhdRenderMeshEditor();
-}
-
-function jhdUpdateMeshPointOpacity(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) return;
-
-  point.opacity = jhdClamp(Number(value) / 100, 0.75, 0.05, 1);
-
-  jhdRenderMeshEditor();
-}
-
-function jhdDeleteMeshPoint() {
-  if (jhdMeshPoints.length <= 1) {
-    alert("Deja al menos un punto de color.");
-    return;
-  }
-
-  jhdMeshPoints.splice(jhdSelectedMeshPoint, 1);
-  jhdSelectedMeshPoint = 0;
-
-  jhdRenderMeshEditor();
-}
-
-function jhdResetMeshGradient() {
-  jhdMeshPoints = [
-    { x: 18, y: 35, color: "#facc15", size: 75, opacity: 0.85 },
-    { x: 78, y: 30, color: "#38bdf8", size: 82, opacity: 0.70 },
-    { x: 45, y: 78, color: "#a855f7", size: 75, opacity: 0.65 }
-  ];
-
-  jhdSelectedMeshPoint = 0;
-
-  jhdRenderMeshEditor();
-}
-
-async function jhdSaveMeshGradient() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const slug = jhdArtistSlugFromAdmin();
-
-  if (!slug) {
-    alert("Primero escribe el nombre del artista.");
-    return;
-  }
-
-  const safePoints = jhdNormalizeMeshPoints(jhdMeshPoints);
-
-  const { error } = await client
-    .from("artists")
-    .update({
-      gradient_points: safePoints,
-      avatar_url: "",
-      cover_url: ""
-    })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("No se pudo guardar la portada: " + error.message);
-    return;
-  }
-
-  alert("Portada guardada");
-}
-
-function jhdLoadMeshGradientEditor() {
-  if (!jhdIsAdminPage()) return;
-
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return;
-
-  let box = document.getElementById("jhdArtistGradientBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdArtistGradientBox";
-
-    const buttons = Array.from(card.querySelectorAll("button"));
-    const firstButton = buttons[0];
-
-    if (firstButton) {
-      card.insertBefore(box, firstButton);
-    } else {
-      card.appendChild(box);
-    }
-  }
-
-  box.innerHTML = `
-    <div class="mesh-editor-title">Portada tipo mesh</div>
-
-    <div class="mesh-editor-help">
-      Toca la portada para agregar un punto. Arrastra el punto para moverlo. Elige color, tamaño e intensidad para mezclar los tonos.
-    </div>
-
-    <div class="mesh-canvas-wrap" id="jhdMeshCanvasWrap" onclick="jhdAddMeshPoint(event)">
-      <canvas id="jhdMeshCanvas"></canvas>
-    </div>
-
-    <div class="mesh-controls" id="jhdMeshControls"></div>
-  `;
-
-  jhdRenderMeshEditor();
-}
-
-function jhdInitMeshGradientEditor() {
-  jhdMarkAdminBody();
-
-  if (!jhdIsAdminPage()) return;
-
-  jhdLoadMeshGradientEditor();
-
-  setTimeout(jhdLoadMeshGradientEditor, 800);
-  setTimeout(jhdLoadMeshGradientEditor, 1800);
-  setTimeout(jhdLoadMeshGradientEditor, 3000);
-}
-
-document.addEventListener("DOMContentLoaded", jhdInitMeshGradientEditor);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    jhdInitMeshGradientEditor();
-    loadPublicArtists();
-    loadArtistProfile();
-  }, 900);
-});
-
-window.jhdAddMeshPoint = jhdAddMeshPoint;
-window.jhdSelectMeshPoint = jhdSelectMeshPoint;
-window.jhdStartDragMeshPoint = jhdStartDragMeshPoint;
-window.jhdUpdateMeshPointColor = jhdUpdateMeshPointColor;
-window.jhdUpdateMeshPointSize = jhdUpdateMeshPointSize;
-window.jhdUpdateMeshPointOpacity = jhdUpdateMeshPointOpacity;
-window.jhdDeleteMeshPoint = jhdDeleteMeshPoint;
-window.jhdResetMeshGradient = jhdResetMeshGradient;
-window.jhdSaveMeshGradient = jhdSaveMeshGradient;
-/* =========================================================
-   FIX MESH PREVIEW REAL + OCULTAR URL ARTISTA
-========================================================= */
-
-function jhdHideArtistUrlInputs() {
-  if (!jhdIsAdminPage || !jhdIsAdminPage()) return;
-
-  const card = typeof jhdFindArtistFormCard === "function"
-    ? jhdFindArtistFormCard()
-    : null;
-
-  if (!card) return;
-
-  const inputs = Array.from(card.querySelectorAll("input"));
-
-  inputs.forEach(input => {
-    const placeholder = String(input.placeholder || "").toLowerCase();
-
-    if (
-      placeholder.includes("url") ||
-      placeholder.includes("foto") ||
-      placeholder.includes("portada") ||
-      placeholder.includes("imagen")
-    ) {
-      input.style.display = "none";
-    }
-  });
-}
-
-function jhdDrawMeshCanvas() {
-  const canvas = document.getElementById("jhdMeshCanvas");
-  const wrap = document.getElementById("jhdMeshCanvasWrap");
-
-  if (!canvas || !wrap) return;
-
-  const rect = wrap.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-
-  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
-  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-
-  canvas.style.width = rect.width + "px";
-  canvas.style.height = rect.height + "px";
-
-  const ctx = canvas.getContext("2d");
-
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, rect.width, rect.height);
-
-  const base = ctx.createLinearGradient(0, 0, rect.width, rect.height);
-  base.addColorStop(0, "#0b1020");
-  base.addColorStop(1, "#111827");
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  const points = typeof jhdNormalizeMeshPoints === "function"
-    ? jhdNormalizeMeshPoints(jhdMeshPoints)
-    : jhdMeshPoints;
-
-  points.forEach(point => {
-    const x = (point.x / 100) * rect.width;
-    const y = (point.y / 100) * rect.height;
-    const radius = (point.size / 100) * Math.max(rect.width, rect.height) * 0.75;
-
-    const rgb = jhdHexToRgbParts(point.color);
-    const opacity = Math.min(1, Math.max(0, Number(point.opacity) || 0.75));
-
-    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-
-    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
-    gradient.addColorStop(0.35, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.45})`);
-    gradient.addColorStop(0.7, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.16})`);
-    gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, rect.width, rect.height);
-  });
-}
-
-function jhdRenderMeshEditor() {
-  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
-
-  if (!canvasWrap) return;
-
-  jhdMeshPoints = jhdNormalizeMeshPoints(jhdMeshPoints);
-
-  const dots = jhdMeshPoints.map((point, index) => `
-    <button
-      type="button"
-      class="mesh-point ${index === jhdSelectedMeshPoint ? "active" : ""}"
-      style="left:${point.x}%; top:${point.y}%; background:${point.color};"
-      onpointerdown="jhdStartDragMeshPoint(event, ${index})"
-      onclick="event.stopPropagation(); jhdSelectMeshPoint(${index});">
-    </button>
-  `).join("");
-
-  canvasWrap.innerHTML = `<canvas id="jhdMeshCanvas"></canvas>${dots}`;
-
-  jhdDrawMeshCanvas();
-  jhdUpdateMeshControls();
-}
-
-function jhdMoveMeshPoint(event) {
-  if (!jhdDraggingMeshPoint) return;
-
-  const position = jhdMeshPointClientPosition(event);
-
-  if (!position) return;
-
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) return;
-
-  point.x = position.x;
-  point.y = position.y;
-
-  const dot = document.querySelector(".mesh-point.active");
-
-  if (dot) {
-    dot.style.left = `${point.x}%`;
-    dot.style.top = `${point.y}%`;
-  }
-
-  jhdDrawMeshCanvas();
-}
-
-function jhdUpdateMeshPointColor(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) return;
-
-  point.color = jhdSafeHex(value, point.color);
-
-  jhdRenderMeshEditor();
-}
-
-function jhdUpdateMeshPointSize(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) return;
-
-  point.size = jhdClamp(value, 80, 20, 160);
-
-  jhdRenderMeshEditor();
-}
-
-function jhdUpdateMeshPointOpacity(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-
-  if (!point) return;
-
-  point.opacity = jhdClamp(Number(value) / 100, 0.75, 0.05, 1);
-
-  jhdRenderMeshEditor();
-}
-
-function jhdBuildMeshGradient(points) {
-  const safePoints = jhdNormalizeMeshPoints(points);
-
-  const layers = safePoints.map(point => {
-    const strong = jhdHexToRgba(point.color, point.opacity);
-    const mid = jhdHexToRgba(point.color, point.opacity * 0.45);
-    const soft = jhdHexToRgba(point.color, point.opacity * 0.16);
-
-    return `radial-gradient(circle at ${point.x}% ${point.y}%, ${strong} 0%, ${mid} 32%, ${soft} 55%, transparent ${point.size}%)`;
-  });
-
-  layers.push("linear-gradient(135deg, #0b1020, #111827)");
-
-  return layers.join(", ");
-}
-
-function jhdLoadMeshGradientEditor() {
-  if (!jhdIsAdminPage()) return;
-
-  const card = jhdFindArtistFormCard();
-
-  if (!card) return;
-
-  jhdHideArtistUrlInputs();
-
-  let box = document.getElementById("jhdArtistGradientBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdArtistGradientBox";
-
-    const buttons = Array.from(card.querySelectorAll("button"));
-    const firstButton = buttons[0];
-
-    if (firstButton) {
-      card.insertBefore(box, firstButton);
-    } else {
-      card.appendChild(box);
-    }
-  }
-
-  box.innerHTML = `
-    <div class="mesh-editor-title">Portada tipo mesh</div>
-
-    <div class="mesh-editor-help">
-      Toca la portada para agregar un punto. Arrastra el punto para moverlo. Cambia color, tamaño e intensidad y verás la mezcla en vivo.
-    </div>
-
-    <div class="mesh-canvas-wrap" id="jhdMeshCanvasWrap" onclick="jhdAddMeshPoint(event)">
-      <canvas id="jhdMeshCanvas"></canvas>
-    </div>
-
-    <div class="mesh-controls" id="jhdMeshControls"></div>
-  `;
-
-  jhdRenderMeshEditor();
-}
-
-setTimeout(() => {
-  jhdHideArtistUrlInputs();
-  jhdLoadMeshGradientEditor();
-}, 500);
-
-setTimeout(() => {
-  jhdHideArtistUrlInputs();
-  jhdLoadMeshGradientEditor();
-}, 1500);
-
-setTimeout(() => {
-  jhdHideArtistUrlInputs();
-  jhdLoadMeshGradientEditor();
-}, 3000);
-
-window.addEventListener("resize", () => {
-  setTimeout(jhdDrawMeshCanvas, 200);
-});
-/* =========================================================
-   FIX FINAL - URL OCULTA + PREVIEW MESH CSS EN ADMIN
-========================================================= */
-
-function jhdHideArtistUrlInputsFinal() {
-  if (typeof jhdIsAdminPage === "function" && !jhdIsAdminPage()) return;
-
-  const card = typeof jhdFindArtistFormCard === "function"
-    ? jhdFindArtistFormCard()
-    : null;
-
-  if (!card) return;
-
-  const inputs = Array.from(card.querySelectorAll("input"));
-
-  inputs.forEach(input => {
-    const placeholder = String(input.placeholder || "").toLowerCase();
-
-    if (
-      placeholder.includes("url") ||
-      placeholder.includes("foto") ||
-      placeholder.includes("portada") ||
-      placeholder.includes("imagen")
-    ) {
-      input.classList.add("artist-form-url-hidden");
-      input.value = "";
-    }
-  });
-}
-
-function jhdBuildMeshGradient(points) {
-  const safePoints = jhdNormalizeMeshPoints(points);
-
-  const layers = safePoints.map(point => {
-    const strong = jhdHexToRgba(point.color, point.opacity);
-    const mid = jhdHexToRgba(point.color, point.opacity * 0.50);
-    const soft = jhdHexToRgba(point.color, point.opacity * 0.22);
-
-    return `radial-gradient(circle at ${point.x}% ${point.y}%, ${strong} 0%, ${mid} 30%, ${soft} 52%, transparent ${point.size}%)`;
-  });
-
-  layers.push("linear-gradient(135deg, #0b1020, #111827)");
-
-  return layers.join(", ");
-}
-
-function jhdRenderMeshEditor() {
-  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
-
-  if (!canvasWrap) return;
-
-  jhdMeshPoints = jhdNormalizeMeshPoints(jhdMeshPoints);
-
-  canvasWrap.style.background = jhdBuildMeshGradient(jhdMeshPoints);
-
-  const dots = jhdMeshPoints.map((point, index) => `
-    <button
-      type="button"
-      class="mesh-point ${index === jhdSelectedMeshPoint ? "active" : ""}"
-      style="left:${point.x}%; top:${point.y}%; background:${point.color};"
-      onpointerdown="jhdStartDragMeshPoint(event, ${index})"
-      onclick="event.stopPropagation(); jhdSelectMeshPoint(${index});">
-    </button>
-  `).join("");
-
-  canvasWrap.innerHTML = dots;
-
-  if (typeof jhdUpdateMeshControls === "function") {
-    jhdUpdateMeshControls();
-  }
-}
-
-function jhdMoveMeshPoint(event) {
-  if (!jhdDraggingMeshPoint) return;
-
-  const position = jhdMeshPointClientPosition(event);
-  if (!position) return;
-
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-  if (!point) return;
-
-  point.x = position.x;
-  point.y = position.y;
-
-  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
-  if (canvasWrap) {
-    canvasWrap.style.background = jhdBuildMeshGradient(jhdMeshPoints);
-  }
-
-  const dot = document.querySelector(".mesh-point.active");
-  if (dot) {
-    dot.style.left = `${point.x}%`;
-    dot.style.top = `${point.y}%`;
-  }
-}
-
-function jhdUpdateMeshPointColor(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-  if (!point) return;
-
-  point.color = jhdSafeHex(value, point.color);
-  jhdRenderMeshEditor();
-}
-
-function jhdUpdateMeshPointSize(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-  if (!point) return;
-
-  point.size = jhdClamp(value, 80, 20, 180);
-  jhdRenderMeshEditor();
-}
-
-function jhdUpdateMeshPointOpacity(value) {
-  const point = jhdMeshPoints[jhdSelectedMeshPoint];
-  if (!point) return;
-
-  point.opacity = jhdClamp(Number(value) / 100, 0.75, 0.05, 1);
-  jhdRenderMeshEditor();
-}
-
-async function jhdSaveMeshGradient() {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase");
-    return;
-  }
-
-  const slug = jhdArtistSlugFromAdmin();
-
-  if (!slug) {
-    alert("Primero escribe el nombre del artista.");
-    return;
-  }
-
-  const safePoints = jhdNormalizeMeshPoints(jhdMeshPoints);
-
-  const { error } = await client
-    .from("artists")
-    .update({
-      gradient_points: safePoints,
-      avatar_url: "",
-      cover_url: ""
-    })
-    .eq("slug", slug);
-
-  if (error) {
-    alert("No se pudo guardar la portada: " + error.message);
-    return;
-  }
-
-  jhdHideArtistUrlInputsFinal();
-  alert("Portada guardada");
-}
-
-setTimeout(jhdHideArtistUrlInputsFinal, 300);
-setTimeout(jhdHideArtistUrlInputsFinal, 1000);
-setTimeout(jhdHideArtistUrlInputsFinal, 2500);
-
-runWhenReady(() => {
-  setTimeout(() => {
-    jhdHideArtistUrlInputsFinal();
-    jhdRenderMeshEditor();
-  }, 1200);
-});
-/* =========================================================
-   FIX LOGIN ADMIN
-========================================================= */
+/* ------------------------------
+   AUTH ADMIN
+------------------------------ */
 
 async function loginAdmin() {
   const emailInput = document.getElementById("adminEmailInput");
@@ -7488,37 +264,24 @@ async function loginAdmin() {
   const email = emailInput ? emailInput.value.trim() : "";
   const password = passwordInput ? passwordInput.value : "";
 
-  if (message) {
-    message.innerText = "";
-  }
+  if (message) message.innerText = "";
 
   if (!email || !password) {
-    if (message) {
-      message.innerText = "Escribe tu correo y contraseña.";
-    }
+    if (message) message.innerText = "Escribe tu correo y contraseña.";
     return;
   }
 
   const client = getSupabase();
 
   if (!client) {
-    if (message) {
-      message.innerText = "No se pudo conectar con Supabase.";
-    }
+    if (message) message.innerText = "No se pudo conectar con Supabase.";
     return;
   }
 
-  const { data, error } = await client.auth.signInWithPassword({
-    email,
-    password
-  });
+  const { error } = await client.auth.signInWithPassword({ email, password });
 
   if (error) {
-    if (message) {
-      message.innerText = "No se pudo iniciar sesión. Revisa correo y contraseña.";
-    }
-
-    console.error("Error login admin:", error.message);
+    if (message) message.innerText = "No se pudo iniciar sesión. Revisa correo y contraseña.";
     return;
   }
 
@@ -7536,15 +299,17 @@ async function logoutAdmin() {
 }
 
 async function checkAdminSession() {
-  const client = getSupabase();
-
   const loginSection = document.getElementById("adminLoginSection");
   const panel = document.getElementById("adminPanel");
   const userText = document.getElementById("adminUserText");
 
+  if (!loginSection || !panel) return;
+
+  const client = getSupabase();
+
   if (!client) {
-    if (loginSection) loginSection.style.display = "block";
-    if (panel) panel.style.display = "none";
+    loginSection.style.display = "block";
+    panel.style.display = "none";
     return;
   }
 
@@ -7552,315 +317,53 @@ async function checkAdminSession() {
   const session = data ? data.session : null;
 
   if (!session || !session.user) {
-    if (loginSection) loginSection.style.display = "block";
-    if (panel) panel.style.display = "none";
+    loginSection.style.display = "block";
+    panel.style.display = "none";
     return;
   }
 
   const email = session.user.email || "";
 
-  if (email !== "mooreprint645@gmail.com") {
+  if (email !== ADMIN_EMAIL) {
     await client.auth.signOut();
-
-    if (loginSection) loginSection.style.display = "block";
-    if (panel) panel.style.display = "none";
+    loginSection.style.display = "block";
+    panel.style.display = "none";
     return;
   }
 
-  if (loginSection) loginSection.style.display = "none";
-  if (panel) panel.style.display = "block";
+  loginSection.style.display = "none";
+  panel.style.display = "block";
 
   if (userText) {
     userText.innerText = "Sesión iniciada como: " + email;
   }
 
-  if (typeof loadAdminData === "function") {
-    loadAdminData();
-  }
-
-  if (typeof loadAdminArtists === "function") {
-    loadAdminArtists();
-  }
-
-  if (typeof loadAdminCategories === "function") {
-    loadAdminCategories();
-  }
-
-  if (typeof loadAdminSongs === "function") {
-    loadAdminSongs();
-  }
-
-  if (typeof loadArtistOptions === "function") {
-    loadArtistOptions();
-  }
-
-  if (typeof loadCategoryOptions === "function") {
-    loadCategoryOptions();
-  }
-
-  if (typeof jhdInitMeshGradientEditor === "function") {
-    jhdInitMeshGradientEditor();
-  }
-
-  if (typeof jhdInitPointGradientEditor === "function") {
-    jhdInitPointGradientEditor();
-  }
-
-  if (typeof jhdInitSimpleArtistGradient === "function") {
-    jhdInitSimpleArtistGradient();
-  }
+  await loadAdminAll();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  checkAdminSession();
-});
+/* ------------------------------
+   ADMIN - ARTISTAS
+------------------------------ */
 
-setTimeout(checkAdminSession, 800);
+function resetArtistForm() {
+  currentEditingArtistId = null;
 
-window.loginAdmin = loginAdmin;
-window.logoutAdmin = logoutAdmin;
-window.checkAdminSession = checkAdminSession;
-/* =========================================================
-   PARCHE DE RESCATE ADMIN
-   Carga listas, selectores y editor mesh
-========================================================= */
+  const title = document.getElementById("artistFormTitle");
+  const name = document.getElementById("artistNameInput");
+  const description = document.getElementById("artistDescriptionInput");
 
-function jhdAdminClient() {
-  if (typeof getSupabase === "function") {
-    return getSupabase();
-  }
+  if (title) title.innerText = "Agregar artista";
+  if (name) name.value = "";
+  if (description) description.value = "";
 
-  return window.supabaseClient || null;
+  meshPoints = normalizeMeshPoints([]);
+  selectedMeshPoint = 0;
+  renderMeshEditor();
 }
-
-function jhdEscape(value) {
-  if (typeof escapeHTML === "function") return escapeHTML(value);
-
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function jhdSlugifyAdmin(text) {
-  if (typeof jhdSlugifyText === "function") return jhdSlugifyText(text);
-
-  return String(text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function jhdEnsureAdminPageClass() {
-  if (window.location.pathname.includes("admin.html") || document.getElementById("adminPanel")) {
-    document.body.classList.add("admin-page");
-  }
-}
-
-function jhdHideArtistUrlsNow() {
-  const card =
-    document.getElementById("artistFormCard") ||
-    (typeof jhdFindArtistFormCard === "function" ? jhdFindArtistFormCard() : null);
-
-  if (!card) return;
-
-  Array.from(card.querySelectorAll("input")).forEach(input => {
-    const placeholder = String(input.placeholder || "").toLowerCase();
-    const id = String(input.id || "").toLowerCase();
-
-    if (
-      placeholder.includes("url") ||
-      placeholder.includes("foto") ||
-      placeholder.includes("portada") ||
-      placeholder.includes("imagen") ||
-      id.includes("avatar") ||
-      id.includes("cover")
-    ) {
-      input.type = "hidden";
-      input.value = "";
-      input.style.display = "none";
-    }
-  });
-}
-
-/* ---------- Cargar listas del admin ---------- */
-
-async function loadAdminArtists() {
-  const box = document.getElementById("adminArtistList");
-  if (!box) return;
-
-  const client = jhdAdminClient();
-  if (!client) {
-    box.innerHTML = "No se pudo conectar.";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    box.innerHTML = `<p style="color:#ffb4b4;">Error: ${jhdEscape(error.message)}</p>`;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    box.innerHTML = `<p style="color:var(--secondary);">No hay artistas todavía.</p>`;
-    return;
-  }
-
-  box.innerHTML = data.map(artist => `
-    <div class="admin-list-item">
-      <strong>${jhdEscape(artist.name || "Sin nombre")}</strong>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <button type="button" class="song-btn" onclick="editArtist('${artist.id}')">Editar</button>
-        <button type="button" class="song-btn" onclick="deleteArtist('${artist.id}')">Eliminar</button>
-      </div>
-    </div>
-  `).join("");
-}
-
-async function loadAdminCategories() {
-  const box = document.getElementById("adminCategoryList");
-  if (!box) return;
-
-  const client = jhdAdminClient();
-  if (!client) {
-    box.innerHTML = "No se pudo conectar.";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("categories")
-    .select("*")
-    .order("name");
-
-  if (error) {
-    box.innerHTML = `<p style="color:#ffb4b4;">Error: ${jhdEscape(error.message)}</p>`;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    box.innerHTML = `<p style="color:var(--secondary);">No hay categorías todavía.</p>`;
-    return;
-  }
-
-  box.innerHTML = data.map(category => `
-    <div class="admin-list-item">
-      <strong>${jhdEscape(category.name || "Sin nombre")}</strong>
-      <p style="color:var(--secondary); margin-top:6px;">${jhdEscape(category.description || "")}</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <button type="button" class="song-btn" onclick="deleteCategory('${category.id}')">Eliminar</button>
-      </div>
-    </div>
-  `).join("");
-}
-
-async function loadAdminSongs() {
-  const box = document.getElementById("adminSongList");
-  if (!box) return;
-
-  const client = jhdAdminClient();
-  if (!client) {
-    box.innerHTML = "No se pudo conectar.";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("songs")
-    .select(`
-      *,
-      artists(name)
-    `)
-    .order("title");
-
-  if (error) {
-    box.innerHTML = `<p style="color:#ffb4b4;">Error: ${jhdEscape(error.message)}</p>`;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    box.innerHTML = `<p style="color:var(--secondary);">No hay canciones todavía.</p>`;
-    return;
-  }
-
-  box.innerHTML = data.map(song => `
-    <div class="admin-list-item">
-      <strong>${jhdEscape(song.title || "Sin título")}</strong>
-      <p style="color:var(--secondary); margin-top:6px;">
-        ${jhdEscape(song.artists?.name || "Sin artista")} · ${jhdEscape(song.tone || "Sin tono")}
-      </p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <button type="button" class="song-btn" onclick="editSong('${song.id}')">Editar</button>
-        <button type="button" class="song-btn" onclick="deleteSong('${song.id}')">Eliminar</button>
-      </div>
-    </div>
-  `).join("");
-}
-
-/* ---------- Selectores de artista y categoría ---------- */
-
-async function loadArtistOptions() {
-  const select = document.getElementById("songArtistInput");
-  if (!select) return;
-
-  const client = jhdAdminClient();
-  if (!client) return;
-
-  const current = select.value;
-
-  const { data, error } = await client
-    .from("artists")
-    .select("id, name")
-    .order("name");
-
-  if (error) return;
-
-  select.innerHTML = `<option value="">Selecciona artista</option>`;
-
-  (data || []).forEach(artist => {
-    select.innerHTML += `<option value="${artist.id}">${jhdEscape(artist.name)}</option>`;
-  });
-
-  if (current) select.value = current;
-}
-
-async function loadCategoryOptions() {
-  const select = document.getElementById("songCategoryInput");
-  if (!select) return;
-
-  const client = jhdAdminClient();
-  if (!client) return;
-
-  const current = select.value;
-
-  const { data, error } = await client
-    .from("categories")
-    .select("id, name")
-    .order("name");
-
-  if (error) return;
-
-  select.innerHTML = `<option value="">Selecciona categoría</option>`;
-
-  (data || []).forEach(category => {
-    select.innerHTML += `<option value="${category.id}">${jhdEscape(category.name)}</option>`;
-  });
-
-  if (current) select.value = current;
-}
-
-/* ---------- Guardar / editar artista ---------- */
-
-window.currentEditingArtistId = window.currentEditingArtistId || null;
 
 async function saveArtist() {
-  const client = jhdAdminClient();
+  const client = getSupabase();
+
   if (!client) {
     alert("No se pudo conectar.");
     return;
@@ -7877,23 +380,22 @@ async function saveArtist() {
     return;
   }
 
-  const slug = jhdSlugifyAdmin(name);
-
   const payload = {
     name,
-    slug,
+    slug: slugify(name),
     description,
     avatar_url: "",
-    cover_url: ""
+    cover_url: "",
+    gradient_points: normalizeMeshPoints(meshPoints)
   };
 
   let result;
 
-  if (window.currentEditingArtistId) {
+  if (currentEditingArtistId) {
     result = await client
       .from("artists")
       .update(payload)
-      .eq("id", window.currentEditingArtistId);
+      .eq("id", currentEditingArtistId);
   } else {
     result = await client
       .from("artists")
@@ -7905,20 +407,16 @@ async function saveArtist() {
     return;
   }
 
+  alert("Artista guardado.");
+
+  resetArtistForm();
   await loadAdminArtists();
   await loadArtistOptions();
-
-  if (typeof jhdSaveMeshGradient === "function") {
-    await jhdSaveMeshGradient();
-  }
-
-  cancelArtistEdit();
-
-  alert("Artista guardado.");
 }
 
 async function editArtist(id) {
-  const client = jhdAdminClient();
+  const client = getSupabase();
+
   if (!client) return;
 
   const { data, error } = await client
@@ -7932,54 +430,32 @@ async function editArtist(id) {
     return;
   }
 
-  window.currentEditingArtistId = id;
+  currentEditingArtistId = id;
 
   const title = document.getElementById("artistFormTitle");
-  const nameInput = document.getElementById("artistNameInput");
-  const descriptionInput = document.getElementById("artistDescriptionInput");
+  const name = document.getElementById("artistNameInput");
+  const description = document.getElementById("artistDescriptionInput");
 
   if (title) title.innerText = "Editar artista";
-  if (nameInput) nameInput.value = data.name || "";
-  if (descriptionInput) descriptionInput.value = data.description || "";
+  if (name) name.value = data.name || "";
+  if (description) description.value = data.description || "";
 
-  if (Array.isArray(data.gradient_points)) {
-    window.jhdMeshPoints = data.gradient_points;
-    if (typeof jhdMeshPoints !== "undefined") {
-      jhdMeshPoints = data.gradient_points;
-    }
-  }
+  meshPoints = normalizeMeshPoints(data.gradient_points);
+  selectedMeshPoint = 0;
 
-  if (typeof jhdLoadMeshGradientEditor === "function") {
-    jhdLoadMeshGradientEditor();
-  }
+  renderMeshEditor();
 
-  if (typeof jhdRenderMeshEditor === "function") {
-    jhdRenderMeshEditor();
-  }
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function cancelArtistEdit() {
-  window.currentEditingArtistId = null;
-
-  const title = document.getElementById("artistFormTitle");
-  const nameInput = document.getElementById("artistNameInput");
-  const descriptionInput = document.getElementById("artistDescriptionInput");
-
-  if (title) title.innerText = "Agregar artista";
-  if (nameInput) nameInput.value = "";
-  if (descriptionInput) descriptionInput.value = "";
-
-  if (typeof jhdResetMeshGradient === "function") {
-    jhdResetMeshGradient();
+  const card = document.getElementById("artistFormCard");
+  if (card) {
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
 async function deleteArtist(id) {
   if (!confirm("¿Eliminar este artista?")) return;
 
-  const client = jhdAdminClient();
+  const client = getSupabase();
+
   if (!client) return;
 
   const { error } = await client
@@ -7996,157 +472,1254 @@ async function deleteArtist(id) {
   await loadArtistOptions();
 }
 
-/* ---------- Init admin ---------- */
+async function loadAdminArtists() {
+  const list = document.getElementById("adminArtistList");
 
-async function jhdAdminRescueInit() {
-  jhdEnsureAdminPageClass();
+  if (!list) return;
 
-  const panel = document.getElementById("adminPanel");
-  if (!panel || panel.style.display === "none") return;
+  const client = getSupabase();
 
-  jhdHideArtistUrlsNow();
+  if (!client) return;
 
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    list.innerHTML = `<p style="color:#ffb4b4;">${escapeHTML(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `<p style="color:var(--secondary);">No hay artistas todavía.</p>`;
+    return;
+  }
+
+  list.innerHTML = data.map(artist => `
+    <div class="admin-list-item">
+      <strong>${escapeHTML(artist.name)}</strong>
+      <p style="color:var(--secondary); margin-top:6px;">${escapeHTML(artist.description || "Sin descripción.")}</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button type="button" class="song-btn" onclick="editArtist('${artist.id}')">Editar</button>
+        <button type="button" class="song-btn" onclick="deleteArtist('${artist.id}')">Eliminar</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadArtistOptions() {
+  const select = document.getElementById("songArtistInput");
+
+  if (!select) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const current = select.value;
+
+  const { data } = await client
+    .from("artists")
+    .select("id, name")
+    .order("name");
+
+  select.innerHTML = `<option value="">Selecciona artista</option>`;
+
+  (data || []).forEach(artist => {
+    select.innerHTML += `<option value="${artist.id}">${escapeHTML(artist.name)}</option>`;
+  });
+
+  if (current) select.value = current;
+}
+
+/* ------------------------------
+   ADMIN - MESH EDITOR
+------------------------------ */
+
+function initMeshEditor() {
+  const holder = document.getElementById("artistMeshEditor");
+
+  if (!holder) return;
+
+  holder.innerHTML = `
+    <div id="jhdArtistGradientBox">
+      <div class="mesh-editor-title">Portada tipo mesh</div>
+      <div class="mesh-editor-help">
+        Toca la portada para agregar un punto. Arrastra el punto para moverlo. Cambia color, tamaño e intensidad.
+      </div>
+
+      <div class="mesh-canvas-wrap" id="jhdMeshCanvasWrap"></div>
+
+      <div class="mesh-controls" id="jhdMeshControls"></div>
+    </div>
+  `;
+
+  const wrap = document.getElementById("jhdMeshCanvasWrap");
+
+  if (wrap) {
+    wrap.addEventListener("pointerdown", handleMeshPointerDown);
+  }
+
+  renderMeshEditor();
+}
+
+function renderMeshEditor() {
+  const wrap = document.getElementById("jhdMeshCanvasWrap");
+
+  if (!wrap) return;
+
+  meshPoints = normalizeMeshPoints(meshPoints);
+  wrap.style.background = buildMeshGradient(meshPoints);
+
+  const dots = meshPoints.map((point, index) => `
+    <button
+      type="button"
+      class="mesh-point ${index === selectedMeshPoint ? "active" : ""}"
+      data-index="${index}"
+      style="left:${point.x}%; top:${point.y}%; background:${point.color};">
+    </button>
+  `).join("");
+
+  wrap.innerHTML = dots;
+
+  wrap.querySelectorAll(".mesh-point").forEach(dot => {
+    dot.addEventListener("pointerdown", event => {
+      event.stopPropagation();
+      selectedMeshPoint = Number(dot.dataset.index);
+      draggingMeshPoint = true;
+      dot.setPointerCapture(event.pointerId);
+      renderMeshEditor();
+    });
+
+    dot.addEventListener("pointermove", event => {
+      if (!draggingMeshPoint) return;
+
+      const position = getPointerPositionPercent(event, wrap);
+      const point = meshPoints[selectedMeshPoint];
+
+      if (!point) return;
+
+      point.x = position.x;
+      point.y = position.y;
+
+      wrap.style.background = buildMeshGradient(meshPoints);
+      dot.style.left = point.x + "%";
+      dot.style.top = point.y + "%";
+    });
+
+    dot.addEventListener("pointerup", event => {
+      draggingMeshPoint = false;
+      try {
+        dot.releasePointerCapture(event.pointerId);
+      } catch (error) {}
+      renderMeshEditor();
+    });
+  });
+
+  updateMeshControls();
+}
+
+function handleMeshPointerDown(event) {
+  if (event.target.classList.contains("mesh-point")) return;
+
+  const wrap = document.getElementById("jhdMeshCanvasWrap");
+  const position = getPointerPositionPercent(event, wrap);
+
+  meshPoints.push({
+    x: position.x,
+    y: position.y,
+    color: "#facc15",
+    size: 90,
+    opacity: 0.75
+  });
+
+  selectedMeshPoint = meshPoints.length - 1;
+
+  renderMeshEditor();
+}
+
+function updateMeshControls() {
+  const panel = document.getElementById("jhdMeshControls");
+
+  if (!panel) return;
+
+  const point = meshPoints[selectedMeshPoint];
+
+  if (!point) {
+    panel.innerHTML = `<div class="mesh-panel">Toca la portada para agregar un punto.</div>`;
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="mesh-panel">
+      <label>Color exacto</label>
+      <input type="color" id="meshColorInput" value="${escapeHTML(point.color)}">
+      <input type="text" id="meshHexInput" value="${escapeHTML(point.color)}" placeholder="#FACC15">
+      <p style="color:var(--secondary); margin-top:8px;">${escapeHTML(hexToRgb(point.color))}</p>
+    </div>
+
+    <div class="mesh-panel">
+      <label>Tamaño / mezcla <span id="meshSizeLabel">${point.size}%</span></label>
+      <input type="range" id="meshSizeInput" min="20" max="180" value="${point.size}">
+    </div>
+
+    <div class="mesh-panel">
+      <label>Intensidad <span id="meshOpacityLabel">${Math.round(point.opacity * 100)}%</span></label>
+      <input type="range" id="meshOpacityInput" min="5" max="100" value="${Math.round(point.opacity * 100)}">
+    </div>
+
+    <div class="mesh-actions">
+      <button type="button" onclick="deleteSelectedMeshPoint()">Eliminar punto</button>
+      <button type="button" onclick="resetMesh()">Reiniciar portada</button>
+    </div>
+  `;
+
+  const colorInput = document.getElementById("meshColorInput");
+  const hexInput = document.getElementById("meshHexInput");
+  const sizeInput = document.getElementById("meshSizeInput");
+  const opacityInput = document.getElementById("meshOpacityInput");
+
+  if (colorInput) {
+    colorInput.addEventListener("input", () => {
+      point.color = safeHex(colorInput.value, point.color);
+      renderMeshEditor();
+    });
+  }
+
+  if (hexInput) {
+    hexInput.addEventListener("input", () => {
+      point.color = safeHex(hexInput.value, point.color);
+      renderMeshEditor();
+    });
+  }
+
+  if (sizeInput) {
+    sizeInput.addEventListener("input", () => {
+      point.size = clamp(sizeInput.value, 90, 20, 180);
+      renderMeshEditor();
+    });
+  }
+
+  if (opacityInput) {
+    opacityInput.addEventListener("input", () => {
+      point.opacity = clamp(Number(opacityInput.value) / 100, 0.75, 0.05, 1);
+      renderMeshEditor();
+    });
+  }
+}
+
+function deleteSelectedMeshPoint() {
+  if (meshPoints.length <= 1) {
+    alert("Deja al menos un punto.");
+    return;
+  }
+
+  meshPoints.splice(selectedMeshPoint, 1);
+  selectedMeshPoint = 0;
+  renderMeshEditor();
+}
+
+function resetMesh() {
+  meshPoints = normalizeMeshPoints([]);
+  selectedMeshPoint = 0;
+  renderMeshEditor();
+}
+
+/* ------------------------------
+   ADMIN - CATEGORÍAS
+------------------------------ */
+
+function resetCategoryForm() {
+  currentEditingCategoryId = null;
+
+  const name = document.getElementById("categoryNameInput");
+  const description = document.getElementById("categoryDescriptionInput");
+
+  if (name) name.value = "";
+  if (description) description.value = "";
+}
+
+async function saveCategory() {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar.");
+    return;
+  }
+
+  const nameInput = document.getElementById("categoryNameInput");
+  const descriptionInput = document.getElementById("categoryDescriptionInput");
+
+  const name = nameInput ? nameInput.value.trim() : "";
+  const description = descriptionInput ? descriptionInput.value.trim() : "";
+
+  if (!name) {
+    alert("Escribe el nombre de la categoría.");
+    return;
+  }
+
+  const payload = {
+    name,
+    slug: slugify(name),
+    description
+  };
+
+  let result;
+
+  if (currentEditingCategoryId) {
+    result = await client
+      .from("categories")
+      .update(payload)
+      .eq("id", currentEditingCategoryId);
+  } else {
+    result = await client
+      .from("categories")
+      .insert(payload);
+  }
+
+  if (result.error) {
+    alert("No se pudo guardar categoría: " + result.error.message);
+    return;
+  }
+
+  resetCategoryForm();
+  await loadAdminCategories();
+  await loadCategoryOptions();
+}
+
+async function deleteCategory(id) {
+  if (!confirm("¿Eliminar esta categoría?")) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { error } = await client
+    .from("categories")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("No se pudo eliminar: " + error.message);
+    return;
+  }
+
+  await loadAdminCategories();
+  await loadCategoryOptions();
+}
+
+async function loadAdminCategories() {
+  const list = document.getElementById("adminCategoryList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("categories")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    list.innerHTML = `<p style="color:#ffb4b4;">${escapeHTML(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `<p style="color:var(--secondary);">No hay categorías todavía.</p>`;
+    return;
+  }
+
+  list.innerHTML = data.map(category => `
+    <div class="admin-list-item">
+      <strong>${escapeHTML(category.name)}</strong>
+      <p style="color:var(--secondary); margin-top:6px;">${escapeHTML(category.description || "")}</p>
+      <button type="button" class="song-btn" onclick="deleteCategory('${category.id}')">Eliminar</button>
+    </div>
+  `).join("");
+}
+
+async function loadCategoryOptions() {
+  const select = document.getElementById("songCategoryInput");
+
+  if (!select) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const current = select.value;
+
+  const { data } = await client
+    .from("categories")
+    .select("id, name")
+    .order("name");
+
+  select.innerHTML = `<option value="">Selecciona categoría</option>`;
+
+  (data || []).forEach(category => {
+    select.innerHTML += `<option value="${category.id}">${escapeHTML(category.name)}</option>`;
+  });
+
+  if (current) select.value = current;
+}
+
+/* ------------------------------
+   ADMIN - CANCIONES
+------------------------------ */
+
+function normalizeSongType(value) {
+  const text = String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  if (text.includes("cristiano")) return "cristiano";
+  return "catolico";
+}
+
+function getSongTypeLabel(value) {
+  const type = normalizeSongType(value);
+
+  if (type === "cristiano") return "Cristiano";
+  return "Católico";
+}
+
+function insertSectionTitle(title) {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) return;
+
+  const value = textarea.value || "";
+  const cursor = textarea.selectionStart || value.length;
+  const before = value.substring(0, cursor);
+  const after = value.substring(cursor);
+
+  const section = `\n[${title}]\n`;
+
+  textarea.value = before + section + after;
+  textarea.focus();
+  textarea.selectionStart = textarea.selectionEnd = cursor + section.length;
+
+  updateLyricsPreview();
+}
+
+function insertFullTemplate() {
+  const textarea = document.getElementById("songLyricsInput");
+
+  if (!textarea) return;
+
+  textarea.value = `[Intro]
+
+[Verso 1]
+
+[Coro]
+
+[Verso 2]
+
+[Puente]
+
+[Coro Final]`;
+
+  updateLyricsPreview();
+}
+
+function resetSongForm() {
+  currentEditingSongId = null;
+
+  const fields = [
+    "songTitleInput",
+    "songToneInput",
+    "songDifficultyInput",
+    "songLyricsInput",
+    "songTutorialGuitarInput",
+    "songTutorialPianoInput"
+  ];
+
+  fields.forEach(id => {
+    const field = document.getElementById(id);
+    if (field) field.value = "";
+  });
+
+  const artist = document.getElementById("songArtistInput");
+  const category = document.getElementById("songCategoryInput");
+  const type = document.getElementById("songTypeInput");
+
+  if (artist) artist.value = "";
+  if (category) category.value = "";
+  if (type) type.value = "catolico";
+
+  updateLyricsPreview();
+}
+
+async function saveSong() {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar.");
+    return;
+  }
+
+  const title = document.getElementById("songTitleInput")?.value.trim() || "";
+  const artistId = document.getElementById("songArtistInput")?.value || "";
+  const categoryId = document.getElementById("songCategoryInput")?.value || "";
+  const tone = document.getElementById("songToneInput")?.value.trim() || "";
+  const difficulty = document.getElementById("songDifficultyInput")?.value.trim() || "";
+  const lyrics = document.getElementById("songLyricsInput")?.value || "";
+  const tutorialGuitar = document.getElementById("songTutorialGuitarInput")?.value.trim() || "";
+  const tutorialPiano = document.getElementById("songTutorialPianoInput")?.value.trim() || "";
+  const songType = normalizeSongType(document.getElementById("songTypeInput")?.value || "catolico");
+
+  if (!title) {
+    alert("Escribe el título de la canción.");
+    return;
+  }
+
+  if (!artistId) {
+    alert("Selecciona un artista.");
+    return;
+  }
+
+  const payload = {
+    title,
+    slug: slugify(title),
+    artist_id: artistId,
+    category_id: categoryId || null,
+    song_type: songType,
+    tone,
+    difficulty,
+    lyrics,
+    tutorial_guitar: tutorialGuitar,
+    tutorial_piano: tutorialPiano
+  };
+
+  let songId = currentEditingSongId;
+  let result;
+
+  if (currentEditingSongId) {
+    result = await client
+      .from("songs")
+      .update(payload)
+      .eq("id", currentEditingSongId)
+      .select("id")
+      .single();
+  } else {
+    result = await client
+      .from("songs")
+      .insert(payload)
+      .select("id")
+      .single();
+  }
+
+  if (result.error) {
+    alert("No se pudo guardar canción: " + result.error.message);
+    return;
+  }
+
+  songId = result.data.id;
+
+  if (songId && categoryId) {
+    await client
+      .from("song_categories")
+      .delete()
+      .eq("song_id", songId);
+
+    await client
+      .from("song_categories")
+      .insert({
+        song_id: songId,
+        category_id: categoryId
+      });
+  }
+
+  alert("Canción guardada.");
+
+  resetSongForm();
+  await loadAdminSongs();
+}
+
+async function editSong(id) {
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("songs")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    alert("No se pudo cargar la canción.");
+    return;
+  }
+
+  currentEditingSongId = id;
+
+  document.getElementById("songTitleInput").value = data.title || "";
+  document.getElementById("songArtistInput").value = data.artist_id || "";
+  document.getElementById("songCategoryInput").value = data.category_id || "";
+  document.getElementById("songTypeInput").value = normalizeSongType(data.song_type);
+  document.getElementById("songToneInput").value = data.tone || "";
+  document.getElementById("songDifficultyInput").value = data.difficulty || "";
+  document.getElementById("songLyricsInput").value = data.lyrics || "";
+  document.getElementById("songTutorialGuitarInput").value = data.tutorial_guitar || "";
+  document.getElementById("songTutorialPianoInput").value = data.tutorial_piano || "";
+
+  updateLyricsPreview();
+
+  const card = document.getElementById("songFormCard");
+  if (card) {
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+async function deleteSong(id) {
+  if (!confirm("¿Eliminar esta canción?")) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  await client
+    .from("song_categories")
+    .delete()
+    .eq("song_id", id);
+
+  const { error } = await client
+    .from("songs")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("No se pudo eliminar: " + error.message);
+    return;
+  }
+
+  await loadAdminSongs();
+}
+
+async function loadAdminSongs() {
+  const list = document.getElementById("adminSongList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("songs")
+    .select(`
+      *,
+      artists(name)
+    `)
+    .order("title");
+
+  if (error) {
+    list.innerHTML = `<p style="color:#ffb4b4;">${escapeHTML(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `<p style="color:var(--secondary);">No hay canciones todavía.</p>`;
+    return;
+  }
+
+  list.innerHTML = data.map(song => `
+    <div class="admin-list-item">
+      <strong>${escapeHTML(song.title)}</strong>
+      <p style="color:var(--secondary); margin-top:6px;">
+        ${escapeHTML(song.artists?.name || "Sin artista")} · ${escapeHTML(getSongTypeLabel(song.song_type))} · Tono ${escapeHTML(song.tone || "Sin tono")}
+      </p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <button type="button" class="song-btn" onclick="editSong('${song.id}')">Editar</button>
+        <button type="button" class="song-btn" onclick="deleteSong('${song.id}')">Eliminar</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+/* ------------------------------
+   LETRAS / ACORDES
+------------------------------ */
+
+function isSectionLine(line) {
+  return /^\s*\[[^\]]+\]\s*$/.test(line);
+}
+
+function cleanSectionName(line) {
+  return String(line || "").replace("[", "").replace("]", "").trim();
+}
+
+function sectionChip(name) {
+  const text = name.toLowerCase();
+
+  if (text.includes("coro")) return "C";
+  if (text.includes("verso")) return text.match(/\d+/)?.[0] ? `V${text.match(/\d+/)[0]}` : "V";
+  if (text.includes("puente")) return "P";
+  if (text.includes("intro")) return "IN";
+  if (text.includes("final")) return "F";
+
+  return name.substring(0, 2).toUpperCase();
+}
+
+function highlightChords(line) {
+  const escaped = escapeHTML(line);
+
+  return escaped.replace(
+    /\(([A-G](?:#|b)?(?:m|maj7|maj9|m7|m9|7|9|11|13|6|sus4|sus2|dim|aug|add9)?(?:\/[A-G](?:#|b)?)?)\)/g,
+    `<span class="chord-token">$1</span>`
+  );
+}
+
+function renderLyricsHTML(text) {
+  const lines = String(text || "").split("\n");
+
+  let html = "";
+  let currentLines = [];
+  let currentTitle = "Canto";
+
+  function flush() {
+    if (currentLines.length === 0 && !currentTitle) return;
+
+    html += `
+      <section class="lyrics-app-section">
+        <span class="lyrics-app-chip">${escapeHTML(sectionChip(currentTitle))}</span>
+        <div class="lyrics-app-content">
+          ${currentLines.map(line => `<span class="lyrics-app-line">${highlightChords(line)}</span>`).join("")}
+        </div>
+      </section>
+    `;
+
+    currentLines = [];
+  }
+
+  lines.forEach(line => {
+    if (isSectionLine(line)) {
+      flush();
+      currentTitle = cleanSectionName(line);
+      return;
+    }
+
+    currentLines.push(line);
+  });
+
+  flush();
+
+  return `<div class="lyrics-app-view">${html}</div>`;
+}
+
+function showLyrics() {
+  const box = document.getElementById("songLyrics");
+
+  if (!box) return;
+
+  box.innerHTML = renderLyricsHTML(originalLyrics);
+}
+
+function updateLyricsPreview() {
+  const textarea = document.getElementById("songLyricsInput");
+  const preview = document.getElementById("jhdLyricsPreviewContent");
+
+  if (!textarea || !preview) return;
+
+  preview.innerHTML = renderLyricsHTML(textarea.value);
+}
+
+/* ------------------------------
+   PUBLIC - CATEGORÍAS SONGS
+------------------------------ */
+
+function getSongCategories(song) {
+  if (song && Array.isArray(song.song_categories)) {
+    return song.song_categories.map(item => item.categories).filter(Boolean);
+  }
+
+  if (song && song.categories) {
+    return [song.categories];
+  }
+
+  return [];
+}
+
+function getSongCategoryNames(song) {
+  const categories = getSongCategories(song);
+
+  if (categories.length === 0) return "Sin categoría";
+
+  return categories.map(category => category.name).join(", ");
+}
+
+function getSongCategorySearch(song) {
+  return getSongCategories(song)
+    .map(category => `${category.name || ""} ${category.slug || ""}`)
+    .join(" ")
+    .toLowerCase();
+}
+
+function currentTypeFilter() {
+  return normalizeSongType(getParam("tipo") || "");
+}
+
+function applyTypeFilter(query) {
+  const raw = getParam("tipo");
+
+  if (!raw) return query;
+
+  const type = normalizeSongType(raw);
+
+  return query.eq("song_type", type);
+}
+
+function updateSongPageTitle() {
+  const title = document.querySelector(".section h2") || document.querySelector("h1");
+
+  if (!title) return;
+
+  const raw = getParam("tipo");
+
+  if (!raw) {
+    title.innerText = "Explorar canciones";
+    return;
+  }
+
+  const type = normalizeSongType(raw);
+  title.innerText = type === "cristiano" ? "Cantos Cristianos" : "Cantos Católicos";
+}
+
+function filterSongCards() {
+  const input = document.getElementById("songSearch");
+  const cards = document.querySelectorAll("#songList .song-card");
+  const noResults = document.getElementById("noResults");
+
+  const search = input ? input.value.toLowerCase().trim() : "";
+  let count = 0;
+
+  cards.forEach(card => {
+    const title = card.dataset.title || "";
+    const show = !search || title.includes(search);
+
+    card.style.display = show ? "block" : "none";
+
+    if (show) count++;
+  });
+
+  if (noResults) {
+    noResults.style.display = count === 0 ? "block" : "none";
+  }
+}
+
+async function loadPublicSongs() {
+  const list = document.getElementById("songList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  updateSongPageTitle();
+
+  let query = client
+    .from("songs")
+    .select(`
+      *,
+      artists(name, slug),
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .order("title");
+
+  query = applyTypeFilter(query);
+
+  const { data, error } = await query;
+
+  if (error) {
+    list.innerHTML = `<div class="song-card"><h3>Error cargando canciones</h3><p>${escapeHTML(error.message)}</p></div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `<div class="song-card"><h3>No hay canciones todavía</h3></div>`;
+    return;
+  }
+
+  list.innerHTML = data.map(song => {
+    const categoryNames = getSongCategoryNames(song);
+    const artistName = song.artists?.name || "Sin artista";
+    const typeLabel = getSongTypeLabel(song.song_type);
+
+    return `
+      <article class="song-card" data-title="${escapeHTML(`${song.title} ${artistName} ${categoryNames} ${typeLabel}`.toLowerCase())}">
+        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
+        <p>👤 ${escapeHTML(artistName)}</p>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(song.tone || "No definido")}</p>
+        <p>⭐ ${escapeHTML(song.difficulty || "Sin dificultad")}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  }).join("");
+
+  const initialSearch = getParam("buscar");
+
+  const input = document.getElementById("songSearch");
+
+  if (input && initialSearch) {
+    input.value = initialSearch.toLowerCase();
+    filterSongCards();
+  }
+}
+
+async function loadHomeSongs() {
+  const list = document.getElementById("homeSongList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("songs")
+    .select(`
+      *,
+      artists(name, slug),
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  if (error) {
+    list.innerHTML = `<div class="song-card"><h3>Error cargando canciones</h3></div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `<div class="song-card"><h3>No hay canciones todavía</h3></div>`;
+    return;
+  }
+
+  list.innerHTML = data.map(song => {
+    const artistName = song.artists?.name || "Sin artista";
+    const categoryNames = getSongCategoryNames(song);
+
+    return `
+      <article class="song-card" data-title="${escapeHTML(`${song.title} ${artistName} ${categoryNames}`.toLowerCase())}">
+        <h3>🎵 ${escapeHTML(song.title)}</h3>
+        <p>👤 ${escapeHTML(artistName)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  }).join("");
+}
+
+function searchHomeSongs() {
+  const input = document.getElementById("homeSearch");
+
+  const value = input ? input.value.trim() : "";
+
+  if (value) {
+    window.location.href = `canciones.html?buscar=${encodeURIComponent(value)}`;
+  } else {
+    window.location.href = "canciones.html";
+  }
+}
+
+async function loadSingleSong() {
+  const title = document.getElementById("songTitle");
+  const info = document.getElementById("songInfo");
+
+  if (!title || !info) return;
+
+  const slug = getParam("id");
+
+  if (!slug) {
+    title.innerText = "Canto no encontrado";
+    return;
+  }
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("songs")
+    .select(`
+      *,
+      artists(name, slug),
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("slug", slug)
+    .single();
+
+  if (error || !data) {
+    title.innerText = "Canto no encontrado";
+    return;
+  }
+
+  const artistName = data.artists?.name || "Sin artista";
+  const categoryNames = getSongCategoryNames(data);
+  const typeLabel = getSongTypeLabel(data.song_type);
+
+  title.innerText = data.title || "Sin título";
+  info.innerText = `${artistName} · ${typeLabel} · ${categoryNames} · Tono ${data.tone || "No definido"}`;
+
+  originalLyrics = data.lyrics || "";
+  showLyrics();
+
+  const guitar = document.getElementById("tutorialGuitar");
+  const piano = document.getElementById("tutorialPiano");
+
+  if (guitar) {
+    const url = safeUrl(data.tutorial_guitar);
+    guitar.href = url || "#";
+    guitar.style.display = url ? "inline-block" : "none";
+  }
+
+  if (piano) {
+    const url = safeUrl(data.tutorial_piano);
+    piano.href = url || "#";
+    piano.style.display = url ? "inline-block" : "none";
+  }
+}
+
+/* ------------------------------
+   PUBLIC - ARTISTAS
+------------------------------ */
+
+async function loadPublicArtists() {
+  const list = document.getElementById("artistList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    list.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `<div class="song-card"><h3>No hay artistas todavía</h3></div>`;
+    return;
+  }
+
+  list.innerHTML = data.map(artist => `
+    <article class="song-card artist-card" data-title="${escapeHTML(`${artist.name} ${artist.description || ""}`.toLowerCase())}">
+      <div class="artist-avatar" style="${artistInlineGradient(artist)}">
+        ${escapeHTML(getInitials(artist.name))}
+      </div>
+      <h3>${escapeHTML(artist.name)}</h3>
+      <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
+      <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
+    </article>
+  `).join("");
+}
+
+async function loadArtistProfile() {
+  const name = document.getElementById("artistName");
+  const description = document.getElementById("artistDescription");
+  const tags = document.getElementById("artistTags");
+  const avatar = document.getElementById("artistAvatar");
+  const songsList = document.getElementById("artistSongsList");
+
+  if (!name || !songsList) return;
+
+  const slug = getParam("id");
+
+  if (!slug) {
+    name.innerText = "Artista no encontrado";
+    return;
+  }
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data: artist, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !artist) {
+    name.innerText = "Artista no encontrado";
+    return;
+  }
+
+  applyArtistGradientToHero(artist);
+
+  name.innerText = artist.name || "Sin nombre";
+  if (description) description.innerText = artist.description || "Sin descripción todavía.";
+  if (tags) tags.innerText = "ARTISTA / MINISTERIO";
+
+  if (avatar) {
+    avatar.style.cssText += artistInlineGradient(artist);
+    avatar.innerText = getInitials(artist.name);
+  }
+
+  const { data: songsData } = await client
+    .from("songs")
+    .select(`
+      *,
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("artist_id", artist.id)
+    .order("title");
+
+  if (!songsData || songsData.length === 0) {
+    songsList.innerHTML = `<div class="song-card"><h3>No hay canciones todavía</h3></div>`;
+    return;
+  }
+
+  songsList.innerHTML = songsData.map(song => `
+    <article class="song-card">
+      <h3>🎵 ${escapeHTML(song.title)}</h3>
+      <p>🙏 ${escapeHTML(getSongTypeLabel(song.song_type))}</p>
+      <p>✝ ${escapeHTML(getSongCategoryNames(song))}</p>
+      <p>🎸 Tono: ${escapeHTML(song.tone || "No definido")}</p>
+      <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+    </article>
+  `).join("");
+}
+
+/* ------------------------------
+   DONACIONES
+------------------------------ */
+
+async function loadDonationCards() {
+  const list = document.getElementById("donationCardsList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("donation_cards")
+    .select("*")
+    .eq("is_active", true)
+    .order("display_order");
+
+  if (error) {
+    list.innerHTML = `<div class="song-card"><h3>Error cargando donaciones</h3></div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `<div class="song-card"><h3>No hay datos de donación todavía</h3></div>`;
+    return;
+  }
+
+  list.innerHTML = data.map(card => `
+    <article class="song-card">
+      <h3>${escapeHTML(card.title || "Donación")}</h3>
+      <p>${escapeHTML(card.description || "")}</p>
+      <p><strong>Titular:</strong> ${escapeHTML(card.account_name || "")}</p>
+      <p><strong>Banco:</strong> ${escapeHTML(card.bank_name || "")}</p>
+      <p><strong>Cuenta:</strong> ${escapeHTML(card.account_number || "")}</p>
+      <p><strong>CLABE:</strong> ${escapeHTML(card.clabe || "")}</p>
+      <p><strong>Tarjeta:</strong> ${escapeHTML(card.card_number || "")}</p>
+      <p><strong>Teléfono:</strong> ${escapeHTML(card.phone || "")}</p>
+      ${card.link_url ? `<a class="song-btn" href="${escapeHTML(card.link_url)}" target="_blank" rel="noopener">Abrir enlace</a>` : ""}
+    </article>
+  `).join("");
+}
+
+/* ------------------------------
+   INIT
+------------------------------ */
+
+async function loadAdminAll() {
   await loadAdminArtists();
   await loadAdminCategories();
   await loadAdminSongs();
   await loadArtistOptions();
   await loadCategoryOptions();
-
-  if (typeof jhdLoadMeshGradientEditor === "function") {
-    jhdLoadMeshGradientEditor();
-  }
-
-  if (typeof jhdRenderMeshEditor === "function") {
-    jhdRenderMeshEditor();
-  }
-
-  jhdHideArtistUrlsNow();
+  initMeshEditor();
 }
 
-setTimeout(jhdAdminRescueInit, 700);
-setTimeout(jhdAdminRescueInit, 1800);
-setTimeout(jhdAdminRescueInit, 3500);
+function initAdminEvents() {
+  const lyricsInput = document.getElementById("songLyricsInput");
 
-window.loadAdminArtists = loadAdminArtists;
-window.loadAdminCategories = loadAdminCategories;
-window.loadAdminSongs = loadAdminSongs;
-window.loadArtistOptions = loadArtistOptions;
-window.loadCategoryOptions = loadCategoryOptions;
+  if (lyricsInput) {
+    lyricsInput.addEventListener("input", updateLyricsPreview);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  markAdminPage();
+  initTheme();
+  initMenu();
+
+  const themeButton = document.getElementById("themeToggle");
+  if (themeButton) {
+    themeButton.addEventListener("click", toggleTheme);
+  }
+
+  initAdminEvents();
+
+  if (isAdminPage()) {
+    await checkAdminSession();
+    initMeshEditor();
+  }
+
+  await loadHomeSongs();
+  await loadPublicSongs();
+  await loadSingleSong();
+  await loadPublicArtists();
+  await loadArtistProfile();
+  await loadDonationCards();
+
+  const songSearch = document.getElementById("songSearch");
+  if (songSearch) {
+    songSearch.addEventListener("input", filterSongCards);
+  }
+});
+
+/* ------------------------------
+   EXPONER FUNCIONES A HTML
+------------------------------ */
+
+window.loginAdmin = loginAdmin;
+window.logoutAdmin = logoutAdmin;
+
 window.saveArtist = saveArtist;
 window.editArtist = editArtist;
-window.cancelArtistEdit = cancelArtistEdit;
 window.deleteArtist = deleteArtist;
-window.jhdAdminRescueInit = jhdAdminRescueInit;
-/* =========================================================
-   FIX FINAL ADMIN:
-   1. Insertar mesh en Agregar/Editar artista
-   2. Quitar duplicado de Apartados de la canción
-========================================================= */
+window.cancelArtistEdit = resetArtistForm;
 
-function jhdFindArtistCardFinal() {
-  const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"));
+window.saveCategory = saveCategory;
+window.deleteCategory = deleteCategory;
 
-  const heading = headings.find(item => {
-    const text = String(item.innerText || "").toLowerCase();
-    return text.includes("agregar artista") || text.includes("editar artista");
-  });
+window.saveSong = saveSong;
+window.editSong = editSong;
+window.deleteSong = deleteSong;
+window.cancelSongEdit = resetSongForm;
 
-  if (!heading) return null;
-
-  return heading.closest(".song-card") ||
-    heading.closest(".card") ||
-    heading.closest("section") ||
-    heading.parentElement;
-}
-
-function jhdRemoveDuplicateSongToolbarsFinal() {
-  const toolbars = Array.from(document.querySelectorAll(".lyrics-toolbar, #lyricsSectionToolbar, #jhdLyricsToolbar"));
-
-  if (toolbars.length <= 1) return;
-
-  toolbars.forEach((toolbar, index) => {
-    if (index > 0) {
-      toolbar.remove();
-    }
-  });
-
-  const repeatedTitles = Array.from(document.querySelectorAll("h3")).filter(title => {
-    return String(title.innerText || "").trim().toLowerCase() === "apartados de la canción";
-  });
-
-  repeatedTitles.forEach((title, index) => {
-    if (index > 0) {
-      const parent = title.closest(".lyrics-toolbar") || title.parentElement;
-      if (parent) parent.remove();
-    }
-  });
-}
-
-function jhdInsertMeshEditorFinal() {
-  const card = jhdFindArtistCardFinal();
-
-  if (!card) return;
-
-  let box = document.getElementById("jhdArtistGradientBox");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "jhdArtistGradientBox";
-
-    const buttons = Array.from(card.querySelectorAll("button"));
-    const firstButton = buttons.find(btn => {
-      const text = String(btn.innerText || "").toLowerCase();
-      return text.includes("guardar artista");
-    });
-
-    if (firstButton) {
-      card.insertBefore(box, firstButton.parentElement || firstButton);
-    } else {
-      card.appendChild(box);
-    }
-  }
-
-  box.innerHTML = `
-    <div class="mesh-editor-title">Portada tipo mesh</div>
-
-    <div class="mesh-editor-help">
-      Toca la portada para agregar un punto. Arrastra el punto para moverlo. Cambia color, tamaño e intensidad para mezclar los tonos.
-    </div>
-
-    <div class="mesh-canvas-wrap" id="jhdMeshCanvasWrap" onclick="jhdAddMeshPoint(event)">
-      <canvas id="jhdMeshCanvas"></canvas>
-    </div>
-
-    <div class="mesh-controls" id="jhdMeshControls"></div>
-  `;
-
-  if (typeof jhdRenderMeshEditor === "function") {
-    jhdRenderMeshEditor();
-  }
-}
-
-function jhdAdminFixFinal() {
-  if (!window.location.pathname.includes("admin.html") && !document.getElementById("adminPanel")) return;
-
-  document.body.classList.add("admin-page");
-
-  jhdRemoveDuplicateSongToolbarsFinal();
-  jhdInsertMeshEditorFinal();
-
-  if (typeof jhdHideArtistUrlInputsFinal === "function") {
-    jhdHideArtistUrlInputsFinal();
-  }
-
-  if (typeof jhdHideArtistUrlsNow === "function") {
-    jhdHideArtistUrlsNow();
-  }
-}
-
-document.addEventListener("DOMContentLoaded", jhdAdminFixFinal);
-
-setTimeout(jhdAdminFixFinal, 500);
-setTimeout(jhdAdminFixFinal, 1200);
-setTimeout(jhdAdminFixFinal, 2500);
-setTimeout(jhdAdminFixFinal, 4000);
-
-window.jhdAdminFixFinal = jhdAdminFixFinal;
+window.insertSectionTitle = insertSectionTitle;
+window.insertFullTemplate = insertFullTemplate;
+window.searchHomeSongs = searchHomeSongs;
+window.filterSongCards = filterSongCards;
