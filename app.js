@@ -4522,3 +4522,424 @@ runWhenReady(() => {
 
 window.jhdUpdateGradientPreview = jhdUpdateGradientPreview;
 window.jhdSaveArtistGradientColors = jhdSaveArtistGradientColors;
+/* =========================================================
+   ARTISTAS - DEGRADADO EDITABLE SOLO EN ADMIN
+========================================================= */
+
+function jhdIsAdminPage() {
+  return window.location.pathname.includes("admin.html") ||
+    !!document.getElementById("adminPanel");
+}
+
+function jhdRemovePublicGradientEditor() {
+  if (!jhdIsAdminPage()) {
+    const box = document.getElementById("jhdArtistGradientBox");
+    if (box) box.remove();
+  }
+}
+
+function jhdGetArtistInitials(name) {
+  const clean = String(name || "").trim().replace(/\s+/g, " ");
+  if (!clean) return "?";
+
+  const words = clean.split(" ");
+
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+
+  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
+}
+
+function jhdSafeColor(value, fallback) {
+  const color = String(value || "").trim();
+
+  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+    return color;
+  }
+
+  return fallback;
+}
+
+function jhdClampNumber(value, fallback, min, max) {
+  const number = Number(value);
+
+  if (Number.isFinite(number)) {
+    return Math.min(max, Math.max(min, number));
+  }
+
+  return fallback;
+}
+
+function jhdArtistGradientData(artist) {
+  return {
+    c1: jhdSafeColor(artist.gradient_color_1, "#0b1324"),
+    c2: jhdSafeColor(artist.gradient_color_2, "#1d3557"),
+    c3: jhdSafeColor(artist.gradient_color_3, "#111827"),
+    s1: jhdClampNumber(artist.gradient_stop_1, 0, 0, 100),
+    s2: jhdClampNumber(artist.gradient_stop_2, 50, 0, 100),
+    s3: jhdClampNumber(artist.gradient_stop_3, 100, 0, 100),
+    angle: jhdClampNumber(artist.gradient_angle, 135, 0, 360)
+  };
+}
+
+function jhdGradientString(data) {
+  return `linear-gradient(${data.angle}deg, ${data.c1} ${data.s1}%, ${data.c2} ${data.s2}%, ${data.c3} ${data.s3}%)`;
+}
+
+function jhdApplyArtistGradientToHero(artist) {
+  const hero = document.querySelector(".artist-profile-hero");
+  if (!hero) return;
+
+  const data = jhdArtistGradientData(artist);
+
+  hero.style.setProperty("--artist-c1", data.c1);
+  hero.style.setProperty("--artist-c2", data.c2);
+  hero.style.setProperty("--artist-c3", data.c3);
+  hero.style.setProperty("--artist-s1", `${data.s1}%`);
+  hero.style.setProperty("--artist-s2", `${data.s2}%`);
+  hero.style.setProperty("--artist-s3", `${data.s3}%`);
+  hero.style.setProperty("--artist-angle", `${data.angle}deg`);
+}
+
+function jhdArtistInlineVars(artist) {
+  const data = jhdArtistGradientData(artist);
+
+  return `
+    --artist-c1:${data.c1};
+    --artist-c2:${data.c2};
+    --artist-c3:${data.c3};
+    --artist-s1:${data.s1}%;
+    --artist-s2:${data.s2}%;
+    --artist-s3:${data.s3}%;
+    --artist-angle:${data.angle}deg;
+  `;
+}
+
+/* Página pública de artistas: iniciales */
+async function loadPublicArtists() {
+  const artistList = document.getElementById("artistList");
+
+  if (!artistList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay artistas todavía</h3>
+      </div>
+    `;
+    return;
+  }
+
+  artistList.innerHTML = "";
+
+  data.forEach(artist => {
+    const name = artist.name || "Sin nombre";
+    const initials = jhdGetArtistInitials(name);
+
+    artistList.innerHTML += `
+      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
+        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
+          ${escapeHTML(initials)}
+        </div>
+        <h3>${escapeHTML(name)}</h3>
+        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
+        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
+      </article>
+    `;
+  });
+}
+
+/* Perfil público de artista */
+async function loadArtistProfile() {
+  const artistName = document.getElementById("artistName");
+  const artistDescription = document.getElementById("artistDescription");
+  const artistTags = document.getElementById("artistTags");
+  const artistAvatar = document.getElementById("artistAvatar");
+  const artistSongsList = document.getElementById("artistSongsList");
+
+  if (!artistName || !artistSongsList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistName.innerText = "No se pudo conectar";
+    return;
+  }
+
+  const slug = new URLSearchParams(window.location.search).get("id");
+
+  if (!slug) {
+    artistName.innerText = "Artista no encontrado";
+    return;
+  }
+
+  const { data: artist, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !artist) {
+    artistName.innerText = "Artista no encontrado";
+    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
+    return;
+  }
+
+  jhdApplyArtistGradientToHero(artist);
+
+  artistName.innerText = artist.name || "Sin nombre";
+  artistDescription.innerText = artist.description || "Sin descripción todavía.";
+  artistTags.innerText = "ARTISTA / MINISTERIO";
+
+  if (artistAvatar) {
+    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
+    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
+  }
+
+  const { data: songsData } = await client
+    .from("songs")
+    .select(`
+      *,
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("artist_id", artist.id)
+    .order("title");
+
+  artistSongsList.innerHTML = "";
+
+  if (!songsData || songsData.length === 0) {
+    artistSongsList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+      </div>
+    `;
+    return;
+  }
+
+  songsData.forEach(song => {
+    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
+      ? jhdGetCategoryNamesFromSong(song)
+      : "Sin categoría";
+
+    const typeLabel = typeof jhdGetSongTypeLabel === "function"
+      ? jhdGetSongTypeLabel(song.song_type)
+      : "Sin tipo";
+
+    artistSongsList.innerHTML += `
+      <article class="song-card">
+        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
+        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  });
+}
+
+/* Buscar inputs del formulario de artista SOLO en admin */
+function jhdFindArtistNameInput() {
+  if (!jhdIsAdminPage()) return null;
+
+  return document.querySelector(
+    "input#artistNameInput, input#newArtistName, input[name='artist_name'], input[placeholder*='Nombre del artista'], input[placeholder*='Nombre del ministerio']"
+  );
+}
+
+function jhdFindArtistSlugInput() {
+  if (!jhdIsAdminPage()) return null;
+
+  return document.querySelector(
+    "input#artistSlugInput, input#newArtistSlug, input[name='artist_slug'], input[placeholder*='Slug del artista'], input[placeholder*='slug']"
+  );
+}
+
+function jhdArtistSlugFromAdmin() {
+  const slugInput = jhdFindArtistSlugInput();
+
+  if (slugInput && slugInput.value.trim()) {
+    return slugInput.value.trim();
+  }
+
+  const nameInput = jhdFindArtistNameInput();
+
+  if (nameInput && nameInput.value.trim()) {
+    return jhdSlugifyText(nameInput.value.trim());
+  }
+
+  return "";
+}
+
+function jhdReadGradientAdminValues() {
+  return {
+    c1: document.getElementById("jhdArtistColor1").value,
+    c2: document.getElementById("jhdArtistColor2").value,
+    c3: document.getElementById("jhdArtistColor3").value,
+    s1: Number(document.getElementById("jhdArtistStop1").value),
+    s2: Number(document.getElementById("jhdArtistStop2").value),
+    s3: Number(document.getElementById("jhdArtistStop3").value),
+    angle: Number(document.getElementById("jhdArtistAngle").value)
+  };
+}
+
+function jhdUpdateGradientPreview() {
+  const preview = document.getElementById("jhdArtistGradientPreview");
+  if (!preview) return;
+
+  const data = jhdReadGradientAdminValues();
+
+  document.getElementById("jhdArtistStop1Label").innerText = `${data.s1}%`;
+  document.getElementById("jhdArtistStop2Label").innerText = `${data.s2}%`;
+  document.getElementById("jhdArtistStop3Label").innerText = `${data.s3}%`;
+  document.getElementById("jhdArtistAngleLabel").innerText = `${data.angle}°`;
+
+  preview.style.background = jhdGradientString(data);
+}
+
+function jhdLoadArtistGradientAdminBox() {
+  if (!jhdIsAdminPage()) {
+    jhdRemovePublicGradientEditor();
+    return;
+  }
+
+  const nameInput = jhdFindArtistNameInput();
+
+  if (!nameInput) return;
+
+  let box = document.getElementById("jhdArtistGradientBox");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "jhdArtistGradientBox";
+    nameInput.parentNode.insertBefore(box, nameInput.nextSibling);
+  }
+
+  box.innerHTML = `
+    <div class="artist-gradient-admin-title">Colores del perfil</div>
+
+    <div class="artist-gradient-admin-help">
+      Elige colores y mueve los marcadores para decidir dónde empieza y termina cada tono del degradado.
+    </div>
+
+    <div class="artist-gradient-controls">
+      <div class="artist-gradient-control">
+        <label>Color 1</label>
+        <input type="color" id="jhdArtistColor1" value="#0b1324" oninput="jhdUpdateGradientPreview()">
+        <label>Posición <span id="jhdArtistStop1Label">0%</span></label>
+        <input type="range" id="jhdArtistStop1" min="0" max="100" value="0" oninput="jhdUpdateGradientPreview()">
+      </div>
+
+      <div class="artist-gradient-control">
+        <label>Color 2</label>
+        <input type="color" id="jhdArtistColor2" value="#1d3557" oninput="jhdUpdateGradientPreview()">
+        <label>Posición <span id="jhdArtistStop2Label">50%</span></label>
+        <input type="range" id="jhdArtistStop2" min="0" max="100" value="50" oninput="jhdUpdateGradientPreview()">
+      </div>
+
+      <div class="artist-gradient-control">
+        <label>Color 3</label>
+        <input type="color" id="jhdArtistColor3" value="#111827" oninput="jhdUpdateGradientPreview()">
+        <label>Posición <span id="jhdArtistStop3Label">100%</span></label>
+        <input type="range" id="jhdArtistStop3" min="0" max="100" value="100" oninput="jhdUpdateGradientPreview()">
+      </div>
+    </div>
+
+    <div class="artist-gradient-angle">
+      <label>Ángulo del degradado <span id="jhdArtistAngleLabel">135°</span></label>
+      <input type="range" id="jhdArtistAngle" min="0" max="360" value="135" oninput="jhdUpdateGradientPreview()">
+    </div>
+
+    <div class="artist-gradient-preview" id="jhdArtistGradientPreview"></div>
+
+    <button type="button" class="song-btn" style="margin-top:14px;" onclick="jhdSaveArtistGradientColors()">
+      Guardar colores del artista
+    </button>
+  `;
+
+  jhdUpdateGradientPreview();
+}
+
+async function jhdSaveArtistGradientColors() {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase");
+    return;
+  }
+
+  const slug = jhdArtistSlugFromAdmin();
+
+  if (!slug) {
+    alert("Primero escribe el nombre o slug del artista.");
+    return;
+  }
+
+  const data = jhdReadGradientAdminValues();
+
+  const { error } = await client
+    .from("artists")
+    .update({
+      gradient_color_1: data.c1,
+      gradient_color_2: data.c2,
+      gradient_color_3: data.c3,
+      gradient_stop_1: data.s1,
+      gradient_stop_2: data.s2,
+      gradient_stop_3: data.s3,
+      gradient_angle: data.angle
+    })
+    .eq("slug", slug);
+
+  if (error) {
+    alert("No se pudieron guardar los colores: " + error.message);
+    return;
+  }
+
+  alert("Colores guardados");
+}
+
+function jhdInitArtistGradientAdmin() {
+  jhdRemovePublicGradientEditor();
+
+  if (!jhdIsAdminPage()) return;
+
+  jhdLoadArtistGradientAdminBox();
+
+  setTimeout(jhdLoadArtistGradientAdminBox, 800);
+  setTimeout(jhdLoadArtistGradientAdminBox, 1800);
+  setTimeout(jhdLoadArtistGradientAdminBox, 3000);
+}
+
+document.addEventListener("DOMContentLoaded", jhdInitArtistGradientAdmin);
+
+runWhenReady(() => {
+  setTimeout(() => {
+    jhdRemovePublicGradientEditor();
+    jhdInitArtistGradientAdmin();
+    loadPublicArtists();
+    loadArtistProfile();
+  }, 800);
+});
+
+window.jhdUpdateGradientPreview = jhdUpdateGradientPreview;
+window.jhdSaveArtistGradientColors = jhdSaveArtistGradientColors;
