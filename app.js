@@ -8037,3 +8037,116 @@ window.editArtist = editArtist;
 window.cancelArtistEdit = cancelArtistEdit;
 window.deleteArtist = deleteArtist;
 window.jhdAdminRescueInit = jhdAdminRescueInit;
+/* =========================================================
+   FIX FINAL ADMIN:
+   1. Insertar mesh en Agregar/Editar artista
+   2. Quitar duplicado de Apartados de la canción
+========================================================= */
+
+function jhdFindArtistCardFinal() {
+  const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"));
+
+  const heading = headings.find(item => {
+    const text = String(item.innerText || "").toLowerCase();
+    return text.includes("agregar artista") || text.includes("editar artista");
+  });
+
+  if (!heading) return null;
+
+  return heading.closest(".song-card") ||
+    heading.closest(".card") ||
+    heading.closest("section") ||
+    heading.parentElement;
+}
+
+function jhdRemoveDuplicateSongToolbarsFinal() {
+  const toolbars = Array.from(document.querySelectorAll(".lyrics-toolbar, #lyricsSectionToolbar, #jhdLyricsToolbar"));
+
+  if (toolbars.length <= 1) return;
+
+  toolbars.forEach((toolbar, index) => {
+    if (index > 0) {
+      toolbar.remove();
+    }
+  });
+
+  const repeatedTitles = Array.from(document.querySelectorAll("h3")).filter(title => {
+    return String(title.innerText || "").trim().toLowerCase() === "apartados de la canción";
+  });
+
+  repeatedTitles.forEach((title, index) => {
+    if (index > 0) {
+      const parent = title.closest(".lyrics-toolbar") || title.parentElement;
+      if (parent) parent.remove();
+    }
+  });
+}
+
+function jhdInsertMeshEditorFinal() {
+  const card = jhdFindArtistCardFinal();
+
+  if (!card) return;
+
+  let box = document.getElementById("jhdArtistGradientBox");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "jhdArtistGradientBox";
+
+    const buttons = Array.from(card.querySelectorAll("button"));
+    const firstButton = buttons.find(btn => {
+      const text = String(btn.innerText || "").toLowerCase();
+      return text.includes("guardar artista");
+    });
+
+    if (firstButton) {
+      card.insertBefore(box, firstButton.parentElement || firstButton);
+    } else {
+      card.appendChild(box);
+    }
+  }
+
+  box.innerHTML = `
+    <div class="mesh-editor-title">Portada tipo mesh</div>
+
+    <div class="mesh-editor-help">
+      Toca la portada para agregar un punto. Arrastra el punto para moverlo. Cambia color, tamaño e intensidad para mezclar los tonos.
+    </div>
+
+    <div class="mesh-canvas-wrap" id="jhdMeshCanvasWrap" onclick="jhdAddMeshPoint(event)">
+      <canvas id="jhdMeshCanvas"></canvas>
+    </div>
+
+    <div class="mesh-controls" id="jhdMeshControls"></div>
+  `;
+
+  if (typeof jhdRenderMeshEditor === "function") {
+    jhdRenderMeshEditor();
+  }
+}
+
+function jhdAdminFixFinal() {
+  if (!window.location.pathname.includes("admin.html") && !document.getElementById("adminPanel")) return;
+
+  document.body.classList.add("admin-page");
+
+  jhdRemoveDuplicateSongToolbarsFinal();
+  jhdInsertMeshEditorFinal();
+
+  if (typeof jhdHideArtistUrlInputsFinal === "function") {
+    jhdHideArtistUrlInputsFinal();
+  }
+
+  if (typeof jhdHideArtistUrlsNow === "function") {
+    jhdHideArtistUrlsNow();
+  }
+}
+
+document.addEventListener("DOMContentLoaded", jhdAdminFixFinal);
+
+setTimeout(jhdAdminFixFinal, 500);
+setTimeout(jhdAdminFixFinal, 1200);
+setTimeout(jhdAdminFixFinal, 2500);
+setTimeout(jhdAdminFixFinal, 4000);
+
+window.jhdAdminFixFinal = jhdAdminFixFinal;
