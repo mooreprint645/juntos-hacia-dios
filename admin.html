@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Panel de administración | Juntos Hacia Dios</title>
-  <meta name="description" content="Panel privado para administrar artistas, categorías, canciones y donaciones de Juntos Hacia Dios.">
+  <title>Admin | Juntos Hacia Dios</title>
+  <meta name="description" content="Panel de administración de Juntos Hacia Dios.">
 
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=final">
 </head>
 
 <body class="admin-page">
@@ -16,7 +16,7 @@
   <nav class="navbar">
     <h2>JHD Admin</h2>
 
-    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" type="button">
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menú">
       ☰ Menú
     </button>
 
@@ -34,7 +34,7 @@
   <div class="hero-content">
     <h1>Panel de administración</h1>
     <p class="hero-description">
-      Agrega, edita y elimina artistas, categorías, canciones y donaciones.
+      Prueba de conexión, login y categorías.
     </p>
   </div>
 </header>
@@ -78,205 +78,28 @@
       </button>
     </div>
 
-    <!-- FORMULARIOS PRINCIPALES -->
-    <div class="admin-grid">
+    <!-- CATEGORÍA -->
+    <div class="song-card" id="categoryFormCard">
+      <h2 id="categoryFormTitle">Agregar categoría</h2>
 
-      <!-- ARTISTA -->
-      <div class="song-card" id="artistFormCard">
-        <h2 id="artistFormTitle">Agregar artista</h2>
+      <input id="categoryNameInput" type="text" placeholder="Nombre de la categoría">
 
-        <input id="artistNameInput" type="text" placeholder="Nombre del artista">
-
-        <textarea id="artistDescriptionInput" placeholder="Descripción del artista"></textarea>
-
-        <div id="artistMeshEditor"></div>
-
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
-          <button class="song-btn" type="button" onclick="saveArtist()">
-            Guardar artista
-          </button>
-
-          <button class="song-btn" type="button" onclick="cancelArtistEdit()">
-            Cancelar edición
-          </button>
-        </div>
-      </div>
-
-      <!-- CATEGORÍA -->
-      <div class="song-card" id="categoryFormCard">
-        <h2 id="categoryFormTitle">Agregar categoría</h2>
-
-        <input id="categoryNameInput" type="text" placeholder="Nombre de la categoría">
-
-        <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría"></textarea>
-
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
-          <button class="song-btn" type="button" onclick="saveCategory()">
-            Guardar categoría
-          </button>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- CANCIÓN -->
-    <div class="song-card" id="songFormCard" style="margin-top:28px;">
-      <h2 id="songFormTitle">Agregar canción</h2>
-
-      <input id="songTitleInput" type="text" placeholder="Título de la canción">
-
-      <label style="display:block; color:var(--secondary); margin:12px 0 6px;">
-        Sección del canto
-      </label>
-
-      <small style="display:block; color:var(--secondary); margin-bottom:8px;">
-        Elige dónde aparecerá este canto.
-      </small>
-
-      <select id="songTypeInput">
-        <option value="catolico">Católico</option>
-        <option value="cristiano">Cristiano</option>
-      </select>
-
-      <select id="songArtistInput">
-        <option value="">Selecciona artista</option>
-      </select>
-
-      <select id="songCategoryInput">
-        <option value="">Selecciona categoría</option>
-      </select>
-
-      <input id="songToneInput" type="text" placeholder="Tono, ejemplo: G">
-
-      <input id="songDifficultyInput" type="text" placeholder="Dificultad, ejemplo: Fácil">
-
-      <div id="lyricsSectionToolbar" class="lyrics-toolbar" style="margin-top:16px;">
-        <h3>Apartados de la canción</h3>
-
-        <div class="toolbar-buttons">
-          <button type="button" onclick="insertSectionTitle('Intro')">Intro</button>
-          <button type="button" onclick="insertSectionTitle('Verso 1')">Verso 1</button>
-          <button type="button" onclick="insertSectionTitle('Pre Coro')">Pre Coro</button>
-          <button type="button" onclick="insertSectionTitle('Coro')">Coro</button>
-          <button type="button" onclick="insertSectionTitle('Verso 2')">Verso 2</button>
-          <button type="button" onclick="insertSectionTitle('Verso 3')">Verso 3</button>
-          <button type="button" onclick="insertSectionTitle('Puente')">Puente</button>
-          <button type="button" onclick="insertSectionTitle('Interludio')">Interludio</button>
-          <button type="button" onclick="insertSectionTitle('Coro Final')">Coro Final</button>
-          <button type="button" onclick="insertSectionTitle('Final')">Final</button>
-          <button type="button" onclick="insertFullTemplate()">Plantilla completa</button>
-        </div>
-
-        <small style="display:block; color:var(--secondary); margin-top:12px;">
-          Usa [ ] para apartados y ( ) para acordes. Ejemplo: [Verso 1] y (G)María.
-        </small>
-      </div>
-
-      <textarea id="songLyricsInput" placeholder="Letra y acordes. Ejemplo:
-[Verso 1]
-(D)Quiero caminar contigo Mar(G)ía"></textarea>
-
-      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-        <button class="song-btn" type="button" onclick="updateLyricsPreview()">
-          Ver vista previa
-        </button>
-      </div>
-
-      <input id="songTutorialGuitarInput" type="url" placeholder="Tutorial guitarra, enlace opcional">
-      <input id="songTutorialPianoInput" type="url" placeholder="Tutorial teclado, enlace opcional">
+      <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría"></textarea>
 
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
-        <button class="song-btn" type="button" onclick="saveSong()">
-          Guardar canción
-        </button>
-
-        <button class="song-btn" type="button" onclick="cancelSongEdit()">
-          Cancelar edición
+        <button class="song-btn" type="button" onclick="saveCategory()">
+          Guardar categoría
         </button>
       </div>
-
-      <div id="jhdLyricsPreview" style="margin-top:24px;">
-        <h3>Vista previa</h3>
-        <div id="jhdLyricsPreviewContent"></div>
-      </div>
-    </div>
-
-    <!-- LISTAS ADMIN -->
-    <div class="admin-grid" style="margin-top:28px;">
-
-      <div class="song-card">
-        <h2>Artistas registrados</h2>
-        <div id="adminArtistList">
-          <p style="color:var(--secondary);">Cargando artistas...</p>
-        </div>
-      </div>
-
-      <div class="song-card">
-        <h2>Categorías registradas</h2>
-        <div id="adminCategoryList">
-          <p style="color:var(--secondary);">Cargando categorías...</p>
-        </div>
-      </div>
-
     </div>
 
     <div class="song-card" style="margin-top:28px;">
-      <h2>Canciones registradas</h2>
-      <div id="adminSongList">
-        <p style="color:var(--secondary);">Cargando canciones...</p>
+      <h2>Categorías registradas</h2>
+
+      <div id="adminCategoryList">
+        <p style="color:var(--secondary);">Cargando categorías...</p>
       </div>
     </div>
-
-    <!-- DONACIONES -->
-    <section style="margin-top:34px;">
-      <h2 style="color:var(--gold); margin-bottom:18px;">Donaciones</h2>
-
-      <div class="admin-grid">
-
-        <div class="song-card" id="donationFormCard">
-          <h2>Agregar tarjeta de donación</h2>
-
-          <input id="donationTitleInput" type="text" placeholder="Título, ejemplo: Transferencia">
-          <textarea id="donationDescriptionInput" placeholder="Descripción opcional"></textarea>
-
-          <select id="donationPaymentTypeInput">
-            <option value="Transferencia">Transferencia</option>
-            <option value="Tarjeta">Tarjeta</option>
-            <option value="Teléfono">Teléfono</option>
-            <option value="Enlace">Enlace</option>
-            <option value="Otro">Otro</option>
-          </select>
-
-          <input id="donationAccountNameInput" type="text" placeholder="Nombre del titular">
-          <input id="donationBankNameInput" type="text" placeholder="Banco">
-          <input id="donationAccountNumberInput" type="text" placeholder="Número de cuenta">
-          <input id="donationClabeInput" type="text" placeholder="CLABE">
-          <input id="donationCardNumberInput" type="text" placeholder="Número de tarjeta">
-          <input id="donationPhoneInput" type="text" placeholder="Teléfono">
-          <input id="donationLinkInput" type="url" placeholder="Link externo opcional">
-          <input id="donationOrderInput" type="number" placeholder="Orden, ejemplo: 1">
-
-          <label style="display:flex; align-items:center; gap:10px; color:var(--secondary); margin-top:12px;">
-            <input id="donationActiveInput" type="checkbox" checked>
-            Mostrar esta tarjeta en la página pública
-          </label>
-
-          <div style="margin-top:16px;">
-            <button class="song-btn" type="button" onclick="saveDonationCard()">
-              Guardar donación
-            </button>
-          </div>
-        </div>
-
-        <div class="song-card">
-          <h2>Tarjetas de donación guardadas</h2>
-          <div id="adminDonationList">
-            <p style="color:var(--secondary);">No hay tarjetas todavía.</p>
-          </div>
-        </div>
-
-      </div>
-    </section>
 
   </section>
 
