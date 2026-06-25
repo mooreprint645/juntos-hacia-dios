@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Juntos Hacia Dios | Cantos cristianos y católicos con acordes</title>
-  <meta name="description" content="Cantos cristianos y católicos con letras, acordes, tutoriales, cifrado inglés y español, y herramientas para músicos de iglesia.">
+  <title>Juntos Hacia Dios | Letras y acordes</title>
+  <meta name="description" content="Cancionero cristiano y católico con letras, acordes, artistas, categorías y tutoriales.">
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=stylefinal1">
 </head>
 
-<body>
+<body class="home-page">
 
 <header class="hero">
   <nav class="navbar">
-    <h2>JHD</h2>
+    <h2>Juntos Hacia Dios</h2>
 
-    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú">
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menú">
       ☰ Menú
     </button>
 
@@ -28,70 +28,353 @@
       <a href="donaciones.html" class="nav-link">Donaciones</a>
     </div>
 
-    <button id="themeToggle">🌙</button>
+    <button id="themeToggle" type="button">🌙</button>
   </nav>
 
   <div class="hero-content">
+    <p class="hero-kicker">Cancionero espiritual</p>
+
     <h1>Juntos Hacia Dios</h1>
 
     <p class="hero-description">
-      Encuentra cantos cristianos y católicos con acordes, letras, tutoriales y herramientas para acompañar la fe con música.
+      Letras, acordes, artistas, categorías y tutoriales para acompañar momentos de oración, adoración y alabanza.
     </p>
 
-    <div class="hero-actions">
-      <a href="canciones.html" class="main-btn">Explorar canciones</a>
-    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:24px;">
+      <a href="canciones.html" class="song-btn">
+        Ver canciones
+      </a>
 
-    <div class="search-box home-search-box">
-      <input id="homeSearch" type="text" placeholder="Buscar canción, artista o categoría...">
-      <button onclick="searchHomeSongs()">Buscar</button>
+      <a href="artistas.html" class="song-btn">
+        Ver artistas
+      </a>
+
+      <a href="categorias.html" class="song-btn">
+        Ver categorías
+      </a>
     </div>
   </div>
 </header>
 
-<section class="section intro-section">
-  <div class="intro-grid">
-    <div class="intro-card">
-      <span>🎵</span>
-      <h3>Cantos con acordes</h3>
-      <p>Organiza letras, tonos y acordes para tocar en reuniones, misa, alabanza o adoración.</p>
+<main>
+
+  <!-- ACCESOS RÁPIDOS -->
+  <section class="section">
+    <p class="hero-kicker">Explorar</p>
+    <h2 style="margin-bottom:18px;">Encuentra lo que necesitas</h2>
+
+    <div class="cards-grid">
+
+      <a class="category-card" href="canciones.html">
+        <h3>Canciones</h3>
+        <p>Busca letras, acordes, tonos, capo y tutoriales.</p>
+      </a>
+
+      <a class="category-card" href="artistas.html">
+        <h3>Artistas</h3>
+        <p>Explora cantos por artista, grupo o ministerio.</p>
+      </a>
+
+      <a class="category-card" href="categorias.html">
+        <h3>Categorías</h3>
+        <p>Encuentra cantos por uso, momento o tipo.</p>
+      </a>
+
+      <a class="category-card" href="donaciones.html">
+        <h3>Donaciones</h3>
+        <p>Apoya este proyecto para seguir creciendo.</p>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- ÚLTIMAS CANCIONES -->
+  <section class="section">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:18px;">
+      <div>
+        <p class="hero-kicker">Recientes</p>
+        <h2>Últimas canciones</h2>
+      </div>
+
+      <a href="canciones.html" class="song-btn small-btn">
+        Ver todas
+      </a>
     </div>
 
-    <div class="intro-card">
-      <span>🎸</span>
-      <h3>Herramientas para músicos</h3>
-      <p>Cambia el tono, usa cifrado inglés o español y consulta tutoriales de apoyo.</p>
+    <div id="homeSongsGrid" class="songs-grid">
+
+      <div class="song-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+        <div class="shimmer-line shimmer-line-small"></div>
+      </div>
+
+      <div class="song-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+        <div class="shimmer-line shimmer-line-small"></div>
+      </div>
+
+      <div class="song-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+        <div class="shimmer-line shimmer-line-small"></div>
+      </div>
+
+    </div>
+  </section>
+  <!-- ARTISTAS RECIENTES -->
+  <section class="section">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:18px;">
+      <div>
+        <p class="hero-kicker">Artistas</p>
+        <h2>Artistas recientes</h2>
+      </div>
+
+      <a href="artistas.html" class="song-btn small-btn">
+        Ver artistas
+      </a>
     </div>
 
-    <div class="intro-card">
-      <span>✝️</span>
-      <h3>Católico y cristiano</h3>
-      <p>Un espacio pensado para reunir cantos de fe de forma sencilla y ordenada.</p>
+    <div id="homeArtistsGrid" class="artists-grid">
+
+      <div class="artist-card shimmer-card">
+        <div class="artist-mini-avatar shimmer-block"></div>
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+      </div>
+
+      <div class="artist-card shimmer-card">
+        <div class="artist-mini-avatar shimmer-block"></div>
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+      </div>
+
+      <div class="artist-card shimmer-card">
+        <div class="artist-mini-avatar shimmer-block"></div>
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+      </div>
+
     </div>
-  </div>
-</section>
+  </section>
 
-<section class="section">
-  <h2>Canciones recientes</h2>
-
-  <div class="song-grid" id="homeSongList">
-    <div class="song-card">
-      <p style="color:var(--secondary);">Cargando canciones...</p>
-    </div>
-  </div>
-
-  <p id="noHomeResults" style="display:none; color:var(--secondary); margin-top:25px;">
-    No se encontraron canciones.
-  </p>
-
-  <div style="margin-top:30px; text-align:center;">
-    <a class="song-btn" href="canciones.html">Ver todas las canciones</a>
-  </div>
-</section>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+<script src="supabase.js?v=final"></script>
+<script src="app.js?v=limpia15"></script>
+
+<script>
+  function homeEscapeHTML(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function homeSlugify(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  }
+
+  function homeInitials(name) {
+    return String(name || "JHD")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(function (part) {
+        return part.charAt(0).toUpperCase();
+      })
+      .join("") || "JHD";
+  }
+
+  function homeArtistsText(song) {
+    if (song._artists && song._artists.length) {
+      return song._artists.map(function (artist) {
+        return artist.name;
+      }).join(" · ");
+    }
+
+    return "Sin artista";
+  }
+
+  async function loadHomeSongs() {
+    const client = window.supabaseClient;
+    const grid = document.getElementById("homeSongsGrid");
+
+    if (!grid) return;
+
+    if (!client) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>No se pudo conectar</h3>
+          <p style="color:var(--secondary);">
+            Revisa la conexión con Supabase.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const songsResult = await client
+      .from("songs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    if (songsResult.error) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>Error al cargar canciones</h3>
+          <p style="color:var(--secondary);">
+            ${homeEscapeHTML(songsResult.error.message)}
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const songs = songsResult.data || [];
+    const songIds = songs.map(function (song) {
+      return song.id;
+    });
+
+    let artistRows = [];
+
+    if (songIds.length) {
+      const artistsResult = await client
+        .from("song_artists")
+        .select("song_id, sort_order, artists(id, name, slug, description)")
+        .in("song_id", songIds)
+        .order("sort_order", { ascending: true });
+
+      artistRows = artistsResult.data || [];
+    }
+
+    const songsWithArtists = songs.map(function (song) {
+      const artists = artistRows
+        .filter(function (row) {
+          return String(row.song_id) === String(song.id) && row.artists;
+        })
+        .map(function (row) {
+          return row.artists;
+        });
+
+      return Object.assign({}, song, {
+        _artists: artists
+      });
+    });
+
+    if (!songsWithArtists.length) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>Aún no hay canciones</h3>
+          <p style="color:var(--secondary);">
+            Agrega canciones desde el panel de administración.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = songsWithArtists.map(function (song) {
+      const slug = song.slug || homeSlugify(song.title);
+      const artists = homeArtistsText(song);
+      const meta = [song.tone, song.difficulty].filter(Boolean).join(" · ");
+
+      return `
+        <a class="song-card song-link-card" href="canto.html?slug=${homeEscapeHTML(slug)}">
+          <p class="artists-line">${homeEscapeHTML(artists)}</p>
+
+          <h3>${homeEscapeHTML(song.title || "Sin título")}</h3>
+
+          <p style="color:var(--secondary); margin-top:8px;">
+            ${homeEscapeHTML(meta)}
+          </p>
+        </a>
+      `;
+    }).join("");
+  }
+
+  async function loadHomeArtists() {
+    const client = window.supabaseClient;
+    const grid = document.getElementById("homeArtistsGrid");
+
+    if (!grid) return;
+
+    if (!client) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>No se pudo conectar</h3>
+          <p style="color:var(--secondary);">
+            Revisa la conexión con Supabase.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const artistsResult = await client
+      .from("artists")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    if (artistsResult.error) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>Error al cargar artistas</h3>
+          <p style="color:var(--secondary);">
+            ${homeEscapeHTML(artistsResult.error.message)}
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const artists = artistsResult.data || [];
+
+    if (!artists.length) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>Aún no hay artistas</h3>
+          <p style="color:var(--secondary);">
+            Agrega artistas desde el panel de administración.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = artists.map(function (artist) {
+      const slug = artist.slug || homeSlugify(artist.name);
+
+      return `
+        <a class="artist-card" href="artista.html?slug=${homeEscapeHTML(slug)}">
+          <div class="artist-mini-avatar">
+            ${homeEscapeHTML(homeInitials(artist.name))}
+          </div>
+
+          <h3>${homeEscapeHTML(artist.name || "Artista")}</h3>
+
+          <p>${homeEscapeHTML(artist.description || "Ver canciones, álbumes y colaboraciones.")}</p>
+        </a>
+      `;
+    }).join("");
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    loadHomeSongs();
+    loadHomeArtists();
+  });
+</script>
 
 </body>
 </html>
