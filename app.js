@@ -1,21 +1,18 @@
 /* =========================================================
-   JUNTOS HACIA DIOS - RESCATE ADMIN
-   Funciona con:
-   - Luna / modo claro
-   - Login admin
-   - Categorías admin
-   - Artistas admin
-   - Carga básica pública de categorías y artistas
+   JUNTOS HACIA DIOS - APP LIMPIA 1.0
+   Categorías + artistas + álbumes + canciones + colaboraciones
 ========================================================= */
 
 const ADMIN_EMAIL = "mooreprint645@gmail.com";
 
-let currentEditingCategoryId = null;
 let currentEditingArtistId = null;
+let currentEditingCategoryId = null;
+let currentEditingAlbumId = null;
+let currentEditingSongId = null;
 
-/* =========================================================
-   HELPERS
-========================================================= */
+function $(id) {
+  return document.getElementById(id);
+}
 
 function getSupabase() {
   return window.supabaseClient || null;
@@ -55,16 +52,117 @@ function getInitials(name) {
   }).join("").toUpperCase();
 }
 
-function showMessage(elementId, text) {
-  const element = document.getElementById(elementId);
+function getSelectedValues(selectId) {
+  const select = $(selectId);
 
-  if (element) {
-    element.innerText = text;
+  if (!select) return [];
+
+  return Array.from(select.selectedOptions || [])
+    .map(function (option) {
+      return option.value;
+    })
+    .filter(Boolean);
+}
+
+function setSelectedValues(selectId, values) {
+  const select = $(selectId);
+
+  if (!select) return;
+
+  const selectedValues = new Set(values || []);
+
+  Array.from(select.options || []).forEach(function (option) {
+    option.selected = selectedValues.has(option.value);
+  });
+}
+
+function getInputValue(id) {
+  const input = $(id);
+
+  return input ? input.value.trim() : "";
+}
+
+function setInputValue(id, value) {
+  const input = $(id);
+
+  if (input) {
+    input.value = value || "";
   }
 }
 
+function showMessage(id, text) {
+  const element = $(id);
+
+  if (element) {
+    element.innerText = text || "";
+  }
+}
+
+function getUrlParam(name) {
+  const params = new URLSearchParams(window.location.search);
+
+  return params.get(name) || "";
+}
+
+function setOptions(selectId, items, placeholder, valueKey, labelKey) {
+  const select = $(selectId);
+
+  if (!select) return;
+
+  const valueField = valueKey || "id";
+  const labelField = labelKey || "name";
+
+  select.innerHTML = `<option value="">${escapeHTML(placeholder || "Selecciona")}</option>`;
+
+  (items || []).forEach(function (item) {
+    const value = item[valueField] || "";
+    const label = item[labelField] || "Sin nombre";
+
+    select.innerHTML += `<option value="${escapeHTML(value)}">${escapeHTML(label)}</option>`;
+  });
+}
+
+function setMultiOptions(selectId, items, labelKey) {
+  const select = $(selectId);
+
+  if (!select) return;
+
+  const labelField = labelKey || "name";
+
+  select.innerHTML = "";
+
+  (items || []).forEach(function (item) {
+    const value = item.id || "";
+    const label = item[labelField] || "Sin nombre";
+
+    select.innerHTML += `<option value="${escapeHTML(value)}">${escapeHTML(label)}</option>`;
+  });
+}
+
+function artistLinksHTML(artists) {
+  const safeArtists = artists || [];
+
+  if (!safeArtists.length) {
+    return `<span>Sin artista</span>`;
+  }
+
+  return safeArtists.map(function (artist) {
+    const slug = artist.slug || slugify(artist.name || "");
+
+    return `<a href="artista.html?slug=${encodeURIComponent(slug)}">${escapeHTML(artist.name || "Sin artista")}</a>`;
+  }).join(`<span class="artist-dot"> · </span>`);
+}
+
+function renderChordedLyrics(lyrics) {
+  const escaped = escapeHTML(lyrics || "");
+
+  return escaped.replace(/\(([^)]+)\)/g, function (_, chord) {
+    return `<span class="chord-token">${escapeHTML(chord)}</span>`;
+  });
+}
+
 /* =========================================================
-   TEMA / LUNA
+   TEMA / MENÚ
 ========================================================= */
 
 function initTheme() {
@@ -78,7 +176,7 @@ function initTheme() {
 }
 
 function updateThemeButton() {
-  const button = document.getElementById("themeToggle");
+  const button = $("themeToggle");
 
   if (!button) return;
 
@@ -96,13 +194,9 @@ function toggleTheme() {
   updateThemeButton();
 }
 
-/* =========================================================
-   MENU
-========================================================= */
-
 function initMenu() {
-  const button = document.getElementById("menuToggle");
-  const menu = document.getElementById("navMenu");
+  const button = $("menuToggle");
+  const menu = $("navMenu");
 
   if (!button || !menu) return;
 
@@ -116,30 +210,21 @@ function initMenu() {
 ========================================================= */
 
 async function loginAdmin() {
-  const emailInput = document.getElementById("adminEmailInput");
-  const passwordInput = document.getElementById("adminPasswordInput");
-  const message = document.getElementById("adminLoginMessage");
-
-  const email = emailInput ? emailInput.value.trim() : "";
+  const email = getInputValue("adminEmailInput");
+  const passwordInput = $("adminPasswordInput");
   const password = passwordInput ? passwordInput.value : "";
 
-  if (message) {
-    message.innerText = "Iniciando sesión...";
-  }
+  showMessage("adminLoginMessage", "Iniciando sesión...");
 
   if (!email || !password) {
-    if (message) {
-      message.innerText = "Escribe correo y contraseña.";
-    }
+    showMessage("adminLoginMessage", "Escribe correo y contraseña.");
     return;
   }
 
   const client = getSupabase();
 
   if (!client) {
-    if (message) {
-      message.innerText = "No se pudo conectar con Supabase.";
-    }
+    showMessage("adminLoginMessage", "No se pudo conectar con Supabase.");
     return;
   }
 
@@ -149,15 +234,11 @@ async function loginAdmin() {
   });
 
   if (error) {
-    if (message) {
-      message.innerText = "No se pudo iniciar sesión: " + error.message;
-    }
+    showMessage("adminLoginMessage", "No se pudo iniciar sesión: " + error.message);
     return;
   }
 
-  if (message) {
-    message.innerText = "Sesión iniciada.";
-  }
+  showMessage("adminLoginMessage", "Sesión iniciada.");
 
   await checkAdminSession();
 }
@@ -171,14 +252,16 @@ async function logoutAdmin() {
 
   currentEditingArtistId = null;
   currentEditingCategoryId = null;
+  currentEditingAlbumId = null;
+  currentEditingSongId = null;
 
   await checkAdminSession();
 }
 
 async function checkAdminSession() {
-  const loginSection = document.getElementById("adminLoginSection");
-  const adminPanel = document.getElementById("adminPanel");
-  const userText = document.getElementById("adminUserText");
+  const loginSection = $("adminLoginSection");
+  const adminPanel = $("adminPanel");
+  const userText = $("adminUserText");
 
   if (!loginSection || !adminPanel) return;
 
@@ -196,7 +279,7 @@ async function checkAdminSession() {
   if (error) {
     loginSection.style.display = "block";
     adminPanel.style.display = "none";
-    showMessage("adminLoginMessage", "Error leyendo sesión.");
+    showMessage("adminLoginMessage", "Error leyendo la sesión.");
     return;
   }
 
@@ -227,10 +310,217 @@ async function checkAdminSession() {
     userText.innerText = "Sesión iniciada como: " + email;
   }
 
-  await loadAdminArtists();
-  await loadAdminCategories();
-  await loadArtistOptions();
-  await loadCategoryOptions();
+  await loadAdminData();
+}
+
+async function loadAdminData() {
+  await Promise.all([
+    loadAdminArtists(),
+    loadAdminCategories(),
+    loadAdminAlbums(),
+    loadAdminSongs(),
+    loadArtistOptions(),
+    loadCategoryOptions(),
+    loadAlbumOptions()
+  ]);
+}
+/* =========================================================
+   DATA HELPERS
+========================================================= */
+
+async function fetchArtists() {
+  const client = getSupabase();
+
+  if (!client) {
+    return {
+      data: [],
+      error: { message: "Sin conexión a Supabase" }
+    };
+  }
+
+  return await client
+    .from("artists")
+    .select("*")
+    .order("name", { ascending: true });
+}
+
+async function fetchCategories() {
+  const client = getSupabase();
+
+  if (!client) {
+    return {
+      data: [],
+      error: { message: "Sin conexión a Supabase" }
+    };
+  }
+
+  return await client
+    .from("categories")
+    .select("*")
+    .order("name", { ascending: true });
+}
+
+async function fetchAlbums() {
+  const client = getSupabase();
+
+  if (!client) {
+    return {
+      data: [],
+      error: { message: "Sin conexión a Supabase" }
+    };
+  }
+
+  const { data: albums, error } = await client
+    .from("albums")
+    .select("*")
+    .order("sort_order", { ascending: true })
+    .order("title", { ascending: true });
+
+  if (error) {
+    return {
+      data: [],
+      error: error
+    };
+  }
+
+  const { data: artists } = await fetchArtists();
+
+  const artistMap = new Map(
+    (artists || []).map(function (artist) {
+      return [artist.id, artist];
+    })
+  );
+
+  const merged = (albums || []).map(function (album) {
+    return Object.assign({}, album, {
+      artist: artistMap.get(album.artist_id) || null
+    });
+  });
+
+  return {
+    data: merged,
+    error: null
+  };
+}
+
+async function fetchSongsBase(ids) {
+  const client = getSupabase();
+
+  if (!client) {
+    return {
+      data: [],
+      error: { message: "Sin conexión a Supabase" }
+    };
+  }
+
+  let query = client
+    .from("songs")
+    .select("*")
+    .order("title", { ascending: true });
+
+  if (ids && ids.length) {
+    query = query.in("id", ids);
+  }
+
+  return await query;
+}
+
+async function fetchSongsWithRelations(ids) {
+  const client = getSupabase();
+
+  if (!client) {
+    return {
+      data: [],
+      error: { message: "Sin conexión a Supabase" }
+    };
+  }
+
+  const { data: songs, error } = await fetchSongsBase(ids);
+
+  if (error) {
+    return {
+      data: [],
+      error: error
+    };
+  }
+
+  const safeSongs = songs || [];
+
+  const songIds = safeSongs
+    .map(function (song) {
+      return song.id;
+    })
+    .filter(Boolean);
+
+  if (!songIds.length) {
+    return {
+      data: [],
+      error: null
+    };
+  }
+
+  const artistRes = await client
+    .from("song_artists")
+    .select("song_id, role, sort_order, artists(id, name, slug, description)")
+    .in("song_id", songIds)
+    .order("sort_order", { ascending: true });
+
+  const categoryRes = await client
+    .from("song_categories")
+    .select("song_id, categories(id, name, slug, description)")
+    .in("song_id", songIds);
+
+  const albumRes = await client
+    .from("album_songs")
+    .select("song_id, albums(id, title, slug, description, artist_id)")
+    .in("song_id", songIds);
+
+  const artistsBySong = new Map();
+  const categoriesBySong = new Map();
+  const albumsBySong = new Map();
+
+  (artistRes.data || []).forEach(function (row) {
+    if (!artistsBySong.has(row.song_id)) {
+      artistsBySong.set(row.song_id, []);
+    }
+
+    if (row.artists) {
+      artistsBySong.get(row.song_id).push(row.artists);
+    }
+  });
+
+  (categoryRes.data || []).forEach(function (row) {
+    if (!categoriesBySong.has(row.song_id)) {
+      categoriesBySong.set(row.song_id, []);
+    }
+
+    if (row.categories) {
+      categoriesBySong.get(row.song_id).push(row.categories);
+    }
+  });
+
+  (albumRes.data || []).forEach(function (row) {
+    if (!albumsBySong.has(row.song_id)) {
+      albumsBySong.set(row.song_id, []);
+    }
+
+    if (row.albums) {
+      albumsBySong.get(row.song_id).push(row.albums);
+    }
+  });
+
+  const merged = safeSongs.map(function (song) {
+    return Object.assign({}, song, {
+      _artists: artistsBySong.get(song.id) || [],
+      _categories: categoriesBySong.get(song.id) || [],
+      _albums: albumsBySong.get(song.id) || []
+    });
+  });
+
+  return {
+    data: merged,
+    error: null
+  };
 }
 
 /* =========================================================
@@ -240,57 +530,19 @@ async function checkAdminSession() {
 function resetArtistForm() {
   currentEditingArtistId = null;
 
-  const title = document.getElementById("artistFormTitle");
-  const nameInput = document.getElementById("artistNameInput");
-  const descriptionInput = document.getElementById("artistDescriptionInput");
+  const title = $("artistFormTitle");
 
-  if (title) title.innerText = "Agregar artista";
-  if (nameInput) nameInput.value = "";
-  if (descriptionInput) descriptionInput.value = "";
-}
-
-async function editArtist(id) {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase.");
-    return;
+  if (title) {
+    title.innerText = "Agregar artista";
   }
 
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error || !data) {
-    alert("No se pudo cargar el artista.");
-    return;
-  }
-
-  currentEditingArtistId = id;
-
-  const title = document.getElementById("artistFormTitle");
-  const nameInput = document.getElementById("artistNameInput");
-  const descriptionInput = document.getElementById("artistDescriptionInput");
-
-  if (title) title.innerText = "Editar artista";
-  if (nameInput) nameInput.value = data.name || "";
-  if (descriptionInput) descriptionInput.value = data.description || "";
-
-  const form = document.getElementById("artistFormCard");
-
-  if (form) {
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  setInputValue("artistNameInput", "");
+  setInputValue("artistDescriptionInput", "");
 }
 
 async function saveArtist() {
-  const nameInput = document.getElementById("artistNameInput");
-  const descriptionInput = document.getElementById("artistDescriptionInput");
-
-  const name = nameInput ? nameInput.value.trim() : "";
-  const description = descriptionInput ? descriptionInput.value.trim() : "";
+  const name = getInputValue("artistNameInput");
+  const description = getInputValue("artistDescriptionInput");
 
   if (!name) {
     alert("Escribe el nombre del artista.");
@@ -312,18 +564,9 @@ async function saveArtist() {
     cover_url: ""
   };
 
-  let result;
-
-  if (currentEditingArtistId) {
-    result = await client
-      .from("artists")
-      .update(payload)
-      .eq("id", currentEditingArtistId);
-  } else {
-    result = await client
-      .from("artists")
-      .insert(payload);
-  }
+  const result = currentEditingArtistId
+    ? await client.from("artists").update(payload).eq("id", currentEditingArtistId)
+    : await client.from("artists").insert(payload);
 
   if (result.error) {
     alert("No se pudo guardar artista: " + result.error.message);
@@ -334,11 +577,50 @@ async function saveArtist() {
 
   resetArtistForm();
 
-  await loadAdminArtists();
-  await loadArtistOptions();
-  await loadPublicArtists();
+  await Promise.all([
+    loadAdminArtists(),
+    loadArtistOptions(),
+    loadPublicArtists()
+  ]);
 
   alert(wasEditing ? "Artista actualizado." : "Artista guardado.");
+}
+
+async function editArtist(id) {
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    alert("No se pudo cargar el artista.");
+    return;
+  }
+
+  currentEditingArtistId = id;
+
+  const title = $("artistFormTitle");
+
+  if (title) {
+    title.innerText = "Editar artista";
+  }
+
+  setInputValue("artistNameInput", data.name || "");
+  setInputValue("artistDescriptionInput", data.description || "");
+
+  const form = $("artistFormCard");
+
+  if (form) {
+    form.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
 }
 
 async function deleteArtist(id) {
@@ -358,75 +640,52 @@ async function deleteArtist(id) {
     return;
   }
 
-  await loadAdminArtists();
-  await loadArtistOptions();
-  await loadPublicArtists();
+  await Promise.all([
+    loadAdminArtists(),
+    loadArtistOptions(),
+    loadAdminAlbums(),
+    loadAlbumOptions(),
+    loadPublicArtists()
+  ]);
 }
 
 async function loadAdminArtists() {
-  const list = document.getElementById("adminArtistList");
+  const list = $("adminArtistList");
 
   if (!list) return;
 
-  const client = getSupabase();
-
-  if (!client) {
-    list.innerHTML = "<p>No se pudo conectar con Supabase.</p>";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name", { ascending: true });
+  const { data, error } = await fetchArtists();
 
   if (error) {
-    list.innerHTML = "<p style='color:#ffb4b4;'>Error: " + escapeHTML(error.message) + "</p>";
+    list.innerHTML = `<p style="color:#ffb4b4;">Error: ${escapeHTML(error.message)}</p>`;
     return;
   }
 
-  if (!data || data.length === 0) {
-    list.innerHTML = "<p style='color:var(--secondary);'>No hay artistas todavía.</p>";
+  if (!data || !data.length) {
+    list.innerHTML = `<p style="color:var(--secondary);">No hay artistas todavía.</p>`;
     return;
   }
 
   list.innerHTML = data.map(function (artist) {
     return `
       <div class="admin-list-item">
-        <div style="display:flex; align-items:center; gap:14px; width:100%;">
-          <div style="
-            width:52px;
-            height:52px;
-            min-width:52px;
-            border-radius:999px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:linear-gradient(135deg, #fac15f, #8557ff);
-            color:#ffffff;
-            font-weight:800;
-            font-size:16px;
-            box-shadow:0 10px 24px rgba(0,0,0,.25);
-          ">
-            ${escapeHTML(getInitials(artist.name || ""))}
+        <div class="admin-person-row">
+          <div class="artist-avatar-small">
+            ${escapeHTML(getInitials(artist.name))}
           </div>
 
-          <div style="flex:1; min-width:0;">
-            <strong style="display:block; font-size:18px;">
-              ${escapeHTML(artist.name || "Sin nombre")}
-            </strong>
-            <p style="color:var(--secondary); margin-top:6px;">
-              ${escapeHTML(artist.description || "Sin descripción.")}
-            </p>
+          <div>
+            <strong>${escapeHTML(artist.name || "Sin nombre")}</strong>
+            <p>${escapeHTML(artist.description || "Sin descripción.")}</p>
           </div>
         </div>
 
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+        <div class="admin-actions">
           <button type="button" class="song-btn" onclick="editArtist('${artist.id}')">
             Editar
           </button>
 
-          <button type="button" class="song-btn" onclick="deleteArtist('${artist.id}')">
+          <button type="button" class="song-btn danger" onclick="deleteArtist('${artist.id}')">
             Eliminar
           </button>
         </div>
@@ -436,26 +695,10 @@ async function loadAdminArtists() {
 }
 
 async function loadArtistOptions() {
-  const select = document.getElementById("songArtistInput");
+  const { data } = await fetchArtists();
 
-  if (!select) return;
-
-  const client = getSupabase();
-
-  if (!client) return;
-
-  const { data, error } = await client
-    .from("artists")
-    .select("id, name")
-    .order("name", { ascending: true });
-
-  if (error) return;
-
-  select.innerHTML = '<option value="">Selecciona artista</option>';
-
-  (data || []).forEach(function (artist) {
-    select.innerHTML += `<option value="${artist.id}">${escapeHTML(artist.name || "Sin nombre")}</option>`;
-  });
+  setOptions("albumArtistInput", data || [], "Selecciona artista", "id", "name");
+  setMultiOptions("songArtistsInput", data || [], "name");
 }
 
 /* =========================================================
@@ -465,57 +708,19 @@ async function loadArtistOptions() {
 function resetCategoryForm() {
   currentEditingCategoryId = null;
 
-  const title = document.getElementById("categoryFormTitle");
-  const nameInput = document.getElementById("categoryNameInput");
-  const descriptionInput = document.getElementById("categoryDescriptionInput");
+  const title = $("categoryFormTitle");
 
-  if (title) title.innerText = "Agregar categoría";
-  if (nameInput) nameInput.value = "";
-  if (descriptionInput) descriptionInput.value = "";
-}
-
-async function editCategory(id) {
-  const client = getSupabase();
-
-  if (!client) {
-    alert("No se pudo conectar con Supabase.");
-    return;
+  if (title) {
+    title.innerText = "Agregar categoría";
   }
 
-  const { data, error } = await client
-    .from("categories")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error || !data) {
-    alert("No se pudo cargar la categoría.");
-    return;
-  }
-
-  currentEditingCategoryId = id;
-
-  const title = document.getElementById("categoryFormTitle");
-  const nameInput = document.getElementById("categoryNameInput");
-  const descriptionInput = document.getElementById("categoryDescriptionInput");
-
-  if (title) title.innerText = "Editar categoría";
-  if (nameInput) nameInput.value = data.name || "";
-  if (descriptionInput) descriptionInput.value = data.description || "";
-
-  const form = document.getElementById("categoryFormCard");
-
-  if (form) {
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+  setInputValue("categoryNameInput", "");
+  setInputValue("categoryDescriptionInput", "");
 }
 
 async function saveCategory() {
-  const nameInput = document.getElementById("categoryNameInput");
-  const descriptionInput = document.getElementById("categoryDescriptionInput");
-
-  const name = nameInput ? nameInput.value.trim() : "";
-  const description = descriptionInput ? descriptionInput.value.trim() : "";
+  const name = getInputValue("categoryNameInput");
+  const description = getInputValue("categoryDescriptionInput");
 
   if (!name) {
     alert("Escribe el nombre de la categoría.");
@@ -535,18 +740,9 @@ async function saveCategory() {
     description: description
   };
 
-  let result;
-
-  if (currentEditingCategoryId) {
-    result = await client
-      .from("categories")
-      .update(payload)
-      .eq("id", currentEditingCategoryId);
-  } else {
-    result = await client
-      .from("categories")
-      .insert(payload);
-  }
+  const result = currentEditingCategoryId
+    ? await client.from("categories").update(payload).eq("id", currentEditingCategoryId)
+    : await client.from("categories").insert(payload);
 
   if (result.error) {
     alert("No se pudo guardar categoría: " + result.error.message);
@@ -557,11 +753,50 @@ async function saveCategory() {
 
   resetCategoryForm();
 
-  await loadAdminCategories();
-  await loadCategoryOptions();
-  await loadPublicCategories();
+  await Promise.all([
+    loadAdminCategories(),
+    loadCategoryOptions(),
+    loadPublicCategories()
+  ]);
 
   alert(wasEditing ? "Categoría actualizada." : "Categoría guardada.");
+}
+
+async function editCategory(id) {
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("categories")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    alert("No se pudo cargar la categoría.");
+    return;
+  }
+
+  currentEditingCategoryId = id;
+
+  const title = $("categoryFormTitle");
+
+  if (title) {
+    title.innerText = "Editar categoría";
+  }
+
+  setInputValue("categoryNameInput", data.name || "");
+  setInputValue("categoryDescriptionInput", data.description || "");
+
+  const form = $("categoryFormCard");
+
+  if (form) {
+    form.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
 }
 
 async function deleteCategory(id) {
@@ -581,55 +816,43 @@ async function deleteCategory(id) {
     return;
   }
 
-  await loadAdminCategories();
-  await loadCategoryOptions();
-  await loadPublicCategories();
+  await Promise.all([
+    loadAdminCategories(),
+    loadCategoryOptions(),
+    loadPublicCategories()
+  ]);
 }
 
 async function loadAdminCategories() {
-  const list = document.getElementById("adminCategoryList");
+  const list = $("adminCategoryList");
 
   if (!list) return;
 
-  const client = getSupabase();
-
-  if (!client) {
-    list.innerHTML = "<p>No se pudo conectar con Supabase.</p>";
-    return;
-  }
-
-  const { data, error } = await client
-    .from("categories")
-    .select("*")
-    .order("name", { ascending: true });
+  const { data, error } = await fetchCategories();
 
   if (error) {
-    list.innerHTML = "<p style='color:#ffb4b4;'>Error: " + escapeHTML(error.message) + "</p>";
+    list.innerHTML = `<p style="color:#ffb4b4;">Error: ${escapeHTML(error.message)}</p>`;
     return;
   }
 
-  if (!data || data.length === 0) {
-    list.innerHTML = "<p style='color:var(--secondary);'>No hay categorías todavía.</p>";
+  if (!data || !data.length) {
+    list.innerHTML = `<p style="color:var(--secondary);">No hay categorías todavía.</p>`;
     return;
   }
 
   list.innerHTML = data.map(function (category) {
     return `
       <div class="admin-list-item">
-        <strong style="display:block; font-size:18px;">
-          ${escapeHTML(category.name || "Sin nombre")}
-        </strong>
+        <strong>${escapeHTML(category.name || "Sin nombre")}</strong>
 
-        <p style="color:var(--secondary); margin-top:6px;">
-          ${escapeHTML(category.description || "Sin descripción.")}
-        </p>
+        <p>${escapeHTML(category.description || "Sin descripción.")}</p>
 
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+        <div class="admin-actions">
           <button type="button" class="song-btn" onclick="editCategory('${category.id}')">
             Editar
           </button>
 
-          <button type="button" class="song-btn" onclick="deleteCategory('${category.id}')">
+          <button type="button" class="song-btn danger" onclick="deleteCategory('${category.id}')">
             Eliminar
           </button>
         </div>
@@ -639,52 +862,586 @@ async function loadAdminCategories() {
 }
 
 async function loadCategoryOptions() {
-  const select = document.getElementById("songCategoryInput");
+  const { data } = await fetchCategories();
 
-  if (!select) return;
+  setOptions("songCategoryInput", data || [], "Selecciona categoría", "id", "name");
+}
+/* =========================================================
+   ÁLBUMES ADMIN
+========================================================= */
+
+function resetAlbumForm() {
+  currentEditingAlbumId = null;
+
+  const title = $("albumFormTitle");
+
+  if (title) {
+    title.innerText = "Agregar álbum / carpeta";
+  }
+
+  setInputValue("albumTitleInput", "");
+  setInputValue("albumDescriptionInput", "");
+  setInputValue("albumArtistInput", "");
+}
+
+async function saveAlbum() {
+  const artistId = getInputValue("albumArtistInput");
+  const title = getInputValue("albumTitleInput");
+  const description = getInputValue("albumDescriptionInput");
+
+  if (!artistId || !title) {
+    alert("Selecciona artista y escribe el nombre del álbum.");
+    return;
+  }
 
   const client = getSupabase();
 
   if (!client) return;
 
+  const payload = {
+    artist_id: artistId,
+    title: title,
+    slug: slugify(title),
+    description: description
+  };
+
+  const result = currentEditingAlbumId
+    ? await client.from("albums").update(payload).eq("id", currentEditingAlbumId)
+    : await client.from("albums").insert(payload);
+
+  if (result.error) {
+    alert("No se pudo guardar álbum: " + result.error.message);
+    return;
+  }
+
+  const wasEditing = !!currentEditingAlbumId;
+
+  resetAlbumForm();
+
+  await Promise.all([
+    loadAdminAlbums(),
+    loadAlbumOptions()
+  ]);
+
+  alert(wasEditing ? "Álbum actualizado." : "Álbum guardado.");
+}
+
+async function editAlbum(id) {
+  const client = getSupabase();
+
+  if (!client) return;
+
   const { data, error } = await client
-    .from("categories")
-    .select("id, name")
-    .order("name", { ascending: true });
+    .from("albums")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  if (error) return;
+  if (error || !data) {
+    alert("No se pudo cargar el álbum.");
+    return;
+  }
 
-  select.innerHTML = '<option value="">Selecciona categoría</option>';
+  currentEditingAlbumId = id;
 
-  (data || []).forEach(function (category) {
-    select.innerHTML += `<option value="${category.id}">${escapeHTML(category.name || "Sin nombre")}</option>`;
+  const title = $("albumFormTitle");
+
+  if (title) {
+    title.innerText = "Editar álbum / carpeta";
+  }
+
+  setInputValue("albumArtistInput", data.artist_id || "");
+  setInputValue("albumTitleInput", data.title || "");
+  setInputValue("albumDescriptionInput", data.description || "");
+
+  const form = $("albumFormCard");
+
+  if (form) {
+    form.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+}
+
+async function deleteAlbum(id) {
+  if (!confirm("¿Eliminar este álbum/carpeta? Las canciones no se borran.")) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { error } = await client
+    .from("albums")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("No se pudo eliminar: " + error.message);
+    return;
+  }
+
+  await Promise.all([
+    loadAdminAlbums(),
+    loadAlbumOptions()
+  ]);
+}
+
+async function loadAdminAlbums() {
+  const list = $("adminAlbumList");
+
+  if (!list) return;
+
+  const { data, error } = await fetchAlbums();
+
+  if (error) {
+    list.innerHTML = `<p style="color:#ffb4b4;">Error: ${escapeHTML(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || !data.length) {
+    list.innerHTML = `<p style="color:var(--secondary);">No hay álbumes todavía.</p>`;
+    return;
+  }
+
+  list.innerHTML = data.map(function (album) {
+    return `
+      <div class="admin-list-item">
+        <strong>📁 ${escapeHTML(album.title || "Sin título")}</strong>
+
+        <p>${escapeHTML(album.artist ? album.artist.name : "Sin artista")}</p>
+
+        <p>${escapeHTML(album.description || "Sin descripción.")}</p>
+
+        <div class="admin-actions">
+          <button type="button" class="song-btn" onclick="editAlbum('${album.id}')">
+            Editar
+          </button>
+
+          <button type="button" class="song-btn danger" onclick="deleteAlbum('${album.id}')">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function loadAlbumOptions() {
+  const { data } = await fetchAlbums();
+
+  const select = $("songAlbumInput");
+
+  if (!select) return;
+
+  select.innerHTML = `<option value="">Sin álbum / carpeta</option>`;
+
+  (data || []).forEach(function (album) {
+    const artistName = album.artist ? album.artist.name : "Sin artista";
+
+    select.innerHTML += `
+      <option value="${escapeHTML(album.id)}">
+        ${escapeHTML(artistName)} — ${escapeHTML(album.title || "Sin título")}
+      </option>
+    `;
   });
 }
 
 /* =========================================================
-   PÁGINA PÚBLICA: CATEGORÍAS
+   CANCIONES ADMIN
 ========================================================= */
 
-async function loadPublicCategories() {
-  const list = document.getElementById("categoryList");
+function resetSongForm() {
+  currentEditingSongId = null;
 
-  if (!list) return;
+  const title = $("songFormTitle");
+
+  if (title) {
+    title.innerText = "Agregar canción";
+  }
+
+  [
+    "songTitleInput",
+    "songToneInput",
+    "songDifficultyInput",
+    "songLyricsInput",
+    "songGuitarUrlInput",
+    "songPianoUrlInput",
+    "songYoutubeUrlInput",
+    "songTiktokUrlInput",
+    "songInstagramUrlInput"
+  ].forEach(function (id) {
+    setInputValue(id, "");
+  });
+
+  setInputValue("songTypeInput", "catolico");
+  setInputValue("songCategoryInput", "");
+  setInputValue("songAlbumInput", "");
+  setSelectedValues("songArtistsInput", []);
+}
+
+async function saveSong() {
+  const title = getInputValue("songTitleInput");
+  const songType = getInputValue("songTypeInput") || "catolico";
+  const tone = getInputValue("songToneInput");
+  const difficulty = getInputValue("songDifficultyInput");
+  const lyrics = getInputValue("songLyricsInput");
+  const categoryId = getInputValue("songCategoryInput");
+  const albumId = getInputValue("songAlbumInput");
+  const artistIds = getSelectedValues("songArtistsInput");
+
+  if (!title) {
+    alert("Escribe el título de la canción.");
+    return;
+  }
+
+  if (!artistIds.length) {
+    alert("Selecciona al menos un artista.");
+    return;
+  }
 
   const client = getSupabase();
 
-  if (!client) {
+  if (!client) return;
+
+  const payload = {
+    title: title,
+    slug: slugify(title),
+    song_type: songType,
+    tone: tone,
+    difficulty: difficulty,
+    lyrics: lyrics,
+    artist_id: artistIds[0]
+  };
+
+  let savedSongId = currentEditingSongId;
+  let result;
+
+  if (currentEditingSongId) {
+    result = await client
+      .from("songs")
+      .update(payload)
+      .eq("id", currentEditingSongId)
+      .select("id")
+      .single();
+  } else {
+    result = await client
+      .from("songs")
+      .insert(payload)
+      .select("id")
+      .single();
+  }
+
+  if (result.error) {
+    alert("No se pudo guardar canción: " + result.error.message);
+    return;
+  }
+
+  savedSongId = result.data ? result.data.id : savedSongId;
+
+  await client
+    .from("song_artists")
+    .delete()
+    .eq("song_id", savedSongId);
+
+  const artistRows = artistIds.map(function (artistId, index) {
+    return {
+      song_id: savedSongId,
+      artist_id: artistId,
+      role: index === 0 ? "principal" : "colaborador",
+      sort_order: index
+    };
+  });
+
+  if (artistRows.length) {
+    const artistResult = await client
+      .from("song_artists")
+      .insert(artistRows);
+
+    if (artistResult.error) {
+      alert("La canción se guardó, pero falló la relación con artistas: " + artistResult.error.message);
+      return;
+    }
+  }
+
+  await client
+    .from("song_categories")
+    .delete()
+    .eq("song_id", savedSongId);
+
+  if (categoryId) {
+    const categoryResult = await client
+      .from("song_categories")
+      .insert({
+        song_id: savedSongId,
+        category_id: categoryId
+      });
+
+    if (categoryResult.error) {
+      alert("La canción se guardó, pero falló la categoría: " + categoryResult.error.message);
+      return;
+    }
+  }
+
+  await client
+    .from("album_songs")
+    .delete()
+    .eq("song_id", savedSongId);
+
+  if (albumId) {
+    const albumResult = await client
+      .from("album_songs")
+      .insert({
+        song_id: savedSongId,
+        album_id: albumId
+      });
+
+    if (albumResult.error) {
+      alert("La canción se guardó, pero falló el álbum: " + albumResult.error.message);
+      return;
+    }
+  }
+
+  const wasEditing = !!currentEditingSongId;
+
+  resetSongForm();
+
+  await Promise.all([
+    loadAdminSongs(),
+    loadPublicSongs()
+  ]);
+
+  alert(wasEditing ? "Canción actualizada." : "Canción guardada.");
+}
+
+async function editSong(id) {
+  const { data: songs, error } = await fetchSongsWithRelations([id]);
+
+  if (error || !songs || !songs.length) {
+    alert("No se pudo cargar la canción.");
+    return;
+  }
+
+  const song = songs[0];
+
+  currentEditingSongId = song.id;
+
+  const title = $("songFormTitle");
+
+  if (title) {
+    title.innerText = "Editar canción";
+  }
+
+  setInputValue("songTitleInput", song.title || "");
+  setInputValue("songTypeInput", song.song_type || "catolico");
+  setInputValue("songToneInput", song.tone || "");
+  setInputValue("songDifficultyInput", song.difficulty || "");
+  setInputValue("songLyricsInput", song.lyrics || "");
+
+  setSelectedValues(
+    "songArtistsInput",
+    (song._artists || []).map(function (artist) {
+      return artist.id;
+    })
+  );
+
+  setInputValue(
+    "songCategoryInput",
+    song._categories && song._categories[0] ? song._categories[0].id : ""
+  );
+
+  setInputValue(
+    "songAlbumInput",
+    song._albums && song._albums[0] ? song._albums[0].id : ""
+  );
+
+  const form = $("songFormCard");
+
+  if (form) {
+    form.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+}
+
+async function deleteSong(id) {
+  if (!confirm("¿Eliminar esta canción?")) return;
+
+  const client = getSupabase();
+
+  if (!client) return;
+
+  const { error } = await client
+    .from("songs")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("No se pudo eliminar: " + error.message);
+    return;
+  }
+
+  await Promise.all([
+    loadAdminSongs(),
+    loadPublicSongs()
+  ]);
+}
+
+async function loadAdminSongs() {
+  const list = $("adminSongList");
+
+  if (!list) return;
+
+  const { data, error } = await fetchSongsWithRelations();
+
+  if (error) {
+    list.innerHTML = `<p style="color:#ffb4b4;">Error: ${escapeHTML(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || !data.length) {
+    list.innerHTML = `<p style="color:var(--secondary);">No hay canciones todavía.</p>`;
+    return;
+  }
+
+  list.innerHTML = data.map(function (song) {
+    return `
+      <div class="admin-list-item">
+        <strong>${escapeHTML(song.title || "Sin título")}</strong>
+
+        <p class="artists-line">
+          ${artistLinksHTML(song._artists)}
+        </p>
+
+        <p>
+          ${escapeHTML(song.song_type || "")}
+          ${song.tone ? " · " + escapeHTML(song.tone) : ""}
+        </p>
+
+        <div class="admin-actions">
+          <button type="button" class="song-btn" onclick="editSong('${song.id}')">
+            Editar
+          </button>
+
+          <button type="button" class="song-btn danger" onclick="deleteSong('${song.id}')">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+/* =========================================================
+   PÚBLICO: ARTISTAS / CATEGORÍAS / CANCIONES
+========================================================= */
+
+async function loadPublicArtists() {
+  const list = $("artistList") || $("artistsList") || $("publicArtistList");
+
+  if (!list) return;
+
+  const { data, error } = await fetchArtists();
+
+  if (error) {
     list.innerHTML = `
       <div class="song-card">
-        <h3>No se pudo conectar con Supabase</h3>
+        <h3>Error cargando artistas</h3>
+        <p>${escapeHTML(error.message)}</p>
       </div>
     `;
     return;
   }
 
-  const { data, error } = await client
-    .from("categories")
-    .select("*")
-    .order("name", { ascending: true });
+  if (!data || !data.length) {
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>No hay artistas todavía</h3>
+      </div>
+    `;
+    return;
+  }
+
+  list.dataset.allArtists = JSON.stringify(data);
+
+  renderPublicArtists(data);
+}
+
+function renderPublicArtists(artists) {
+  const list = $("artistList") || $("artistsList") || $("publicArtistList");
+
+  if (!list) return;
+
+  list.innerHTML = (artists || []).map(function (artist) {
+    return `
+      <article class="song-card artist-card">
+        <div class="artist-public-row">
+          <div class="artist-avatar-public">
+            ${escapeHTML(getInitials(artist.name))}
+          </div>
+
+          <div>
+            <h3>${escapeHTML(artist.name || "Sin nombre")}</h3>
+            <p>${escapeHTML(artist.description || "Ministerio o artista registrado.")}</p>
+          </div>
+        </div>
+
+        <a class="song-btn" href="artista.html?slug=${encodeURIComponent(artist.slug || slugify(artist.name))}">
+          Ver artista
+        </a>
+      </article>
+    `;
+  }).join("");
+}
+
+function initArtistSearch() {
+  const input =
+    $("artistSearchInput") ||
+    $("artistSearch") ||
+    document.querySelector('input[placeholder*="artista"]');
+
+  const list = $("artistList") || $("artistsList") || $("publicArtistList");
+
+  if (!input || !list) return;
+
+  input.addEventListener("input", function () {
+    let artists = [];
+
+    try {
+      artists = JSON.parse(list.dataset.allArtists || "[]");
+    } catch (error) {
+      artists = [];
+    }
+
+    const search = input.value.trim().toLowerCase();
+
+    const filtered = search
+      ? artists.filter(function (artist) {
+          return `${artist.name || ""} ${artist.description || ""}`
+            .toLowerCase()
+            .includes(search);
+        })
+      : artists;
+
+    if (!filtered.length) {
+      list.innerHTML = `
+        <div class="song-card">
+          <h3>No se encontraron artistas</h3>
+        </div>
+      `;
+      return;
+    }
+
+    renderPublicArtists(filtered);
+  });
+}
+
+async function loadPublicCategories() {
+  const list = $("categoryList");
+
+  if (!list) return;
+
+  const { data, error } = await fetchCategories();
 
   if (error) {
     list.innerHTML = `
@@ -696,11 +1453,10 @@ async function loadPublicCategories() {
     return;
   }
 
-  if (!data || data.length === 0) {
+  if (!data || !data.length) {
     list.innerHTML = `
       <div class="song-card">
         <h3>No hay categorías todavía</h3>
-        <p>Agrega categorías desde el panel de administración.</p>
       </div>
     `;
     return;
@@ -719,152 +1475,322 @@ async function loadPublicCategories() {
   }).join("");
 }
 
-/* =========================================================
-   PÁGINA PÚBLICA: ARTISTAS
-========================================================= */
-
-async function loadPublicArtists() {
-  const list =
-    document.getElementById("artistList") ||
-    document.getElementById("artistsList") ||
-    document.getElementById("publicArtistList");
+async function loadPublicSongs() {
+  const list = $("songList") || $("songsList") || $("publicSongList");
 
   if (!list) return;
 
-  const client = getSupabase();
-
-  if (!client) {
-    list.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar con Supabase</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name", { ascending: true });
+  const { data, error } = await fetchSongsWithRelations();
 
   if (error) {
     list.innerHTML = `
       <div class="song-card">
-        <h3>Error cargando artistas</h3>
+        <h3>Error cargando canciones</h3>
         <p>${escapeHTML(error.message)}</p>
       </div>
     `;
     return;
   }
 
-  if (!data || data.length === 0) {
+  let songs = data || [];
+
+  const type = getUrlParam("tipo");
+  const searchParam = getUrlParam("buscar").toLowerCase();
+
+  if (type) {
+    songs = songs.filter(function (song) {
+      return String(song.song_type || "").toLowerCase() === type.toLowerCase();
+    });
+  }
+
+  if (searchParam) {
+    songs = songs.filter(function (song) {
+      const haystack = [
+        song.title || "",
+        song.lyrics || "",
+        (song._artists || []).map(function (artist) {
+          return artist.name;
+        }).join(" "),
+        (song._categories || []).map(function (category) {
+          return category.name;
+        }).join(" ")
+      ].join(" ").toLowerCase();
+
+      return haystack.includes(searchParam);
+    });
+  }
+
+  list.dataset.allSongs = JSON.stringify(data || []);
+
+  renderPublicSongs(songs);
+}
+
+function renderPublicSongs(songs) {
+  const list = $("songList") || $("songsList") || $("publicSongList");
+
+  if (!list) return;
+
+  if (!songs || !songs.length) {
     list.innerHTML = `
       <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-        <p>Agrega artistas desde el panel de administración.</p>
+        <h3>No se encontraron canciones</h3>
       </div>
     `;
     return;
   }
 
-  list.dataset.allArtists = JSON.stringify(data);
-
-  renderPublicArtists(data);
-}
-
-function renderPublicArtists(artists) {
-  const list =
-    document.getElementById("artistList") ||
-    document.getElementById("artistsList") ||
-    document.getElementById("publicArtistList");
-
-  if (!list) return;
-
-  list.innerHTML = artists.map(function (artist) {
-    const name = artist.name || "Sin nombre";
-    const description = artist.description || "Ministerio o artista registrado.";
-
+  list.innerHTML = songs.map(function (song) {
     return `
       <article class="song-card">
-        <div style="display:flex; align-items:center; gap:14px;">
-          <div style="
-            width:58px;
-            height:58px;
-            min-width:58px;
-            border-radius:999px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:linear-gradient(135deg, #fac15f, #8557ff);
-            color:#ffffff;
-            font-weight:800;
-            font-size:18px;
-            box-shadow:0 10px 24px rgba(0,0,0,.25);
-          ">
-            ${escapeHTML(getInitials(name))}
-          </div>
+        <h3>${escapeHTML(song.title || "Sin título")}</h3>
 
-          <div style="flex:1; min-width:0;">
-            <h3 style="margin-bottom:6px;">${escapeHTML(name)}</h3>
-            <p>${escapeHTML(description)}</p>
-          </div>
-        </div>
+        <p class="artists-line">
+          ${artistLinksHTML(song._artists)}
+        </p>
 
-        <a class="song-btn" href="artista.html?slug=${encodeURIComponent(artist.slug || slugify(name))}" style="margin-top:14px;">
-          Ver artista
+        <p>
+          ${escapeHTML(song.tone || "")}
+          ${song.difficulty ? " · " + escapeHTML(song.difficulty) : ""}
+        </p>
+
+        <a class="song-btn" href="canto.html?slug=${encodeURIComponent(song.slug || slugify(song.title))}">
+          Abrir canto
         </a>
       </article>
     `;
   }).join("");
 }
 
-function initArtistSearch() {
-  const input =
-    document.getElementById("artistSearchInput") ||
-    document.getElementById("artistSearch") ||
-    document.querySelector('input[placeholder*="artista"]') ||
-    document.querySelector('input[placeholder*="ministerio"]');
-
-  const list =
-    document.getElementById("artistList") ||
-    document.getElementById("artistsList") ||
-    document.getElementById("publicArtistList");
+function initSongSearch() {
+  const input = $("songSearchInput") || $("searchInput");
+  const list = $("songList") || $("songsList") || $("publicSongList");
 
   if (!input || !list) return;
 
   input.addEventListener("input", function () {
-    let artists = [];
+    let songs = [];
 
     try {
-      artists = JSON.parse(list.dataset.allArtists || "[]");
+      songs = JSON.parse(list.dataset.allSongs || "[]");
     } catch (error) {
-      artists = [];
+      songs = [];
     }
 
     const search = input.value.trim().toLowerCase();
 
-    if (!search) {
-      renderPublicArtists(artists);
-      return;
-    }
+    const filtered = search
+      ? songs.filter(function (song) {
+          const text = [
+            song.title || "",
+            song.lyrics || "",
+            (song._artists || []).map(function (artist) {
+              return artist.name;
+            }).join(" ")
+          ].join(" ").toLowerCase();
 
-    const filtered = artists.filter(function (artist) {
-      const text = `${artist.name || ""} ${artist.description || ""}`.toLowerCase();
-      return text.includes(search);
+          return text.includes(search);
+        })
+      : songs;
+
+    renderPublicSongs(filtered);
+  });
+}
+
+/* =========================================================
+   PÚBLICO: PERFIL DE ARTISTA Y CANTO
+========================================================= */
+
+async function loadArtistProfile() {
+  const box = $("artistProfile") || $("artistProfileContent") || $("artistDetail");
+
+  if (!box) return;
+
+  const slug = getUrlParam("slug");
+  const client = getSupabase();
+
+  if (!client || !slug) {
+    box.innerHTML = `
+      <div class="song-card">
+        <h3>Artista no encontrado</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data: artist, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !artist) {
+    box.innerHTML = `
+      <div class="song-card">
+        <h3>Artista no encontrado</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data: relations } = await client
+    .from("song_artists")
+    .select("song_id")
+    .eq("artist_id", artist.id);
+
+  const songIds = (relations || []).map(function (row) {
+    return row.song_id;
+  });
+
+  const { data: songs } = await fetchSongsWithRelations(songIds);
+
+  const safeSongs = songs || [];
+
+  const { data: albums } = await client
+    .from("albums")
+    .select("*")
+    .eq("artist_id", artist.id)
+    .order("sort_order", { ascending: true })
+    .order("title", { ascending: true });
+
+  const albumSections = (albums || []).map(function (album) {
+    const albumSongs = safeSongs.filter(function (song) {
+      return (song._albums || []).some(function (songAlbum) {
+        return songAlbum.id === album.id;
+      });
     });
 
-    if (filtered.length === 0) {
-      list.innerHTML = `
-        <div class="song-card">
-          <h3>No se encontraron artistas</h3>
-          <p>Prueba con otro nombre.</p>
-        </div>
-      `;
-      return;
-    }
+    if (!albumSongs.length) return "";
 
-    renderPublicArtists(filtered);
+    return `
+      <section class="artist-folder">
+        <h3>📁 ${escapeHTML(album.title || "Álbum")}</h3>
+        <div class="song-list compact-list">
+          ${albumSongs.map(renderMiniSongCard).join("")}
+        </div>
+      </section>
+    `;
+  }).join("");
+
+  const collaborationSongs = safeSongs.filter(function (song) {
+    return (song._artists || []).length > 1;
   });
+
+  const songsWithoutArtistAlbum = safeSongs.filter(function (song) {
+    const hasAlbumFromThisArtist = (song._albums || []).some(function (album) {
+      return album.artist_id === artist.id;
+    });
+
+    return !hasAlbumFromThisArtist;
+  });
+
+  box.innerHTML = `
+    <section class="artist-hero-card">
+      <div class="artist-avatar-public big">
+        ${escapeHTML(getInitials(artist.name))}
+      </div>
+
+      <div>
+        <h1>${escapeHTML(artist.name || "Sin nombre")}</h1>
+        <p>${escapeHTML(artist.description || "Ministerio o artista registrado.")}</p>
+      </div>
+    </section>
+
+    ${albumSections || ""}
+
+    ${songsWithoutArtistAlbum.length ? `
+      <section class="artist-folder">
+        <h3>Cantos</h3>
+        <div class="song-list compact-list">
+          ${songsWithoutArtistAlbum.map(renderMiniSongCard).join("")}
+        </div>
+      </section>
+    ` : ""}
+
+    ${collaborationSongs.length ? `
+      <section class="artist-folder">
+        <h3>Colaboraciones</h3>
+        <div class="song-list compact-list">
+          ${collaborationSongs.map(renderMiniSongCard).join("")}
+        </div>
+      </section>
+    ` : ""}
+  `;
+}
+
+function renderMiniSongCard(song) {
+  return `
+    <article class="song-card mini-song-card">
+      <h4>${escapeHTML(song.title || "Sin título")}</h4>
+
+      <p class="artists-line">
+        ${artistLinksHTML(song._artists)}
+      </p>
+
+      <a class="song-btn" href="canto.html?slug=${encodeURIComponent(song.slug || slugify(song.title))}">
+        Abrir
+      </a>
+    </article>
+  `;
+}
+
+async function loadSongPage() {
+  const box = $("songPage") || $("songDetail") || $("cantoContent");
+
+  if (!box) return;
+
+  const slug = getUrlParam("slug");
+  const client = getSupabase();
+
+  if (!client || !slug) {
+    box.innerHTML = `
+      <div class="song-card">
+        <h3>Canto no encontrado</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data: song, error } = await client
+    .from("songs")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !song) {
+    box.innerHTML = `
+      <div class="song-card">
+        <h3>Canto no encontrado</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data: songs } = await fetchSongsWithRelations([song.id]);
+
+  const fullSong = songs && songs[0]
+    ? songs[0]
+    : Object.assign({}, song, {
+        _artists: [],
+        _categories: [],
+        _albums: []
+      });
+
+  box.innerHTML = `
+    <article class="song-detail-card">
+      <p class="artists-line">
+        ${artistLinksHTML(fullSong._artists)}
+      </p>
+
+      <h1>${escapeHTML(fullSong.title || "Sin título")}</h1>
+
+      <p>
+        ${escapeHTML(fullSong.tone || "")}
+        ${fullSong.difficulty ? " · " + escapeHTML(fullSong.difficulty) : ""}
+      </p>
+
+      <pre class="lyrics-block">${renderChordedLyrics(fullSong.lyrics || "")}</pre>
+    </article>
+  `;
 }
 
 /* =========================================================
@@ -876,18 +1802,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     initTheme();
     initMenu();
 
-    const themeButton = document.getElementById("themeToggle");
+    const themeButton = $("themeToggle");
 
     if (themeButton) {
       themeButton.addEventListener("click", toggleTheme);
     }
 
-    await loadPublicCategories();
-    await loadPublicArtists();
+    await Promise.all([
+      loadPublicCategories(),
+      loadPublicArtists(),
+      loadPublicSongs(),
+      loadArtistProfile(),
+      loadSongPage()
+    ]);
 
     initArtistSearch();
+    initSongSearch();
 
-    if (document.getElementById("adminPanel")) {
+    if ($("adminPanel")) {
       await checkAdminSession();
     }
   } catch (error) {
@@ -896,7 +1828,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 });
 
 /* =========================================================
-   FUNCIONES DISPONIBLES PARA HTML
+   FUNCIONES PARA HTML
 ========================================================= */
 
 window.loginAdmin = loginAdmin;
@@ -912,5 +1844,16 @@ window.editCategory = editCategory;
 window.deleteCategory = deleteCategory;
 window.cancelCategoryEdit = resetCategoryForm;
 
+window.saveAlbum = saveAlbum;
+window.editAlbum = editAlbum;
+window.deleteAlbum = deleteAlbum;
+window.cancelAlbumEdit = resetAlbumForm;
+
+window.saveSong = saveSong;
+window.editSong = editSong;
+window.deleteSong = deleteSong;
+window.cancelSongEdit = resetSongForm;
+
 window.loadPublicArtists = loadPublicArtists;
 window.loadPublicCategories = loadPublicCategories;
+window.loadPublicSongs = loadPublicSongs;
