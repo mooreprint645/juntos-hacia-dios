@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Artista | Juntos Hacia Dios</title>
-  <meta name="description" content="Perfil del artista, álbumes, canciones y colaboraciones en Juntos Hacia Dios.">
+  <title>Artistas | Juntos Hacia Dios</title>
+  <meta name="description" content="Explora artistas, grupos y ministerios en Juntos Hacia Dios.">
 
   <link rel="stylesheet" href="style.css?v=stylefinal1">
 </head>
@@ -35,73 +35,205 @@
 <main>
   <section class="section">
 
-    <div style="margin-bottom:20px;">
-      <a href="artistas.html" class="song-btn">
-        ← Volver a artistas
-      </a>
+    <p class="hero-kicker">Explorar</p>
+    <h1 style="margin-bottom:10px;">Artistas</h1>
+
+    <p class="hero-description" style="margin-bottom:22px;">
+      Encuentra cantos por artista, grupo o ministerio.
+    </p>
+
+    <div class="search-container">
+      <input
+        id="artistsSearchInput"
+        type="search"
+        placeholder="Buscar artista o grupo..."
+        autocomplete="off"
+      >
     </div>
 
-    <div id="artistPage">
+    <p id="artistCountText" style="color:var(--secondary); margin-bottom:18px;">
+      Cargando artistas...
+    </p>
 
-      <!-- SHIMMER PERFIL ARTISTA SIN FOTOS -->
-      <div class="artist-profile-shimmer">
+    <div id="artistsGrid" class="artists-grid">
 
-        <!-- Banner de carga sin fotografía -->
-        <div class="artist-banner-shimmer shimmer-block"></div>
+      <div class="artist-card shimmer-card">
+        <div class="artist-mini-avatar shimmer-block"></div>
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+      </div>
 
-        <!-- Encabezado de carga -->
-        <div class="artist-profile-head">
-          <div class="artist-avatar-shimmer shimmer-block"></div>
+      <div class="artist-card shimmer-card">
+        <div class="artist-mini-avatar shimmer-block"></div>
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+      </div>
 
-          <div class="artist-info-shimmer">
-            <div class="shimmer-line shimmer-line-big"></div>
-            <div class="shimmer-line shimmer-line-medium"></div>
-            <div class="shimmer-line shimmer-line-small"></div>
-          </div>
-        </div>
-<!-- Descripción cargando -->
-        <div class="song-card" style="margin-top:28px;">
-          <div class="shimmer-line shimmer-line-big"></div>
-          <div class="shimmer-line shimmer-line-medium"></div>
-          <div class="shimmer-line shimmer-line-small"></div>
-        </div>
-
-        <!-- Tarjetas cargando -->
-        <div class="admin-grid" style="margin-top:28px;">
-          <div class="song-card shimmer-card">
-            <div class="shimmer-line shimmer-line-big"></div>
-            <div class="shimmer-line shimmer-line-medium"></div>
-          </div>
-
-          <div class="song-card shimmer-card">
-            <div class="shimmer-line shimmer-line-big"></div>
-            <div class="shimmer-line shimmer-line-medium"></div>
-          </div>
-
-          <div class="song-card shimmer-card">
-            <div class="shimmer-line shimmer-line-big"></div>
-            <div class="shimmer-line shimmer-line-medium"></div>
-          </div>
-        </div>
-
+      <div class="artist-card shimmer-card">
+        <div class="artist-mini-avatar shimmer-block"></div>
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
       </div>
 
     </div>
 
   </section>
 </main>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js?v=final"></script>
 <script src="app.js?v=limpia15"></script>
 
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    setTimeout(function () {
-      if (typeof loadArtistPage === "function") {
-        loadArtistPage();
+  let allArtistsForPage = [];
+
+  function artistsEscapeHTML(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function artistsSlugify(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  }
+
+  function artistsInitials(name) {
+    return String(name || "JHD")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(function (part) {
+        return part.charAt(0).toUpperCase();
+      })
+      .join("") || "JHD";
+  }
+
+  function renderArtistsList(items) {
+    const grid = document.getElementById("artistsGrid");
+    const countText = document.getElementById("artistCountText");
+
+    if (!grid) return;
+
+    if (countText) {
+      countText.textContent = items.length === 1
+        ? "1 artista encontrado"
+        : items.length + " artistas encontrados";
+    }
+
+    if (!items.length) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>No se encontraron artistas</h3>
+          <p style="color:var(--secondary);">
+            Intenta buscar con otro nombre.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = items.map(function (artist) {
+      const slug = artist.slug || artistsSlugify(artist.name);
+      const description = artist.description || "Ver cantos, álbumes y colaboraciones.";
+
+      return `
+        <a class="artist-card" href="artista.html?slug=${artistsEscapeHTML(slug)}">
+          <div class="artist-mini-avatar">
+            ${artistsEscapeHTML(artistsInitials(artist.name))}
+          </div>
+
+          <h3>${artistsEscapeHTML(artist.name || "Artista")}</h3>
+
+          <p>${artistsEscapeHTML(description)}</p>
+        </a>
+      `;
+    }).join("");
+  }
+
+  async function loadArtistsPage() {
+    const client = window.supabaseClient;
+
+    const grid = document.getElementById("artistsGrid");
+    const countText = document.getElementById("artistCountText");
+
+    if (!client) {
+      if (grid) {
+        grid.innerHTML = `
+          <div class="song-card">
+            <h3>No se pudo conectar</h3>
+            <p style="color:var(--secondary);">
+              Revisa la conexión con Supabase.
+            </p>
+          </div>
+        `;
       }
-    }, 300);
+
+      if (countText) {
+        countText.textContent = "No se pudo cargar la lista.";
+      }
+
+      return;
+    }
+
+    const result = await client
+      .from("artists")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (result.error) {
+      if (grid) {
+        grid.innerHTML = `
+          <div class="song-card">
+            <h3>Error al cargar artistas</h3>
+            <p style="color:var(--secondary);">
+              ${artistsEscapeHTML(result.error.message)}
+            </p>
+          </div>
+        `;
+      }
+
+      if (countText) {
+        countText.textContent = "Error al cargar artistas.";
+      }
+
+      return;
+    }
+
+    allArtistsForPage = result.data || [];
+    renderArtistsList(allArtistsForPage);
+  }
+
+  function setupArtistsSearch() {
+    const input = document.getElementById("artistsSearchInput");
+
+    if (!input) return;
+
+    input.addEventListener("input", function () {
+      const query = input.value.trim().toLowerCase();
+
+      const filtered = allArtistsForPage.filter(function (artist) {
+        const text = [
+          artist.name,
+          artist.description
+        ].join(" ").toLowerCase();
+
+        return text.includes(query);
+      });
+
+      renderArtistsList(filtered);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setupArtistsSearch();
+    loadArtistsPage();
   });
 </script>
 
