@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Canciones | Juntos Hacia Dios</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="Explora letras y acordes de cantos católicos y cristianos.">
+
+  <link rel="stylesheet" href="style.css?v=final">
 </head>
 
 <body>
@@ -13,7 +16,11 @@
   <nav class="navbar">
     <h2>JHD</h2>
 
-    <div class="nav-menu">
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menú">
+      ☰ Menú
+    </button>
+
+    <div class="nav-menu" id="navMenu">
       <a href="index.html" class="nav-link">Inicio</a>
       <a href="canciones.html" class="nav-link">Canciones</a>
       <a href="artistas.html" class="nav-link">Artistas</a>
@@ -21,36 +28,39 @@
       <a href="donaciones.html" class="nav-link">Donaciones</a>
     </div>
 
-    <button id="themeToggle">🌙</button>
+    <button id="themeToggle" type="button">🌙</button>
   </nav>
 
   <div class="hero-content">
     <h1>Canciones</h1>
-    <p>Busca cantos por nombre, artista o categoría</p>
+    <p class="hero-description">
+      Explora cantos, letras y acordes.
+    </p>
 
-    <div class="search-box">
-      <input id="songSearch" type="text" placeholder="Buscar canto, artista o categoría...">
-    </div>
+    <input
+      id="songSearchInput"
+      type="search"
+      placeholder="Buscar canción, artista o letra..."
+      style="margin-top:24px; max-width:520px;"
+    >
   </div>
 </header>
 
-<section class="section">
-  <h2>Cantos</h2>
+<main>
+  <section class="section">
+    <h2>Todos los cantos</h2>
 
-  <div class="song-grid" id="songList">
-    <div class="song-card">
-      <p style="color:var(--secondary);">Cargando canciones...</p>
+    <div class="song-list" id="songList">
+      <div class="song-card">
+        <h3>Cargando canciones...</h3>
+      </div>
     </div>
-  </div>
-
-  <p id="noResults" style="display:none; color:var(--secondary); margin-top:25px;">
-    No se encontraron canciones.
-  </p>
-</section>
+  </section>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+<script src="supabase.js?v=final"></script>
+<script src="app.js?v=limpia1"></script>
 
 </body>
 </html>
