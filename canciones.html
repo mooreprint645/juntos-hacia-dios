@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <title>Canciones | Juntos Hacia Dios</title>
-  <meta name="description" content="Explora letras y acordes de cantos católicos y cristianos.">
+  <meta name="description" content="Explora cantos, letras y acordes en Juntos Hacia Dios.">
 
-  <link rel="stylesheet" href="style.css?v=final">
+  <link rel="stylesheet" href="style.css?v=stylefinal1">
 </head>
 
 <body>
 
 <header class="hero small-hero">
   <nav class="navbar">
-    <h2>JHD</h2>
+    <h2>Juntos Hacia Dios</h2>
 
     <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menú">
       ☰ Menú
@@ -30,37 +30,279 @@
 
     <button id="themeToggle" type="button">🌙</button>
   </nav>
-
-  <div class="hero-content">
-    <h1>Canciones</h1>
-    <p class="hero-description">
-      Explora cantos, letras y acordes.
-    </p>
-
-    <input
-      id="songSearchInput"
-      type="search"
-      placeholder="Buscar canción, artista o letra..."
-      style="margin-top:24px; max-width:520px;"
-    >
-  </div>
 </header>
 
 <main>
   <section class="section">
-    <h2>Todos los cantos</h2>
 
-    <div class="song-list" id="songList">
-      <div class="song-card">
-        <h3>Cargando canciones...</h3>
-      </div>
+    <p class="hero-kicker">Cancionero</p>
+    <h1 style="margin-bottom:10px;">Canciones</h1>
+
+    <p class="hero-description" style="margin-bottom:22px;">
+      Busca cantos por nombre, artista, tono o tipo.
+    </p>
+
+    <div class="search-container">
+      <input
+        id="songsSearchInput"
+        type="search"
+        placeholder="Buscar canción, artista o tono..."
+        autocomplete="off"
+      >
     </div>
+
+    <div class="song-filters">
+      <button class="filter-btn" type="button" onclick="setSongsFilter('all')">
+        Todas
+      </button>
+
+      <button class="filter-btn" type="button" onclick="setSongsFilter('catolico')">
+        Católicas
+      </button>
+
+      <button class="filter-btn" type="button" onclick="setSongsFilter('cristiano')">
+        Cristianas
+      </button>
+    </div>
+
+    <p id="songCountText" style="color:var(--secondary); margin-bottom:18px;">
+      Cargando canciones...
+    </p>
+
+    <div id="songsGrid" class="songs-grid">
+
+      <div class="song-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+        <div class="shimmer-line shimmer-line-small"></div>
+      </div>
+
+      <div class="song-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+        <div class="shimmer-line shimmer-line-small"></div>
+      </div>
+
+      <div class="song-card shimmer-card">
+        <div class="shimmer-line shimmer-line-big"></div>
+        <div class="shimmer-line shimmer-line-medium"></div>
+        <div class="shimmer-line shimmer-line-small"></div>
+      </div>
+
+    </div>
+
   </section>
 </main>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js?v=final"></script>
-<script src="app.js?v=limpia1"></script>
+<script src="app.js?v=limpia15"></script>
+
+<script>
+  let allSongsForPage = [];
+  let currentSongsFilter = "all";
+
+  function songsEscapeHTML(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function songsSlugify(value) {
+    return String(value || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+  }
+
+  function songArtistsText(song) {
+    if (song._artists && song._artists.length) {
+      return song._artists.map(function (artist) {
+        return artist.name;
+      }).join(" · ");
+    }
+
+    return song.artist_name || "";
+  }
+
+  function renderSongsList() {
+    const grid = document.getElementById("songsGrid");
+    const countText = document.getElementById("songCountText");
+    const input = document.getElementById("songsSearchInput");
+
+    if (!grid) return;
+
+    const query = input ? input.value.trim().toLowerCase() : "";
+
+    let items = allSongsForPage.slice();
+
+    if (currentSongsFilter !== "all") {
+      items = items.filter(function (song) {
+        return String(song.song_type || "").toLowerCase() === currentSongsFilter;
+      });
+    }
+
+    if (query) {
+      items = items.filter(function (song) {
+        const text = [
+          song.title,
+          song.tone,
+          song.difficulty,
+          song.song_type,
+          songArtistsText(song)
+        ].join(" ").toLowerCase();
+
+        return text.includes(query);
+      });
+    }
+
+    if (countText) {
+      countText.textContent = items.length === 1
+        ? "1 canción encontrada"
+        : items.length + " canciones encontradas";
+    }
+
+    if (!items.length) {
+      grid.innerHTML = `
+        <div class="song-card">
+          <h3>No se encontraron canciones</h3>
+          <p style="color:var(--secondary);">
+            Intenta buscar con otro nombre, artista o tono.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = items.map(function (song) {
+      const slug = song.slug || songsSlugify(song.title);
+      const artists = songArtistsText(song) || "Sin artista";
+      const meta = [song.tone, song.difficulty].filter(Boolean).join(" · ");
+      const typeLabel = String(song.song_type || "").toLowerCase() === "catolico"
+        ? "Católico"
+        : "Cristiano";
+
+      return `
+        <a class="song-card song-link-card" href="canto.html?slug=${songsEscapeHTML(slug)}">
+          <p class="artists-line">${songsEscapeHTML(artists)}</p>
+
+          <h3>${songsEscapeHTML(song.title || "Sin título")}</h3>
+
+          <p style="color:var(--secondary); margin-top:8px;">
+            ${songsEscapeHTML(typeLabel)}
+            ${meta ? " · " + songsEscapeHTML(meta) : ""}
+          </p>
+        </a>
+      `;
+    }).join("");
+  }
+
+  function setSongsFilter(filter) {
+    currentSongsFilter = filter || "all";
+    renderSongsList();
+  }
+
+  async function loadSongsPage() {
+    const client = window.supabaseClient;
+    const grid = document.getElementById("songsGrid");
+    const countText = document.getElementById("songCountText");
+
+    if (!client) {
+      if (grid) {
+        grid.innerHTML = `
+          <div class="song-card">
+            <h3>No se pudo conectar</h3>
+            <p style="color:var(--secondary);">
+              Revisa la conexión con Supabase.
+            </p>
+          </div>
+        `;
+      }
+
+      if (countText) {
+        countText.textContent = "No se pudo cargar la lista.";
+      }
+
+      return;
+    }
+
+    const songsResult = await client
+      .from("songs")
+      .select("*")
+      .order("title", { ascending: true });
+
+    if (songsResult.error) {
+      if (grid) {
+        grid.innerHTML = `
+          <div class="song-card">
+            <h3>Error al cargar canciones</h3>
+            <p style="color:var(--secondary);">
+              ${songsEscapeHTML(songsResult.error.message)}
+            </p>
+          </div>
+        `;
+      }
+
+      if (countText) {
+        countText.textContent = "Error al cargar canciones.";
+      }
+
+      return;
+    }
+
+    const songs = songsResult.data || [];
+    const songIds = songs.map(function (song) {
+      return song.id;
+    });
+
+    let artistRows = [];
+
+    if (songIds.length) {
+      const artistsResult = await client
+        .from("song_artists")
+        .select("song_id, sort_order, artists(id, name, slug, description)")
+        .in("song_id", songIds)
+        .order("sort_order", { ascending: true });
+
+      artistRows = artistsResult.data || [];
+    }
+
+    allSongsForPage = songs.map(function (song) {
+      const artists = artistRows
+        .filter(function (row) {
+          return String(row.song_id) === String(song.id) && row.artists;
+        })
+        .map(function (row) {
+          return row.artists;
+        });
+
+      return Object.assign({}, song, {
+        _artists: artists
+      });
+    });
+
+    renderSongsList();
+  }
+
+  function setupSongsSearch() {
+    const input = document.getElementById("songsSearchInput");
+
+    if (!input) return;
+
+    input.addEventListener("input", function () {
+      renderSongsList();
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setupSongsSearch();
+    loadSongsPage();
+  });
+</script>
 
 </body>
 </html>
