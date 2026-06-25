@@ -1,5 +1,5 @@
 /* =========================================================
-   JUNTOS HACIA DIOS - APP LIMPIA COMPLETA
+   JUNTOS HACIA DIOS - APP LIMPIA v13
    Admin + Supabase + Artistas + Mesh + Categorías + Canciones + Donaciones
 ========================================================= */
 
@@ -57,25 +57,39 @@ function isAdminPage() {
 
 function clamp(value, fallback, min, max) {
   const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
+
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+
   return Math.min(max, Math.max(min, number));
 }
 
 function safeHex(value, fallback = "#facc15") {
   const hex = String(value || "").trim();
-  if (/^#[0-9a-fA-F]{6}$/.test(hex)) return hex.toLowerCase();
+
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    return hex.toLowerCase();
+  }
+
   return fallback;
 }
 
 function safeUrl(value) {
   const url = String(value || "").trim();
+
   if (!url) return "";
-  if (url.startsWith("https://") || url.startsWith("http://")) return url;
+
+  if (url.startsWith("https://") || url.startsWith("http://")) {
+    return url;
+  }
+
   return "";
 }
 
 function getInitials(name) {
   const clean = String(name || "").trim().replace(/\s+/g, " ");
+
   if (!clean) return "?";
 
   const words = clean.split(" ");
@@ -105,11 +119,12 @@ function hexToRgb(hex) {
 function hexToRgba(hex, opacity) {
   const rgb = hexToRgbParts(hex);
   const safeOpacity = clamp(opacity, 0.75, 0, 1);
+
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeOpacity})`;
 }
 
 /* =========================================================
-   TEMA Y MENÚ
+   THEME / MENU
 ========================================================= */
 
 function initTheme() {
@@ -124,6 +139,7 @@ function initTheme() {
 
 function updateThemeButton() {
   const button = document.getElementById("themeToggle");
+
   if (!button) return;
 
   button.innerText = document.body.classList.contains("light-mode") ? "☀️" : "🌙";
@@ -152,7 +168,7 @@ function initMenu() {
 }
 
 /* =========================================================
-   MESH GRADIENT
+   MESH
 ========================================================= */
 
 function normalizeMeshPoints(points) {
@@ -272,6 +288,7 @@ function renderMeshEditor() {
       if (!draggingMeshPoint) return;
 
       const point = meshPoints[selectedMeshPoint];
+
       if (!point) return;
 
       const position = getPointerPositionPercent(event, wrap);
@@ -302,6 +319,7 @@ function handleMeshPointerDown(event) {
   if (event.target.classList.contains("mesh-point")) return;
 
   const wrap = document.getElementById("jhdMeshCanvasWrap");
+
   if (!wrap) return;
 
   const position = getPointerPositionPercent(event, wrap);
@@ -315,6 +333,7 @@ function handleMeshPointerDown(event) {
   });
 
   selectedMeshPoint = meshPoints.length - 1;
+
   renderMeshEditor();
 }
 
@@ -326,11 +345,7 @@ function updateMeshControls() {
   const point = meshPoints[selectedMeshPoint];
 
   if (!point) {
-    panel.innerHTML = `
-      <div class="mesh-panel">
-        Toca la portada para agregar un punto.
-      </div>
-    `;
+    panel.innerHTML = `<div class="mesh-panel">Toca la portada para agregar un punto.</div>`;
     return;
   }
 
@@ -343,12 +358,12 @@ function updateMeshControls() {
     </div>
 
     <div class="mesh-panel">
-      <label>Tamaño / mezcla <span id="meshSizeLabel">${point.size}%</span></label>
+      <label>Tamaño / mezcla <span>${point.size}%</span></label>
       <input type="range" id="meshSizeInput" min="20" max="180" value="${point.size}">
     </div>
 
     <div class="mesh-panel">
-      <label>Intensidad <span id="meshOpacityLabel">${Math.round(point.opacity * 100)}%</span></label>
+      <label>Intensidad <span>${Math.round(point.opacity * 100)}%</span></label>
       <input type="range" id="meshOpacityInput" min="5" max="100" value="${Math.round(point.opacity * 100)}">
     </div>
 
@@ -364,29 +379,29 @@ function updateMeshControls() {
   const opacityInput = document.getElementById("meshOpacityInput");
 
   if (colorInput) {
-    colorInput.addEventListener("input", () => {
-      point.color = safeHex(colorInput.value, point.color);
+    colorInput.addEventListener("input", event => {
+      point.color = safeHex(event.target.value, point.color);
       renderMeshEditor();
     });
   }
 
   if (hexInput) {
-    hexInput.addEventListener("input", () => {
-      point.color = safeHex(hexInput.value, point.color);
+    hexInput.addEventListener("input", event => {
+      point.color = safeHex(event.target.value, point.color);
       renderMeshEditor();
     });
   }
 
   if (sizeInput) {
-    sizeInput.addEventListener("input", () => {
-      point.size = clamp(sizeInput.value, 90, 20, 180);
+    sizeInput.addEventListener("input", event => {
+      point.size = clamp(event.target.value, 90, 20, 180);
       renderMeshEditor();
     });
   }
 
   if (opacityInput) {
-    opacityInput.addEventListener("input", () => {
-      point.opacity = clamp(Number(opacityInput.value) / 100, 0.75, 0.05, 1);
+    opacityInput.addEventListener("input", event => {
+      point.opacity = clamp(Number(event.target.value) / 100, 0.75, 0.05, 1);
       renderMeshEditor();
     });
   }
@@ -421,7 +436,9 @@ async function loginAdmin() {
   const email = emailInput ? emailInput.value.trim() : "";
   const password = passwordInput ? passwordInput.value : "";
 
-  if (message) message.innerText = "Iniciando sesión...";
+  if (message) {
+    message.innerText = "Iniciando sesión...";
+  }
 
   if (!email || !password) {
     if (message) message.innerText = "Escribe tu correo y contraseña.";
@@ -445,7 +462,10 @@ async function loginAdmin() {
     return;
   }
 
-  if (message) message.innerText = "Sesión iniciada.";
+  if (message) {
+    message.innerText = "Sesión iniciada.";
+  }
+
   await checkAdminSession();
 }
 
@@ -520,6 +540,7 @@ function resetArtistForm() {
 
   meshPoints = normalizeMeshPoints([]);
   selectedMeshPoint = 0;
+
   renderMeshEditor();
 }
 
@@ -569,6 +590,7 @@ async function saveArtist() {
   alert("Artista guardado.");
 
   resetArtistForm();
+
   await loadAdminArtists();
   await loadArtistOptions();
   await loadPublicArtists();
@@ -576,6 +598,7 @@ async function saveArtist() {
 
 async function editArtist(id) {
   const client = getSupabase();
+
   if (!client) return;
 
   const { data, error } = await client
@@ -601,16 +624,21 @@ async function editArtist(id) {
 
   meshPoints = normalizeMeshPoints(data.gradient_points);
   selectedMeshPoint = 0;
+
   renderMeshEditor();
 
   const card = document.getElementById("artistFormCard");
-  if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  if (card) {
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 async function deleteArtist(id) {
   if (!confirm("¿Eliminar este artista?")) return;
 
   const client = getSupabase();
+
   if (!client) return;
 
   const { error } = await client
@@ -629,9 +657,11 @@ async function deleteArtist(id) {
 
 async function loadAdminArtists() {
   const list = document.getElementById("adminArtistList");
+
   if (!list) return;
 
   const client = getSupabase();
+
   if (!client) {
     list.innerHTML = `<p style="color:#ffb4b4;">No se pudo conectar con Supabase.</p>`;
     return;
@@ -667,9 +697,11 @@ async function loadAdminArtists() {
 
 async function loadArtistOptions() {
   const select = document.getElementById("songArtistInput");
+
   if (!select) return;
 
   const client = getSupabase();
+
   if (!client) return;
 
   const current = select.value;
@@ -687,7 +719,9 @@ async function loadArtistOptions() {
     select.innerHTML += `<option value="${artist.id}">${escapeHTML(artist.name || "Sin nombre")}</option>`;
   });
 
-  if (current) select.value = current;
+  if (current) {
+    select.value = current;
+  }
 }
 
 /* =========================================================
@@ -759,6 +793,7 @@ async function deleteCategory(id) {
   if (!confirm("¿Eliminar esta categoría?")) return;
 
   const client = getSupabase();
+
   if (!client) return;
 
   const { error } = await client
@@ -768,7 +803,4 @@ async function deleteCategory(id) {
 
   if (error) {
     alert("No se pudo eliminar: " + error.message);
-    return;
-  }
-
-  await loadAdminCategor
+    ret
