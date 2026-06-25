@@ -34,13 +34,14 @@
   <div class="hero-content">
     <h1>Panel de administración</h1>
     <p class="hero-description">
-      Administración básica de artistas y categorías.
+      Administra artistas, categorías, álbumes y canciones.
     </p>
   </div>
 </header>
 
 <main>
 
+  <!-- LOGIN -->
   <section class="section" id="adminLoginSection">
     <div class="song-card" id="adminLoginBox">
       <h2>Iniciar sesión</h2>
@@ -62,6 +63,7 @@
     </div>
   </section>
 
+  <!-- PANEL -->
   <section class="section" id="adminPanel" style="display:none;">
 
     <div class="song-card" style="margin-bottom:28px;">
@@ -76,16 +78,18 @@
       </button>
     </div>
 
+    <!-- FORMULARIOS SUPERIORES -->
     <div class="admin-grid">
 
+      <!-- ARTISTAS -->
       <div class="song-card" id="artistFormCard">
         <h2 id="artistFormTitle">Agregar artista</h2>
 
-        <input id="artistNameInput" type="text" placeholder="Nombre del artista">
+        <input id="artistNameInput" type="text" placeholder="Nombre del artista o ministerio">
 
         <textarea id="artistDescriptionInput" placeholder="Descripción del artista"></textarea>
 
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+        <div class="admin-actions">
           <button class="song-btn" type="button" onclick="saveArtist()">
             Guardar artista
           </button>
@@ -96,6 +100,7 @@
         </div>
       </div>
 
+      <!-- CATEGORÍAS -->
       <div class="song-card" id="categoryFormCard">
         <h2 id="categoryFormTitle">Agregar categoría</h2>
 
@@ -103,7 +108,7 @@
 
         <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría"></textarea>
 
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+        <div class="admin-actions">
           <button class="song-btn" type="button" onclick="saveCategory()">
             Guardar categoría
           </button>
@@ -116,6 +121,96 @@
 
     </div>
 
+    <!-- ÁLBUMES -->
+    <div class="song-card" id="albumFormCard" style="margin-top:28px;">
+      <h2 id="albumFormTitle">Agregar álbum / carpeta</h2>
+
+      <p style="color:var(--secondary); margin-bottom:14px;">
+        El álbum o carpeta se asigna manualmente. Las colaboraciones se detectan solas cuando una canción tiene más de un artista.
+      </p>
+
+      <select id="albumArtistInput">
+        <option value="">Selecciona artista</option>
+      </select>
+
+      <input id="albumTitleInput" type="text" placeholder="Nombre del álbum o carpeta">
+
+      <textarea id="albumDescriptionInput" placeholder="Descripción del álbum o carpeta"></textarea>
+
+      <div class="admin-actions">
+        <button class="song-btn" type="button" onclick="saveAlbum()">
+          Guardar álbum
+        </button>
+
+        <button class="song-btn" type="button" onclick="cancelAlbumEdit()">
+          Cancelar edición
+        </button>
+      </div>
+    </div>
+
+    <!-- CANCIONES -->
+    <div class="song-card" id="songFormCard" style="margin-top:28px;">
+      <h2 id="songFormTitle">Agregar canción</h2>
+
+      <input id="songTitleInput" type="text" placeholder="Título de la canción">
+
+      <select id="songTypeInput">
+        <option value="catolico">Católico</option>
+        <option value="cristiano">Cristiano</option>
+      </select>
+
+      <label style="display:block; color:var(--secondary); margin-top:14px; margin-bottom:6px;">
+        Artistas de la canción
+      </label>
+
+      <select id="songArtistsInput" multiple size="5">
+      </select>
+
+      <p style="color:var(--secondary); font-size:13px; margin-top:6px;">
+        Selecciona uno o varios artistas. En la página se verán separados así: Kairo Worship · Miel San Marcos.
+      </p>
+
+      <select id="songCategoryInput">
+        <option value="">Selecciona categoría</option>
+      </select>
+
+      <select id="songAlbumInput">
+        <option value="">Sin álbum / carpeta</option>
+      </select>
+
+      <div class="admin-grid small-grid">
+        <input id="songToneInput" type="text" placeholder="Tono, ejemplo: G, D, C">
+        <input id="songDifficultyInput" type="text" placeholder="Dificultad, ejemplo: Fácil">
+      </div>
+
+      <textarea id="songLyricsInput" placeholder="Letra y acordes. Ejemplo: (G) Hermoso momento..." style="min-height:260px;"></textarea>
+
+      <h3 style="margin-top:18px;">Links opcionales</h3>
+
+      <div class="admin-grid small-grid">
+        <input id="songGuitarUrlInput" type="url" placeholder="Tutorial guitarra">
+        <input id="songPianoUrlInput" type="url" placeholder="Tutorial piano">
+      </div>
+
+      <div class="admin-grid small-grid">
+        <input id="songYoutubeUrlInput" type="url" placeholder="YouTube">
+        <input id="songTiktokUrlInput" type="url" placeholder="TikTok">
+      </div>
+
+      <input id="songInstagramUrlInput" type="url" placeholder="Instagram">
+
+      <div class="admin-actions">
+        <button class="song-btn" type="button" onclick="saveSong()">
+          Guardar canción
+        </button>
+
+        <button class="song-btn" type="button" onclick="cancelSongEdit()">
+          Cancelar edición
+        </button>
+      </div>
+    </div>
+
+    <!-- LISTAS -->
     <div class="admin-grid" style="margin-top:28px;">
 
       <div class="song-card">
@@ -131,6 +226,26 @@
 
         <div id="adminCategoryList">
           <p style="color:var(--secondary);">Cargando categorías...</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="admin-grid" style="margin-top:28px;">
+
+      <div class="song-card">
+        <h2>Álbumes / carpetas</h2>
+
+        <div id="adminAlbumList">
+          <p style="color:var(--secondary);">Cargando álbumes...</p>
+        </div>
+      </div>
+
+      <div class="song-card">
+        <h2>Canciones registradas</h2>
+
+        <div id="adminSongList">
+          <p style="color:var(--secondary);">Cargando canciones...</p>
         </div>
       </div>
 
