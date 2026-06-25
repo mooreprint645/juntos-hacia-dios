@@ -41,7 +41,6 @@
 
 <main>
 
-  <!-- LOGIN -->
   <section class="section" id="adminLoginSection">
     <div class="song-card" id="adminLoginBox">
       <h2>Iniciar sesión</h2>
@@ -63,7 +62,6 @@
     </div>
   </section>
 
-  <!-- PANEL ADMIN -->
   <section class="section" id="adminPanel" style="display:none;">
 
     <div class="song-card" style="margin-bottom:28px;">
@@ -78,7 +76,6 @@
       </button>
     </div>
 
-    <!-- CATEGORÍA -->
     <div class="song-card" id="categoryFormCard">
       <h2 id="categoryFormTitle">Agregar categoría</h2>
 
@@ -89,6 +86,10 @@
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
         <button class="song-btn" type="button" onclick="saveCategory()">
           Guardar categoría
+        </button>
+
+        <button class="song-btn" type="button" onclick="cancelCategoryEdit()">
+          Cancelar edición
         </button>
       </div>
     </div>
