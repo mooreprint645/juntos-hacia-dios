@@ -5405,3 +5405,482 @@ runWhenReady(() => {
 
 window.jhdUpdateGradientPreview = jhdUpdateGradientPreview;
 window.jhdSaveArtistGradientColors = jhdSaveArtistGradientColors;
+/* =========================================================
+   DEGRADADO LIBRE TIPO ILLUSTRATOR
+   Varios puntos de color + posición + ángulo
+========================================================= */
+
+let jhdGradientStops = [
+  { color: "#0b1324", position: 0 },
+  { color: "#1d3557", position: 50 },
+  { color: "#111827", position: 100 }
+];
+
+let jhdGradientAngle = 135;
+
+function jhdIsAdminPage() {
+  return window.location.pathname.includes("admin.html") ||
+    !!document.getElementById("adminPanel");
+}
+
+function jhdMarkAdminBody() {
+  if (jhdIsAdminPage()) {
+    document.body.classList.add("admin-page");
+  }
+}
+
+function jhdSafeHex(value, fallback = "#111827") {
+  const hex = String(value || "").trim();
+
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    return hex.toLowerCase();
+  }
+
+  return fallback;
+}
+
+function jhdHexToRgb(hex) {
+  const clean = jhdSafeHex(hex).replace("#", "");
+
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function jhdClampPosition(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return 0;
+
+  return Math.min(100, Math.max(0, number));
+}
+
+function jhdNormalizeStops(stops) {
+  if (!Array.isArray(stops) || stops.length === 0) {
+    return [
+      { color: "#0b1324", position: 0 },
+      { color: "#1d3557", position: 50 },
+      { color: "#111827", position: 100 }
+    ];
+  }
+
+  return stops
+    .map(stop => ({
+      color: jhdSafeHex(stop.color, "#111827"),
+      position: jhdClampPosition(stop.position)
+    }))
+    .sort((a, b) => a.position - b.position);
+}
+
+function jhdBuildGradientString(stops = jhdGradientStops, angle = jhdGradientAngle) {
+  const safeStops = jhdNormalizeStops(stops);
+
+  const parts = safeStops.map(stop => `${stop.color} ${stop.position}%`);
+
+  return `linear-gradient(${Number(angle) || 135}deg, ${parts.join(", ")})`;
+}
+
+function jhdApplyGradientToHero(artist) {
+  const hero = document.querySelector(".artist-profile-hero");
+
+  if (!hero) return;
+
+  const stops = jhdNormalizeStops(artist.gradient_stops);
+  const angle = Number(artist.gradient_angle || 135);
+
+  hero.style.setProperty("--artist-gradient", jhdBuildGradientString(stops, angle));
+}
+
+function jhdArtistInlineVars(artist) {
+  const stops = jhdNormalizeStops(artist.gradient_stops);
+  const angle = Number(artist.gradient_angle || 135);
+
+  return `--artist-gradient:${jhdBuildGradientString(stops, angle)};`;
+}
+
+function jhdGetArtistInitials(name) {
+  const clean = String(name || "").trim().replace(/\s+/g, " ");
+
+  if (!clean) return "?";
+
+  const words = clean.split(" ");
+
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+
+  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
+}
+
+/* PUBLICO: lista de artistas */
+async function loadPublicArtists() {
+  const artistList = document.getElementById("artistList");
+
+  if (!artistList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
+    return;
+  }
+
+  artistList.innerHTML = "";
+
+  data.forEach(artist => {
+    const name = artist.name || "Sin nombre";
+
+    artistList.innerHTML += `
+      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
+        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
+          ${escapeHTML(jhdGetArtistInitials(name))}
+        </div>
+        <h3>${escapeHTML(name)}</h3>
+        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
+        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
+      </article>
+    `;
+  });
+}
+
+/* PUBLICO: perfil de artista */
+async function loadArtistProfile() {
+  const artistName = document.getElementById("artistName");
+  const artistDescription = document.getElementById("artistDescription");
+  const artistTags = document.getElementById("artistTags");
+  const artistAvatar = document.getElementById("artistAvatar");
+  const artistSongsList = document.getElementById("artistSongsList");
+
+  if (!artistName || !artistSongsList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistName.innerText = "No se pudo conectar";
+    return;
+  }
+
+  const slug = new URLSearchParams(window.location.search).get("id");
+
+  if (!slug) {
+    artistName.innerText = "Artista no encontrado";
+    return;
+  }
+
+  const { data: artist, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !artist) {
+    artistName.innerText = "Artista no encontrado";
+    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
+    return;
+  }
+
+  jhdApplyGradientToHero(artist);
+
+  artistName.innerText = artist.name || "Sin nombre";
+  artistDescription.innerText = artist.description || "Sin descripción todavía.";
+  artistTags.innerText = "ARTISTA / MINISTERIO";
+
+  if (artistAvatar) {
+    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
+    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
+  }
+
+  const { data: songsData } = await client
+    .from("songs")
+    .select(`
+      *,
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("artist_id", artist.id)
+    .order("title");
+
+  artistSongsList.innerHTML = "";
+
+  if (!songsData || songsData.length === 0) {
+    artistSongsList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+      </div>
+    `;
+    return;
+  }
+
+  songsData.forEach(song => {
+    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
+      ? jhdGetCategoryNamesFromSong(song)
+      : "Sin categoría";
+
+    const typeLabel = typeof jhdGetSongTypeLabel === "function"
+      ? jhdGetSongTypeLabel(song.song_type)
+      : "Sin tipo";
+
+    artistSongsList.innerHTML += `
+      <article class="song-card">
+        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
+        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  });
+}
+
+/* ADMIN: localizar tarjeta de artista */
+function jhdFindArtistFormCard() {
+  if (!jhdIsAdminPage()) return null;
+
+  const headings = Array.from(document.querySelectorAll("h2, h3"));
+
+  const artistHeading = headings.find(h => {
+    const text = h.innerText.toLowerCase();
+    return text.includes("agregar artista") || text.includes("editar artista");
+  });
+
+  if (!artistHeading) return null;
+
+  return artistHeading.closest(".song-card") || artistHeading.parentElement;
+}
+
+function jhdFindArtistNameInput() {
+  const card = jhdFindArtistFormCard();
+
+  if (!card) return null;
+
+  const inputs = Array.from(card.querySelectorAll("input"));
+
+  return inputs.find(input => {
+    const ph = String(input.placeholder || "").toLowerCase();
+    const type = String(input.type || "").toLowerCase();
+
+    return type !== "color" &&
+      !ph.includes("url") &&
+      !ph.includes("foto") &&
+      !ph.includes("portada") &&
+      !ph.includes("imagen");
+  }) || null;
+}
+
+function jhdArtistSlugFromAdmin() {
+  const nameInput = jhdFindArtistNameInput();
+
+  if (nameInput && nameInput.value.trim()) {
+    return jhdSlugifyText(nameInput.value.trim());
+  }
+
+  return "";
+}
+
+/* ADMIN: editor libre */
+function jhdRenderGradientStopRows() {
+  const list = document.getElementById("jhdGradientStopList");
+
+  if (!list) return;
+
+  jhdGradientStops = jhdNormalizeStops(jhdGradientStops);
+
+  list.innerHTML = "";
+
+  jhdGradientStops.forEach((stop, index) => {
+    list.innerHTML += `
+      <div class="gradient-stop-row">
+        <input type="color" value="${escapeHTML(stop.color)}" oninput="jhdUpdateStopColor(${index}, this.value)">
+
+        <input type="text" value="${escapeHTML(stop.color)}" oninput="jhdUpdateStopColor(${index}, this.value)" placeholder="#FACC15">
+
+        <span class="gradient-stop-position-label" id="jhdStopLabel${index}">
+          ${stop.position}%
+        </span>
+
+        <input type="range" min="0" max="100" value="${stop.position}" oninput="jhdUpdateStopPosition(${index}, this.value)">
+
+        <button type="button" class="gradient-stop-delete" onclick="jhdDeleteGradientStop(${index})">
+          ×
+        </button>
+
+        <div class="gradient-stop-rgb">
+          ${jhdHexToRgb(stop.color)}
+        </div>
+      </div>
+    `;
+  });
+
+  jhdUpdateGradientPreview();
+}
+
+function jhdUpdateGradientPreview() {
+  const preview = document.getElementById("jhdArtistGradientPreview");
+  const angleLabel = document.getElementById("jhdArtistAngleLabel");
+
+  if (!preview) return;
+
+  if (angleLabel) {
+    angleLabel.innerText = `${jhdGradientAngle}°`;
+  }
+
+  preview.style.background = jhdBuildGradientString(jhdGradientStops, jhdGradientAngle);
+}
+
+function jhdUpdateStopColor(index, value) {
+  jhdGradientStops[index].color = jhdSafeHex(value, jhdGradientStops[index].color);
+  jhdRenderGradientStopRows();
+}
+
+function jhdUpdateStopPosition(index, value) {
+  jhdGradientStops[index].position = jhdClampPosition(value);
+  jhdRenderGradientStopRows();
+}
+
+function jhdAddGradientStop() {
+  jhdGradientStops.push({
+    color: "#facc15",
+    position: 50
+  });
+
+  jhdRenderGradientStopRows();
+}
+
+function jhdDeleteGradientStop(index) {
+  if (jhdGradientStops.length <= 2) {
+    alert("Deja al menos 2 colores para el degradado.");
+    return;
+  }
+
+  jhdGradientStops.splice(index, 1);
+  jhdRenderGradientStopRows();
+}
+
+function jhdUpdateGradientAngle(value) {
+  jhdGradientAngle = Math.min(360, Math.max(0, Number(value) || 0));
+  jhdUpdateGradientPreview();
+}
+
+function jhdLoadArtistGradientAdminBox() {
+  if (!jhdIsAdminPage()) return;
+
+  const card = jhdFindArtistFormCard();
+
+  if (!card) return;
+
+  let box = document.getElementById("jhdArtistGradientBox");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "jhdArtistGradientBox";
+
+    const buttons = Array.from(card.querySelectorAll("button"));
+    const firstButton = buttons[0];
+
+    if (firstButton) {
+      card.insertBefore(box, firstButton);
+    } else {
+      card.appendChild(box);
+    }
+  }
+
+  box.innerHTML = `
+    <div class="artist-gradient-admin-title">Degradado del artista</div>
+
+    <div class="artist-gradient-admin-help">
+      Agrega los puntos de color que quieras. Cada punto tiene color exacto, RGB equivalente y posición dentro del degradado.
+    </div>
+
+    <div class="gradient-free-angle">
+      <label>Ángulo <span id="jhdArtistAngleLabel">${jhdGradientAngle}°</span></label>
+      <input type="range" min="0" max="360" value="${jhdGradientAngle}" oninput="jhdUpdateGradientAngle(this.value)">
+    </div>
+
+    <div class="artist-gradient-preview" id="jhdArtistGradientPreview"></div>
+
+    <div class="gradient-free-toolbar">
+      <button type="button" onclick="jhdAddGradientStop()">+ Agregar punto</button>
+      <button type="button" onclick="jhdSaveArtistFreeGradient()">Guardar degradado</button>
+    </div>
+
+    <div class="gradient-stop-list" id="jhdGradientStopList"></div>
+  `;
+
+  jhdRenderGradientStopRows();
+}
+
+async function jhdSaveArtistFreeGradient() {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase");
+    return;
+  }
+
+  const slug = jhdArtistSlugFromAdmin();
+
+  if (!slug) {
+    alert("Primero escribe el nombre del artista.");
+    return;
+  }
+
+  const safeStops = jhdNormalizeStops(jhdGradientStops);
+
+  const { error } = await client
+    .from("artists")
+    .update({
+      gradient_stops: safeStops,
+      gradient_angle: jhdGradientAngle
+    })
+    .eq("slug", slug);
+
+  if (error) {
+    alert("No se pudo guardar el degradado: " + error.message);
+    return;
+  }
+
+  alert("Degradado guardado");
+}
+
+function jhdInitFreeGradientEditor() {
+  jhdMarkAdminBody();
+
+  if (!jhdIsAdminPage()) return;
+
+  jhdLoadArtistGradientAdminBox();
+
+  setTimeout(jhdLoadArtistGradientAdminBox, 800);
+  setTimeout(jhdLoadArtistGradientAdminBox, 1800);
+  setTimeout(jhdLoadArtistGradientAdminBox, 3000);
+}
+
+document.addEventListener("DOMContentLoaded", jhdInitFreeGradientEditor);
+
+runWhenReady(() => {
+  setTimeout(() => {
+    jhdInitFreeGradientEditor();
+    loadPublicArtists();
+    loadArtistProfile();
+  }, 900);
+});
+
+window.jhdUpdateStopColor = jhdUpdateStopColor;
+window.jhdUpdateStopPosition = jhdUpdateStopPosition;
+window.jhdAddGradientStop = jhdAddGradientStop;
+window.jhdDeleteGradientStop = jhdDeleteGradientStop;
+window.jhdUpdateGradientAngle = jhdUpdateGradientAngle;
+window.jhdSaveArtistFreeGradient = jhdSaveArtistFreeGradient;
