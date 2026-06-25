@@ -2198,3 +2198,409 @@ window.resetTranspose = resetTranspose;
 window.loadPublicArtists = loadPublicArtists;
 window.loadPublicCategories = loadPublicCategories;
 window.loadPublicSongs = loadPublicSongs;
+
+/* =========================================================
+   APP 1.2 - CAPO / SIN CAPO
+========================================================= */
+
+let currentCapoMode = "original";
+
+function getCapoPosition(song) {
+  const value = Number(song && song.capo_position ? song.capo_position : 0);
+
+  if (Number.isNaN(value)) return 0;
+
+  return value;
+}
+
+function getTotalTransposeSteps() {
+  if (!currentSongForPage) return currentTransposeSteps;
+
+  const capoPosition = getCapoPosition(currentSongForPage);
+
+  if (currentCapoMode === "capo" && capoPosition > 0) {
+    return currentTransposeSteps - capoPosition;
+  }
+
+  return currentTransposeSteps;
+}
+
+function setCapoMode(mode) {
+  currentCapoMode = mode === "capo" ? "capo" : "original";
+  currentTransposeSteps = 0;
+
+  updateSongLyricsDisplay();
+}
+
+function updateSongLyricsDisplay() {
+  const lyricsBox = $("lyricsContent");
+  const label = $("transposeLabel");
+  const modeLabel = $("capoModeLabel");
+
+  if (!lyricsBox || !currentSongForPage) return;
+
+  const totalSteps = getTotalTransposeSteps();
+
+  lyricsBox.innerHTML = renderChordedLyrics(currentSongForPage.lyrics || "", totalSteps);
+
+  if (label) {
+    if (currentTransposeSteps === 0) {
+      label.innerText = "Tono original";
+    } else if (currentTransposeSteps > 0) {
+      label.innerText = "+" + currentTransposeSteps;
+    } else {
+      label.innerText = String(currentTransposeSteps);
+    }
+  }
+
+  if (modeLabel) {
+    if (currentCapoMode === "capo") {
+      const capo = getCapoPosition(currentSongForPage);
+      const capoKey = currentSongForPage.capo_key || "";
+      modeLabel.innerText = "Con capo " + capo + (capoKey ? " · Figuras en " + capoKey : "");
+    } else {
+      modeLabel.innerText = "Sin capo";
+    }
+  }
+}
+
+async function saveSong() {
+  const title = getInputValue("songTitleInput");
+  const songType = getInputValue("songTypeInput") || "catolico";
+  const tone = getInputValue("songToneInput");
+  const difficulty = getInputValue("songDifficultyInput");
+  const lyrics = getInputValue("songLyricsInput");
+  const categoryId = getInputValue("songCategoryInput");
+  const albumId = getInputValue("songAlbumInput");
+  const artistIds = getSelectedValues("songArtistsInput");
+  const linksText = getInputValue("songLinksInput");
+  const links = parseSongLinksText(linksText);
+
+  const capoPositionRaw = getInputValue("songCapoInput");
+  const capoPosition = capoPositionRaw ? Number(capoPositionRaw) : 0;
+  const capoKey = getInputValue("songCapoKeyInput");
+
+  if (!title) {
+    alert("Escribe el título de la canción.");
+    return;
+  }
+
+  if (!artistIds.length) {
+    alert("Selecciona al menos un artista.");
+    return;
+  }
+
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase.");
+    return;
+  }
+
+  const payload = {
+    title: title,
+    slug: slugify(title),
+    song_type: songType,
+    tone: tone,
+    difficulty: difficulty,
+    lyrics: lyrics,
+    artist_id: artistIds[0],
+    capo_position: Number.isNaN(capoPosition) ? 0 : capoPosition,
+    capo_key: capoKey
+  };
+
+  let savedSongId = currentEditingSongId;
+  let result;
+
+  if (currentEditingSongId) {
+    result = await client
+      .from("songs")
+      .update(payload)
+      .eq("id", currentEditingSongId)
+      .select("id")
+      .single();
+  } else {
+    result = await client
+      .from("songs")
+      .insert(payload)
+      .select("id")
+      .single();
+  }
+
+  if (result.error) {
+    alert("No se pudo guardar canción: " + result.error.message);
+    return;
+  }
+
+  savedSongId = result.data ? result.data.id : savedSongId;
+
+  await client.from("song_artists").delete().eq("song_id", savedSongId);
+
+  const artistRows = artistIds.map(function (artistId, index) {
+    return {
+      song_id: savedSongId,
+      artist_id: artistId,
+      role: index === 0 ? "principal" : "colaborador",
+      sort_order: index
+    };
+  });
+
+  if (artistRows.length) {
+    const artistResult = await client.from("song_artists").insert(artistRows);
+
+    if (artistResult.error) {
+      alert("La canción se guardó, pero falló la relación con artistas: " + artistResult.error.message);
+      return;
+    }
+  }
+
+  await client.from("song_categories").delete().eq("song_id", savedSongId);
+
+  if (categoryId) {
+    const categoryResult = await client.from("song_categories").insert({
+      song_id: savedSongId,
+      category_id: categoryId
+    });
+
+    if (categoryResult.error) {
+      alert("La canción se guardó, pero falló la categoría: " + categoryResult.error.message);
+      return;
+    }
+  }
+
+  await client.from("album_songs").delete().eq("song_id", savedSongId);
+
+  if (albumId) {
+    const albumResult = await client.from("album_songs").insert({
+      song_id: savedSongId,
+      album_id: albumId
+    });
+
+    if (albumResult.error) {
+      alert("La canción se guardó, pero falló el álbum: " + albumResult.error.message);
+      return;
+    }
+  }
+
+  await client.from("song_links").delete().eq("song_id", savedSongId);
+
+  if (links.length) {
+    const linkRows = links.map(function (link, index) {
+      return {
+        song_id: savedSongId,
+        title: link.title,
+        link_type: link.link_type || "tutorial",
+        platform: link.platform || "",
+        url: link.url,
+        sort_order: index
+      };
+    });
+
+    const linksResult = await client.from("song_links").insert(linkRows);
+
+    if (linksResult.error) {
+      alert("La canción se guardó, pero fallaron los links: " + linksResult.error.message);
+      return;
+    }
+  }
+
+  const wasEditing = !!currentEditingSongId;
+
+  resetSongForm();
+
+  await Promise.all([
+    loadAdminSongs(),
+    loadPublicSongs()
+  ]);
+
+  alert(wasEditing ? "Canción actualizada." : "Canción guardada.");
+}
+
+async function editSong(id) {
+  const { data: songs, error } = await fetchSongsWithRelations([id]);
+
+  if (error || !songs || !songs.length) {
+    alert("No se pudo cargar la canción.");
+    return;
+  }
+
+  const song = songs[0];
+
+  currentEditingSongId = song.id;
+
+  const title = $("songFormTitle");
+
+  if (title) {
+    title.innerText = "Editar canción";
+  }
+
+  setInputValue("songTitleInput", song.title || "");
+  setInputValue("songTypeInput", song.song_type || "catolico");
+  setInputValue("songToneInput", song.tone || "");
+  setInputValue("songDifficultyInput", song.difficulty || "");
+  setInputValue("songLyricsInput", song.lyrics || "");
+  setInputValue("songLinksInput", linksToText(song._links || []));
+  setInputValue("songCapoInput", song.capo_position || "");
+  setInputValue("songCapoKeyInput", song.capo_key || "");
+
+  setSelectedValues(
+    "songArtistsInput",
+    (song._artists || []).map(function (artist) {
+      return artist.id;
+    })
+  );
+
+  setInputValue(
+    "songCategoryInput",
+    song._categories && song._categories[0] ? song._categories[0].id : ""
+  );
+
+  setInputValue(
+    "songAlbumInput",
+    song._albums && song._albums[0] ? song._albums[0].id : ""
+  );
+
+  const form = $("songFormCard");
+
+  if (form) {
+    form.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+}
+
+function resetSongForm() {
+  currentEditingSongId = null;
+
+  const title = $("songFormTitle");
+
+  if (title) {
+    title.innerText = "Agregar canción";
+  }
+
+  [
+    "songTitleInput",
+    "songToneInput",
+    "songDifficultyInput",
+    "songLyricsInput",
+    "songLinksInput",
+    "songCapoInput",
+    "songCapoKeyInput"
+  ].forEach(function (id) {
+    setInputValue(id, "");
+  });
+
+  setInputValue("songTypeInput", "catolico");
+  setInputValue("songCategoryInput", "");
+  setInputValue("songAlbumInput", "");
+  setSelectedValues("songArtistsInput", []);
+}
+
+async function loadSongPage() {
+  const box = $("songPage") || $("songDetail") || $("cantoContent");
+
+  if (!box) return;
+
+  const slug = getUrlParam("slug");
+  const client = getSupabase();
+
+  if (!client || !slug) {
+    box.innerHTML = `
+      <div class="song-card">
+        <h3>Canto no encontrado</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data: song, error } = await client
+    .from("songs")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !song) {
+    box.innerHTML = `
+      <div class="song-card">
+        <h3>Canto no encontrado</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data: songs } = await fetchSongsWithRelations([song.id]);
+
+  const fullSong = songs && songs[0]
+    ? songs[0]
+    : Object.assign({}, song, {
+        _artists: [],
+        _categories: [],
+        _albums: [],
+        _links: []
+      });
+
+  currentSongForPage = fullSong;
+  currentTransposeSteps = 0;
+  currentCapoMode = "original";
+
+  const capoPosition = getCapoPosition(fullSong);
+  const capoKey = fullSong.capo_key || "";
+
+  box.innerHTML = `
+    <article class="song-detail-card">
+      <p class="artists-line">
+        ${artistLinksHTML(fullSong._artists)}
+      </p>
+
+      <h1>${escapeHTML(fullSong.title || "Sin título")}</h1>
+
+      <p class="song-meta-line">
+        ${escapeHTML(fullSong.tone || "")}
+        ${fullSong.difficulty ? " · " + escapeHTML(fullSong.difficulty) : ""}
+      </p>
+
+      ${capoPosition > 0 ? `
+        <div class="capo-box">
+          <span id="capoModeLabel">Sin capo</span>
+
+          <button type="button" class="song-btn small-btn" onclick="setCapoMode('original')">
+            Sin capo
+          </button>
+
+          <button type="button" class="song-btn small-btn" onclick="setCapoMode('capo')">
+            Con capo ${capoPosition}${capoKey ? " · " + escapeHTML(capoKey) : ""}
+          </button>
+        </div>
+      ` : ""}
+
+      <div class="transpose-box">
+        <button type="button" class="song-btn small-btn" onclick="changeTranspose(-1)">
+          Bajar tono
+        </button>
+
+        <span id="transposeLabel">Tono original</span>
+
+        <button type="button" class="song-btn small-btn" onclick="changeTranspose(1)">
+          Subir tono
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="resetTranspose()">
+          Original
+        </button>
+      </div>
+
+      <pre class="lyrics-block" id="lyricsContent">${renderChordedLyrics(fullSong.lyrics || "", 0)}</pre>
+
+      ${renderSongLinksHTML(fullSong._links || [])}
+    </article>
+  `;
+}
+
+window.saveSong = saveSong;
+window.editSong = editSong;
+window.cancelSongEdit = resetSongForm;
+window.loadSongPage = loadSongPage;
+window.setCapoMode = setCapoMode;
+window.changeTranspose = changeTranspose;
+window.resetTranspose = resetTranspose;
