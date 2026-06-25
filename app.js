@@ -1,6 +1,6 @@
 /* =========================================================
    JUNTOS HACIA DIOS - APP MINIMA
-   Luna + login + categorias + artistas basicos
+   Luna + login + categorias + artistas admin/publico
 ========================================================= */
 
 const ADMIN_EMAIL = "mooreprint645@gmail.com";
@@ -205,6 +205,7 @@ async function checkAdminSession() {
   await loadAdminCategories();
   await loadAdminArtists();
   await loadCategoryOptions();
+  await loadArtistOptions();
 }
 
 /* =========================================================
@@ -313,6 +314,7 @@ async function saveArtist() {
   resetArtistForm();
 
   await loadAdminArtists();
+  await loadPublicArtists();
   await loadArtistOptions();
 
   alert(wasEditing ? "Artista actualizado." : "Artista guardado.");
@@ -336,6 +338,7 @@ async function deleteArtist(id) {
   }
 
   await loadAdminArtists();
+  await loadPublicArtists();
   await loadArtistOptions();
 }
 
@@ -370,11 +373,23 @@ async function loadAdminArtists() {
     return `
       <div class="admin-list-item">
         <div style="display:flex; align-items:center; gap:12px;">
-          <div class="artist-avatar" style="width:44px; height:44px; font-size:16px;">
+          <div style="
+            width:46px;
+            height:46px;
+            min-width:46px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:linear-gradient(135deg, #fac15f, #8557ff);
+            color:#ffffff;
+            font-weight:800;
+            font-size:15px;
+          ">
             ${escapeHTML(getInitials(artist.name || ""))}
           </div>
 
-          <div>
+          <div style="flex:1;">
             <strong>${escapeHTML(artist.name || "Sin nombre")}</strong>
             <p style="color:var(--secondary); margin-top:6px;">
               ${escapeHTML(artist.description || "Sin descripción.")}
@@ -382,7 +397,7 @@ async function loadAdminArtists() {
           </div>
         </div>
 
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
           <button type="button" class="song-btn" onclick="editArtist('${artist.id}')">
             Editar
           </button>
@@ -416,6 +431,152 @@ async function loadArtistOptions() {
 
   (data || []).forEach(function (artist) {
     select.innerHTML += `<option value="${artist.id}">${escapeHTML(artist.name || "Sin nombre")}</option>`;
+  });
+}
+
+/* =========================================================
+   ARTISTAS PUBLICOS
+========================================================= */
+
+async function loadPublicArtists() {
+  const list =
+    document.getElementById("artistList") ||
+    document.getElementById("artistsList") ||
+    document.getElementById("publicArtistList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar con Supabase</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando artistas</h3>
+        <p>${escapeHTML(error.message)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>No hay artistas todavía</h3>
+        <p>Agrega artistas desde el panel de administración.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.dataset.allArtists = JSON.stringify(data);
+
+  renderPublicArtists(data);
+}
+
+function renderPublicArtists(artists) {
+  const list =
+    document.getElementById("artistList") ||
+    document.getElementById("artistsList") ||
+    document.getElementById("publicArtistList");
+
+  if (!list) return;
+
+  list.innerHTML = artists.map(function (artist) {
+    const name = artist.name || "Sin nombre";
+    const description = artist.description || "Ministerio o artista registrado.";
+
+    return `
+      <article class="song-card">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="
+            width:58px;
+            height:58px;
+            min-width:58px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:linear-gradient(135deg, #fac15f, #8557ff);
+            color:#ffffff;
+            font-weight:800;
+            font-size:18px;
+          ">
+            ${escapeHTML(getInitials(name))}
+          </div>
+
+          <div>
+            <h3 style="margin-bottom:6px;">${escapeHTML(name)}</h3>
+            <p>${escapeHTML(description)}</p>
+          </div>
+        </div>
+
+        <a class="song-btn" href="artista.html?slug=${encodeURIComponent(artist.slug || slugify(name))}" style="margin-top:14px;">
+          Ver artista
+        </a>
+      </article>
+    `;
+  }).join("");
+}
+
+function initArtistSearch() {
+  const input =
+    document.getElementById("artistSearch") ||
+    document.getElementById("artistSearchInput") ||
+    document.querySelector('input[placeholder*="artista"]');
+
+  const list =
+    document.getElementById("artistList") ||
+    document.getElementById("artistsList") ||
+    document.getElementById("publicArtistList");
+
+  if (!input || !list) return;
+
+  input.addEventListener("input", function () {
+    let artists = [];
+
+    try {
+      artists = JSON.parse(list.dataset.allArtists || "[]");
+    } catch (error) {
+      artists = [];
+    }
+
+    const search = input.value.trim().toLowerCase();
+
+    if (!search) {
+      renderPublicArtists(artists);
+      return;
+    }
+
+    const filtered = artists.filter(function (artist) {
+      const text = `${artist.name || ""} ${artist.description || ""}`.toLowerCase();
+      return text.includes(search);
+    });
+
+    if (filtered.length === 0) {
+      list.innerHTML = `
+        <div class="song-card">
+          <h3>No se encontraron artistas</h3>
+          <p>Prueba con otro nombre.</p>
+        </div>
+      `;
+      return;
+    }
+
+    renderPublicArtists(filtered);
   });
 }
 
@@ -648,74 +809,4 @@ async function loadPublicCategories() {
     .order("name", { ascending: true });
 
   if (error) {
-    list.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando categorías</h3>
-        <p>${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    list.innerHTML = `
-      <div class="song-card">
-        <h3>No hay categorías todavía</h3>
-        <p>Agrega categorías desde el panel de administración.</p>
-      </div>
-    `;
-    return;
-  }
-
-  list.innerHTML = data.map(function (category) {
-    return `
-      <article class="song-card">
-        <h3>${escapeHTML(category.name || "Sin nombre")}</h3>
-        <p>${escapeHTML(category.description || "Cantos de esta categoría.")}</p>
-        <a class="song-btn" href="canciones.html?buscar=${encodeURIComponent(category.name || "")}">
-          Ver cantos
-        </a>
-      </article>
-    `;
-  }).join("");
-}
-
-/* =========================================================
-   INIT
-========================================================= */
-
-document.addEventListener("DOMContentLoaded", async function () {
-  initTheme();
-  initMenu();
-
-  const themeButton = document.getElementById("themeToggle");
-
-  if (themeButton) {
-    themeButton.addEventListener("click", toggleTheme);
-  }
-
-  await loadPublicCategories();
-
-  if (document.getElementById("adminPanel")) {
-    await checkAdminSession();
-  }
-});
-
-/* =========================================================
-   HTML FUNCTIONS
-========================================================= */
-
-window.loginAdmin = loginAdmin;
-window.logoutAdmin = logoutAdmin;
-
-window.saveCategory = saveCategory;
-window.editCategory = editCategory;
-window.deleteCategory = deleteCategory;
-window.cancelCategoryEdit = resetCategoryForm;
-
-window.saveArtist = saveArtist;
-window.editArtist = editArtist;
-window.deleteArtist = deleteArtist;
-window.cancelArtistEdit = resetArtistForm;
-
-window.loadPublicCategories = loadPublicCategories;
+  
