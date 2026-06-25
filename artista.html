@@ -4,58 +4,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Perfil de artista | Juntos Hacia Dios</title>
-  <meta name="description" content="Perfil de artista o ministerio en Juntos Hacia Dios con sus cantos, letras y acordes.">
+  <title>Artistas | Juntos Hacia Dios</title>
+  <meta name="description" content="Explora artistas y ministerios de música católica y cristiana en Juntos Hacia Dios.">
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=final">
 </head>
 
 <body>
 
-<header class="artist-profile-hero">
+<header class="hero small-hero">
   <nav class="navbar">
-    <div class="nav-menu" id="navMenu">
-      <a href="index.html" class="nav-link">← Inicio</a>
-      <a href="artistas.html" class="nav-link">Artistas</a>
-      <a href="canciones.html" class="nav-link">Canciones</a>
-    </div>
-
     <h2>JHD</h2>
 
-    <button id="themeToggle">🌙</button>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menú">
+      ☰ Menú
+    </button>
+
+    <div class="nav-menu" id="navMenu">
+      <a href="index.html" class="nav-link">Inicio</a>
+      <a href="canciones.html" class="nav-link">Canciones</a>
+      <a href="artistas.html" class="nav-link">Artistas</a>
+      <a href="categorias.html" class="nav-link">Categorías</a>
+      <a href="donaciones.html" class="nav-link">Donaciones</a>
+    </div>
+
+    <button id="themeToggle" type="button">🌙</button>
   </nav>
 
-  <div class="artist-profile-header">
-    <div class="artist-profile-avatar" id="artistAvatar">?</div>
+  <div class="hero-content">
+    <h1>Artistas</h1>
+    <p class="hero-description">
+      Explora cantos por artista o ministerio.
+    </p>
 
-    <div class="artist-profile-info">
-      <p class="artist-profile-label" id="artistTags">ARTISTA / MINISTERIO</p>
-
-      <h1 id="artistName">Cargando artista...</h1>
-
-      <p id="artistDescription">
-        Cargando información del artista...
-      </p>
-    </div>
+    <input
+      id="artistSearchInput"
+      type="search"
+      placeholder="Buscar artista o ministerio..."
+      style="margin-top:24px; max-width:520px;"
+    >
   </div>
 </header>
 
-<section class="section">
-  <h2>Cantos del artista</h2>
+<main>
+  <section class="section">
+    <h2>Artistas</h2>
 
-  <div class="song-grid" id="artistSongsList">
-    <div class="song-card">
-      <h3>Cargando cantos...</h3>
-      <p style="color:var(--secondary); margin-top:15px;">
-        Espera un momento.
-      </p>
+    <div class="song-list" id="artistList">
+      <div class="song-card">
+        <h3>Cargando artistas...</h3>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+<script src="supabase.js?v=final"></script>
+<script src="app.js?v=final"></script>
 
 </body>
 </html>
