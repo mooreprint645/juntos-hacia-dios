@@ -4041,3 +4041,33 @@ body:not(.admin-page) #jhdArtistGradientBox {
 .artist-cover-overlay {
   display: none !important;
 }
+/* =========================================================
+   FIX FINAL - OCULTAR URL Y PREVIEW MESH VISIBLE
+========================================================= */
+
+.artist-form-url-hidden,
+input.artist-form-url-hidden {
+  display: none !important;
+}
+
+#jhdMeshCanvasWrap {
+  background:
+    radial-gradient(circle at 18% 35%, rgba(250, 204, 21, .85) 0%, rgba(250, 204, 21, .45) 25%, transparent 72%),
+    radial-gradient(circle at 78% 30%, rgba(56, 189, 248, .75) 0%, rgba(56, 189, 248, .38) 28%, transparent 75%),
+    radial-gradient(circle at 45% 78%, rgba(168, 85, 247, .70) 0%, rgba(168, 85, 247, .32) 28%, transparent 72%),
+    linear-gradient(135deg, #0b1020, #111827) !important;
+}
+
+#jhdMeshCanvas {
+  display: none !important;
+}
+
+.mesh-canvas-wrap {
+  min-height: 180px !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+.mesh-point {
+  z-index: 20 !important;
+}
