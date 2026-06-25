@@ -3808,3 +3808,169 @@ body:not(.admin-page) #jhdArtistGradientBox {
     height: 150px !important;
   }
 }
+/* =========================================================
+   MESH GRADIENT - PORTADA DE ARTISTA
+========================================================= */
+
+#jhdArtistGradientBox {
+  margin: 16px 0 18px !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  background: rgba(255,255,255,.05) !important;
+}
+
+.mesh-editor-title {
+  font-weight: 900 !important;
+  color: var(--gold) !important;
+  margin-bottom: 8px !important;
+}
+
+.mesh-editor-help {
+  color: var(--secondary) !important;
+  font-size: .9rem !important;
+  line-height: 1.5 !important;
+  margin-bottom: 14px !important;
+}
+
+.mesh-canvas-wrap {
+  position: relative !important;
+  width: 100% !important;
+  height: 175px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  background: #0b1020 !important;
+  cursor: crosshair !important;
+  touch-action: none !important;
+  margin-bottom: 14px !important;
+}
+
+#jhdMeshCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+.mesh-point {
+  position: absolute !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  border: 3px solid #fff !important;
+  transform: translate(-50%, -50%) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45) !important;
+  z-index: 5 !important;
+  cursor: grab !important;
+}
+
+.mesh-point.active {
+  outline: 3px solid var(--gold) !important;
+  outline-offset: 3px !important;
+}
+
+.mesh-controls {
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.mesh-panel {
+  padding: 12px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+}
+
+.mesh-panel label {
+  display: block !important;
+  color: var(--secondary) !important;
+  font-size: .84rem !important;
+  margin-bottom: 7px !important;
+}
+
+.mesh-panel input[type="color"] {
+  width: 100% !important;
+  height: 44px !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+
+.mesh-panel input[type="text"] {
+  width: 100% !important;
+  padding: 9px !important;
+  border-radius: 10px !important;
+  margin-top: 8px !important;
+}
+
+.mesh-panel input[type="range"] {
+  width: 100% !important;
+}
+
+.mesh-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  margin-top: 12px !important;
+}
+
+.mesh-actions button {
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 10px 15px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  background: var(--gold) !important;
+  color: #111 !important;
+}
+
+.mesh-actions button.danger {
+  background: rgba(255,80,80,.20) !important;
+  color: #ffb4b4 !important;
+}
+
+.artist-profile-hero {
+  --artist-mesh-gradient:
+    radial-gradient(circle at 20% 35%, rgba(250, 204, 21, .85) 0%, rgba(250, 204, 21, .35) 22%, transparent 58%),
+    radial-gradient(circle at 75% 30%, rgba(56, 189, 248, .70) 0%, rgba(56, 189, 248, .30) 25%, transparent 62%),
+    radial-gradient(circle at 45% 75%, rgba(168, 85, 247, .65) 0%, rgba(168, 85, 247, .25) 22%, transparent 60%),
+    linear-gradient(135deg, #0b1020, #111827);
+
+  background: var(--artist-mesh-gradient) !important;
+}
+
+.artist-profile-hero::before {
+  pointer-events: none !important;
+  background:
+    linear-gradient(90deg, rgba(5,8,15,.22), rgba(5,8,15,.04)),
+    linear-gradient(180deg, rgba(0,0,0,.02), rgba(0,0,0,.28)) !important;
+}
+
+.artist-profile-avatar,
+.artist-avatar {
+  background: var(--artist-mesh-gradient) !important;
+  color: #fff !important;
+  font-weight: 900 !important;
+  text-shadow: 0 3px 10px rgba(0,0,0,.45) !important;
+}
+
+.artist-profile-avatar img,
+.artist-avatar img,
+.artist-cover-image,
+.artist-cover-overlay,
+#artistAvatarInput,
+#artistCoverInput,
+input[placeholder="URL foto de perfil"],
+input[placeholder="URL imagen de portada"] {
+  display: none !important;
+}
+
+body:not(.admin-page) #jhdArtistGradientBox {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  .mesh-canvas-wrap {
+    height: 150px !important;
+  }
+}
