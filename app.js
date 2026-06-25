@@ -1,12 +1,11 @@
 /* =========================================================
-   JUNTOS HACIA DIOS - APP LIMPIA v13
-   Admin + Supabase + Artistas + Mesh + Categorías + Canciones + Donaciones
+   JUNTOS HACIA DIOS - APP LIMPIA v14
+   Admin + Supabase + Artistas + Mesh + Categorías + Canciones
 ========================================================= */
 
 const ADMIN_EMAIL = "mooreprint645@gmail.com";
 
 let currentEditingArtistId = null;
-let currentEditingCategoryId = null;
 let currentEditingSongId = null;
 let currentEditingDonationId = null;
 
@@ -14,7 +13,7 @@ let originalLyrics = "";
 
 let meshPoints = [
   { x: 18, y: 35, color: "#facc15", size: 90, opacity: 0.85 },
-  { x: 78, y: 30, color: "#38bdf8", size: 95, opacity: 0.70 },
+  { x: 78, y: 30, color: "#38bdf8", size: 95, opacity: 0.7 },
   { x: 45, y: 78, color: "#a855f7", size: 90, opacity: 0.65 }
 ];
 
@@ -57,39 +56,25 @@ function isAdminPage() {
 
 function clamp(value, fallback, min, max) {
   const number = Number(value);
-
-  if (!Number.isFinite(number)) {
-    return fallback;
-  }
-
+  if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, number));
 }
 
 function safeHex(value, fallback = "#facc15") {
   const hex = String(value || "").trim();
-
-  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-    return hex.toLowerCase();
-  }
-
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) return hex.toLowerCase();
   return fallback;
 }
 
 function safeUrl(value) {
   const url = String(value || "").trim();
-
   if (!url) return "";
-
-  if (url.startsWith("https://") || url.startsWith("http://")) {
-    return url;
-  }
-
+  if (url.startsWith("https://") || url.startsWith("http://")) return url;
   return "";
 }
 
 function getInitials(name) {
   const clean = String(name || "").trim().replace(/\s+/g, " ");
-
   if (!clean) return "?";
 
   const words = clean.split(" ");
@@ -124,7 +109,7 @@ function hexToRgba(hex, opacity) {
 }
 
 /* =========================================================
-   THEME / MENU
+   TEMA Y MENÚ
 ========================================================= */
 
 function initTheme() {
@@ -139,7 +124,6 @@ function initTheme() {
 
 function updateThemeButton() {
   const button = document.getElementById("themeToggle");
-
   if (!button) return;
 
   button.innerText = document.body.classList.contains("light-mode") ? "☀️" : "🌙";
@@ -168,14 +152,14 @@ function initMenu() {
 }
 
 /* =========================================================
-   MESH
+   MESH GRADIENT
 ========================================================= */
 
 function normalizeMeshPoints(points) {
   if (!Array.isArray(points) || points.length === 0) {
     return [
       { x: 18, y: 35, color: "#facc15", size: 90, opacity: 0.85 },
-      { x: 78, y: 30, color: "#38bdf8", size: 95, opacity: 0.70 },
+      { x: 78, y: 30, color: "#38bdf8", size: 95, opacity: 0.7 },
       { x: 45, y: 78, color: "#a855f7", size: 90, opacity: 0.65 }
     ];
   }
@@ -288,7 +272,6 @@ function renderMeshEditor() {
       if (!draggingMeshPoint) return;
 
       const point = meshPoints[selectedMeshPoint];
-
       if (!point) return;
 
       const position = getPointerPositionPercent(event, wrap);
@@ -319,7 +302,6 @@ function handleMeshPointerDown(event) {
   if (event.target.classList.contains("mesh-point")) return;
 
   const wrap = document.getElementById("jhdMeshCanvasWrap");
-
   if (!wrap) return;
 
   const position = getPointerPositionPercent(event, wrap);
@@ -729,8 +711,6 @@ async function loadArtistOptions() {
 ========================================================= */
 
 function resetCategoryForm() {
-  currentEditingCategoryId = null;
-
   const title = document.getElementById("categoryFormTitle");
   const name = document.getElementById("categoryNameInput");
   const description = document.getElementById("categoryDescriptionInput");
@@ -762,18 +742,9 @@ async function saveCategory() {
     description
   };
 
-  let result;
-
-  if (currentEditingCategoryId) {
-    result = await client
-      .from("categories")
-      .update(payload)
-      .eq("id", currentEditingCategoryId);
-  } else {
-    result = await client
-      .from("categories")
-      .insert(payload);
-  }
+  const result = await client
+    .from("categories")
+    .insert(payload);
 
   if (result.error) {
     alert("No se pudo guardar categoría: " + result.error.message);
@@ -803,4 +774,20 @@ async function deleteCategory(id) {
 
   if (error) {
     alert("No se pudo eliminar: " + error.message);
-    ret
+    return;
+  }
+
+  await loadAdminCategories();
+  await loadCategoryOptions();
+  await loadPublicCategories();
+}
+
+async function loadAdminCategories() {
+  const list = document.getElementById("adminCategoryList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    list.innerHTML = `<
