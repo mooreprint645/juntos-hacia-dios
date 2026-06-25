@@ -3279,3 +3279,166 @@ body:not(.admin-page) #jhdArtistGradientBox {
     grid-template-columns: 1fr;
   }
 }
+  /* =========================================================
+   FIX FINAL - ARTISTAS CON INICIALES Y DEGRADADO EDITABLE
+========================================================= */
+
+#jhdArtistGradientBox {
+  margin: 16px 0 18px !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  background: rgba(255,255,255,.05) !important;
+}
+
+.artist-gradient-admin-title {
+  font-weight: 900 !important;
+  margin-bottom: 8px !important;
+  color: var(--gold) !important;
+}
+
+.artist-gradient-admin-help {
+  color: var(--secondary) !important;
+  font-size: .9rem !important;
+  margin-bottom: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.artist-gradient-controls {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(120px, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.artist-gradient-control,
+.artist-gradient-angle {
+  padding: 12px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+}
+
+.artist-gradient-control label,
+.artist-gradient-angle label {
+  display: block !important;
+  font-size: .85rem !important;
+  color: var(--secondary) !important;
+  margin-bottom: 7px !important;
+}
+
+.artist-gradient-control input[type="color"] {
+  width: 100% !important;
+  height: 44px !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+
+.artist-gradient-control input[type="range"],
+.artist-gradient-angle input[type="range"] {
+  width: 100% !important;
+}
+
+.artist-gradient-preview {
+  height: 110px !important;
+  border-radius: 16px !important;
+  margin-top: 14px !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  background: linear-gradient(135deg, #0b1324 0%, #1d3557 50%, #111827 100%) !important;
+}
+
+.artist-gradient-save-btn {
+  margin-top: 14px !important;
+}
+
+/* Perfil público más claro y limpio */
+.artist-profile-hero {
+  --artist-c1: #0b1324;
+  --artist-c2: #1d3557;
+  --artist-c3: #111827;
+  --artist-s1: 0%;
+  --artist-s2: 50%;
+  --artist-s3: 100%;
+  --artist-angle: 135deg;
+
+  position: relative !important;
+  min-height: 420px !important;
+  padding: 28px 6% 70px !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(circle at top left, rgba(250, 204, 21, .20), transparent 36%),
+    linear-gradient(
+      var(--artist-angle),
+      var(--artist-c1) var(--artist-s1),
+      var(--artist-c2) var(--artist-s2),
+      var(--artist-c3) var(--artist-s3)
+    ) !important;
+}
+
+/* Quita oscurecimiento excesivo anterior */
+.artist-profile-hero::before {
+  background:
+    linear-gradient(90deg, rgba(5,8,15,.40), rgba(5,8,15,.12)),
+    linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.35)) !important;
+}
+
+.artist-cover-image,
+.artist-cover-overlay,
+.artist-profile-avatar img,
+.artist-avatar img {
+  display: none !important;
+}
+
+.artist-profile-avatar,
+.artist-avatar {
+  background:
+    linear-gradient(135deg, var(--artist-c2, #facc15), var(--artist-c1, #ffe8a3)) !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  text-shadow: 0 3px 10px rgba(0,0,0,.45) !important;
+}
+
+.artist-profile-avatar {
+  width: 150px !important;
+  height: 150px !important;
+  min-width: 150px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 3.8rem !important;
+  box-shadow: 0 18px 45px rgba(0,0,0,.35) !important;
+}
+
+.artist-profile-info h1 {
+  color: var(--gold) !important;
+  text-shadow: 0 3px 18px rgba(0,0,0,.28) !important;
+}
+
+.artist-profile-label,
+.artist-profile-info p {
+  color: #fff !important;
+}
+
+/* Por seguridad: editor nunca visible fuera de admin */
+body:not(.admin-page) #jhdArtistGradientBox {
+  display: none !important;
+}
+
+@media (max-width: 800px) {
+  .artist-gradient-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  .artist-profile-avatar {
+    width: 110px !important;
+    height: 110px !important;
+    min-width: 110px !important;
+    font-size: 2.7rem !important;
+  }
+
+  .artist-profile-header {
+    gap: 20px !important;
+  }
+  }
