@@ -3442,3 +3442,174 @@ body:not(.admin-page) #jhdArtistGradientBox {
     gap: 20px !important;
   }
   }
+/* =========================================================
+   EDITOR DEGRADADO LIBRE TIPO ILLUSTRATOR
+========================================================= */
+
+#jhdArtistGradientBox {
+  margin: 16px 0 18px !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  background: rgba(255,255,255,.05) !important;
+}
+
+.artist-gradient-admin-title {
+  font-weight: 900 !important;
+  margin-bottom: 8px !important;
+  color: var(--gold) !important;
+}
+
+.artist-gradient-admin-help {
+  color: var(--secondary) !important;
+  font-size: .9rem !important;
+  margin-bottom: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.artist-gradient-preview {
+  height: 120px !important;
+  border-radius: 16px !important;
+  margin: 14px 0 !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  background: linear-gradient(135deg, #0b1324 0%, #1d3557 50%, #111827 100%) !important;
+}
+
+.gradient-free-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.gradient-free-toolbar button {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  background: var(--gold);
+  color: #111;
+}
+
+.gradient-free-angle {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  margin-bottom: 12px;
+}
+
+.gradient-free-angle label {
+  display: block;
+  color: var(--secondary);
+  font-size: .86rem;
+  margin-bottom: 8px;
+}
+
+.gradient-free-angle input[type="range"] {
+  width: 100%;
+}
+
+.gradient-stop-list {
+  display: grid;
+  gap: 10px;
+}
+
+.gradient-stop-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 90px 1fr 44px;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+}
+
+.gradient-stop-row input[type="color"] {
+  width: 60px;
+  height: 42px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.gradient-stop-row input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.gradient-stop-row input[type="range"] {
+  width: 100%;
+}
+
+.gradient-stop-position-label {
+  font-size: .82rem;
+  color: var(--secondary);
+  text-align: center;
+}
+
+.gradient-stop-delete {
+  border: none;
+  border-radius: 10px;
+  padding: 9px;
+  background: rgba(255,80,80,.18);
+  color: #ffb4b4;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.gradient-stop-rgb {
+  grid-column: 1 / -1;
+  font-size: .82rem;
+  color: var(--secondary);
+}
+
+.artist-profile-hero {
+  --artist-gradient: linear-gradient(135deg, #0b1324 0%, #1d3557 50%, #111827 100%);
+
+  background:
+    radial-gradient(circle at top left, rgba(250, 204, 21, .20), transparent 36%),
+    var(--artist-gradient) !important;
+}
+
+.artist-profile-hero::before {
+  background:
+    linear-gradient(90deg, rgba(5,8,15,.40), rgba(5,8,15,.12)),
+    linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.35)) !important;
+}
+
+.artist-profile-avatar,
+.artist-avatar {
+  background: var(--artist-gradient) !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  text-shadow: 0 3px 10px rgba(0,0,0,.45) !important;
+}
+
+.artist-profile-avatar img,
+.artist-avatar img,
+.artist-cover-image,
+.artist-cover-overlay {
+  display: none !important;
+}
+
+body:not(.admin-page) #jhdArtistGradientBox {
+  display: none !important;
+}
+
+@media (max-width: 800px) {
+  .gradient-stop-row {
+    grid-template-columns: 60px 1fr;
+  }
+
+  .gradient-stop-position-label,
+  .gradient-stop-row input[type="range"],
+  .gradient-stop-delete {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
