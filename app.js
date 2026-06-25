@@ -2604,3 +2604,297 @@ window.loadSongPage = loadSongPage;
 window.setCapoMode = setCapoMode;
 window.changeTranspose = changeTranspose;
 window.resetTranspose = resetTranspose;
+
+/* =========================================================
+   APP 1.4 - PERFIL DE ARTISTA CON SHIMMER SIN FOTOS
+========================================================= */
+
+function artistPageClient() {
+  if (window.supabaseClient) return window.supabaseClient;
+
+  if (typeof getSupabase === "function") {
+    return getSupabase();
+  }
+
+  return null;
+}
+
+function artistPageParam(name) {
+  return new URLSearchParams(window.location.search).get(name) || "";
+}
+
+function artistPageEscape(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function artistPageInitials(name) {
+  return String(name || "JHD")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map(function (part) {
+      return part.charAt(0).toUpperCase();
+    })
+    .join("") || "JHD";
+}
+
+function artistPageSongCard(song) {
+  const artists = song._artists && song._artists.length
+    ? song._artists.map(function (artist) {
+        return artist.name;
+      }).join(" · ")
+    : "";
+
+  return `
+    <a class="song-card song-link-card" href="canto.html?slug=${artistPageEscape(song.slug || "")}">
+      <p class="artists-line">${artistPageEscape(artists)}</p>
+      <h3>${artistPageEscape(song.title || "Sin título")}</h3>
+      <p style="color:var(--secondary); margin-top:8px;">
+        ${artistPageEscape([song.tone, song.difficulty].filter(Boolean).join(" · "))}
+      </p>
+    </a>
+  `;
+}
+
+function artistPageAlbumCard(album, songs) {
+  const albumSongs = songs.filter(function (song) {
+    return (song._albums || []).some(function (item) {
+      return String(item.id) === String(album.id);
+    });
+  });
+
+  return `
+    <div class="song-card">
+      <p class="hero-kicker">Álbum / carpeta</p>
+      <h3>${artistPageEscape(album.title || album.name || "Sin título")}</h3>
+      <p style="color:var(--secondary); margin-top:8px;">
+        ${artistPageEscape(album.description || "Sin descripción.")}
+      </p>
+      <p style="color:var(--secondary); margin-top:12px;">
+        ${albumSongs.length} canto${albumSongs.length === 1 ? "" : "s"}
+      </p>
+    </div>
+  `;
+}
+
+async function artistPageFetchSongIds(client, artistId) {
+  const ids = [];
+
+  const relationResult = await client
+    .from("song_artists")
+    .select("song_id")
+    .eq("artist_id", artistId);
+
+  if (relationResult.data) {
+    relationResult.data.forEach(function (row) {
+      if (row.song_id) ids.push(row.song_id);
+    });
+  }
+
+  const directResult = await client
+    .from("songs")
+    .select("id")
+    .eq("artist_id", artistId);
+
+  if (directResult.data) {
+    directResult.data.forEach(function (row) {
+      if (row.id) ids.push(row.id);
+    });
+  }
+
+  return Array.from(new Set(ids));
+}
+
+async function artistPageFetchSongs(client, songIds) {
+  if (!songIds.length) return [];
+
+  if (typeof fetchSongsWithRelations === "function") {
+    const result = await fetchSongsWithRelations(songIds);
+
+    if (result && result.data) {
+      return result.data;
+    }
+  }
+
+  const songsResult = await client
+    .from("songs")
+    .select("*")
+    .in("id", songIds)
+    .order("title", { ascending: true });
+
+  if (!songsResult.data) return [];
+
+  const artistsResult = await client
+    .from("song_artists")
+    .select("song_id, sort_order, artists(id, name, slug, description)")
+    .in("song_id", songIds)
+    .order("sort_order", { ascending: true });
+
+  const albumsResult = await client
+    .from("album_songs")
+    .select("song_id, albums(id, title, slug, description, artist_id)")
+    .in("song_id", songIds);
+
+  return songsResult.data.map(function (song) {
+    const songArtists = (artistsResult.data || [])
+      .filter(function (row) {
+        return String(row.song_id) === String(song.id) && row.artists;
+      })
+      .map(function (row) {
+        return row.artists;
+      });
+
+    const songAlbums = (albumsResult.data || [])
+      .filter(function (row) {
+        return String(row.song_id) === String(song.id) && row.albums;
+      })
+      .map(function (row) {
+        return row.albums;
+      });
+
+    return Object.assign({}, song, {
+      _artists: songArtists,
+      _albums: songAlbums
+    });
+  });
+}
+
+async function artistPageFetchAlbums(client, artistId) {
+  const result = await client
+    .from("albums")
+    .select("*")
+    .eq("artist_id", artistId)
+    .order("title", { ascending: true });
+
+  return result.data || [];
+}
+
+async function loadArtistPage() {
+  const box = document.getElementById("artistPage");
+
+  if (!box) return;
+
+  const client = artistPageClient();
+  const slug = artistPageParam("slug");
+  const id = artistPageParam("id");
+
+  if (!client) {
+    box.innerHTML = `
+      <div class="song-card">
+        <h2>No se pudo conectar</h2>
+        <p style="color:var(--secondary);">Revisa la conexión con Supabase.</p>
+      </div>
+    `;
+    return;
+  }
+
+  let artistResult;
+
+  if (slug) {
+    artistResult = await client
+      .from("artists")
+      .select("*")
+      .eq("slug", slug)
+      .maybeSingle();
+  } else if (id) {
+    artistResult = await client
+      .from("artists")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+  } else {
+    box.innerHTML = `
+      <div class="song-card">
+        <h2>Artista no encontrado</h2>
+        <p style="color:var(--secondary);">La página no tiene slug de artista.</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (artistResult.error || !artistResult.data) {
+    box.innerHTML = `
+      <div class="song-card">
+        <h2>Artista no encontrado</h2>
+        <p style="color:var(--secondary);">No se encontró información de este artista.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const artist = artistResult.data;
+  const songIds = await artistPageFetchSongIds(client, artist.id);
+  const songs = await artistPageFetchSongs(client, songIds);
+  const albums = await artistPageFetchAlbums(client, artist.id);
+
+  const collaborations = songs.filter(function (song) {
+    return song._artists && song._artists.length > 1;
+  });
+
+  box.innerHTML = `
+    <article class="artist-profile-card">
+
+      <div class="artist-gradient-banner"></div>
+
+      <div class="artist-profile-head">
+        <div class="artist-avatar-initials">
+          ${artistPageEscape(artistPageInitials(artist.name))}
+        </div>
+
+        <div>
+          <p class="hero-kicker">Artista / grupo</p>
+          <h1>${artistPageEscape(artist.name || "Artista")}</h1>
+          <p style="color:var(--secondary); margin-top:10px;">
+            ${artistPageEscape(artist.description || "Sin descripción.")}
+          </p>
+        </div>
+      </div>
+
+    </article>
+
+    <section class="section-inner">
+      <h2>Álbumes / carpetas</h2>
+
+      <div class="admin-grid">
+        ${
+          albums.length
+            ? albums.map(function (album) {
+                return artistPageAlbumCard(album, songs);
+              }).join("")
+            : '<div class="song-card"><p style="color:var(--secondary);">Aún no hay álbumes o carpetas para este artista.</p></div>'
+        }
+      </div>
+    </section>
+
+    <section class="section-inner">
+      <h2>Canciones</h2>
+
+      <div class="songs-grid">
+        ${
+          songs.length
+            ? songs.map(artistPageSongCard).join("")
+            : '<div class="song-card"><p style="color:var(--secondary);">Aún no hay canciones para este artista.</p></div>'
+        }
+      </div>
+    </section>
+
+    <section class="section-inner">
+      <h2>Colaboraciones</h2>
+
+      <div class="songs-grid">
+        ${
+          collaborations.length
+            ? collaborations.map(artistPageSongCard).join("")
+            : '<div class="song-card"><p style="color:var(--secondary);">Aún no hay colaboraciones registradas.</p></div>'
+        }
+      </div>
+    </section>
+  `;
+}
+
+window.loadArtistPage = loadArtistPage;
