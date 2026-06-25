@@ -28,13 +28,13 @@
       <a href="donaciones.html" class="nav-link">Donaciones</a>
     </div>
 
-    <button id="themeToggle">🌙</button>
+    <button id="themeToggle" type="button">🌙</button>
   </nav>
 
   <div class="hero-content">
     <h1>Panel de administración</h1>
     <p class="hero-description">
-      Agrega, edita y elimina artistas, categorías y canciones.
+      Agrega, edita y elimina artistas, categorías, canciones y donaciones.
     </p>
   </div>
 </header>
@@ -50,11 +50,13 @@
         Acceso privado para administrar el contenido.
       </p>
 
-      <input id="adminEmailInput" type="email" placeholder="Correo electrónico">
-      <input id="adminPasswordInput" type="password" placeholder="Contraseña">
+      <input id="adminEmailInput" type="email" placeholder="Correo electrónico" autocomplete="email">
+      <input id="adminPasswordInput" type="password" placeholder="Contraseña" autocomplete="current-password">
 
       <div style="margin-top:16px;">
-        <button class="song-btn" type="button" onclick="loginAdmin()">Iniciar sesión</button>
+        <button class="song-btn" type="button" onclick="loginAdmin()">
+          Iniciar sesión
+        </button>
       </div>
 
       <p id="adminLoginMessage" style="color:var(--secondary); margin-top:15px;"></p>
@@ -76,6 +78,7 @@
       </button>
     </div>
 
+    <!-- FORMULARIOS PRINCIPALES -->
     <div class="admin-grid">
 
       <!-- ARTISTA -->
@@ -86,11 +89,8 @@
 
         <textarea id="artistDescriptionInput" placeholder="Descripción del artista"></textarea>
 
-        <!-- Campos ocultos para no romper funciones antiguas -->
-        <input id="artistAvatarInput" type="hidden" value="">
-        <input id="artistCoverInput" type="hidden" value="">
-
-        <!-- Aquí app.js insertará el editor de portada tipo mesh -->
+        <!-- Editor mesh: app.js lo llena aquí -->
+        <div id="artistMeshEditor"></div>
 
         <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
           <button class="song-btn" type="button" onclick="saveArtist()">
@@ -105,13 +105,13 @@
 
       <!-- CATEGORÍA -->
       <div class="song-card" id="categoryFormCard">
-        <h2>Agregar categoría</h2>
+        <h2 id="categoryFormTitle">Agregar categoría</h2>
 
         <input id="categoryNameInput" type="text" placeholder="Nombre de la categoría">
 
         <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría"></textarea>
 
-        <div style="margin-top:16px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
           <button class="song-btn" type="button" onclick="saveCategory()">
             Guardar categoría
           </button>
@@ -122,9 +122,21 @@
 
     <!-- CANCIÓN -->
     <div class="song-card" id="songFormCard" style="margin-top:28px;">
-      <h2>Agregar canción</h2>
+      <h2 id="songFormTitle">Agregar canción</h2>
 
       <input id="songTitleInput" type="text" placeholder="Título de la canción">
+
+      <label style="display:block; color:var(--secondary); margin:12px 0 6px;">
+        Sección del canto
+      </label>
+      <small style="display:block; color:var(--secondary); margin-bottom:8px;">
+        Elige dónde aparecerá este canto.
+      </small>
+
+      <select id="songTypeInput">
+        <option value="catolico">Católico</option>
+        <option value="cristiano">Cristiano</option>
+      </select>
 
       <select id="songArtistInput">
         <option value="">Selecciona artista</option>
@@ -138,7 +150,7 @@
 
       <input id="songDifficultyInput" type="text" placeholder="Dificultad, ejemplo: Fácil">
 
-      <div id="lyricsSectionToolbar" class="lyrics-toolbar">
+      <div id="lyricsSectionToolbar" class="lyrics-toolbar" style="margin-top:16px;">
         <h3>Apartados de la canción</h3>
 
         <div class="toolbar-buttons">
@@ -147,15 +159,28 @@
           <button type="button" onclick="insertSectionTitle('Pre Coro')">Pre Coro</button>
           <button type="button" onclick="insertSectionTitle('Coro')">Coro</button>
           <button type="button" onclick="insertSectionTitle('Verso 2')">Verso 2</button>
+          <button type="button" onclick="insertSectionTitle('Verso 3')">Verso 3</button>
           <button type="button" onclick="insertSectionTitle('Puente')">Puente</button>
           <button type="button" onclick="insertSectionTitle('Interludio')">Interludio</button>
+          <button type="button" onclick="insertSectionTitle('Coro Final')">Coro Final</button>
           <button type="button" onclick="insertSectionTitle('Final')">Final</button>
+          <button type="button" onclick="insertFullTemplate()">Plantilla completa</button>
         </div>
+
+        <small style="display:block; color:var(--secondary); margin-top:12px;">
+          Usa [ ] para apartados y ( ) para acordes. Ejemplo: [Verso 1] y (G)María.
+        </small>
       </div>
 
       <textarea id="songLyricsInput" placeholder="Letra y acordes. Ejemplo:
 [Verso 1]
 (D)Quiero caminar contigo Mar(G)ía"></textarea>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+        <button class="song-btn" type="button" onclick="updateLyricsPreview()">
+          Ver vista previa
+        </button>
+      </div>
 
       <input id="songTutorialGuitarInput" type="url" placeholder="Tutorial guitarra, enlace opcional">
       <input id="songTutorialPianoInput" type="url" placeholder="Tutorial teclado, enlace opcional">
@@ -201,6 +226,57 @@
         <p style="color:var(--secondary);">Cargando canciones...</p>
       </div>
     </div>
+
+    <!-- DONACIONES -->
+    <section style="margin-top:34px;">
+      <h2 style="color:var(--gold); margin-bottom:18px;">Donaciones</h2>
+
+      <div class="admin-grid">
+
+        <div class="song-card" id="donationFormCard">
+          <h2>Agregar tarjeta de donación</h2>
+
+          <input id="donationTitleInput" type="text" placeholder="Título, ejemplo: Transferencia">
+          <textarea id="donationDescriptionInput" placeholder="Descripción opcional"></textarea>
+
+          <select id="donationPaymentTypeInput">
+            <option value="Transferencia">Transferencia</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="Teléfono">Teléfono</option>
+            <option value="Enlace">Enlace</option>
+            <option value="Otro">Otro</option>
+          </select>
+
+          <input id="donationAccountNameInput" type="text" placeholder="Nombre del titular">
+          <input id="donationBankNameInput" type="text" placeholder="Banco">
+          <input id="donationAccountNumberInput" type="text" placeholder="Número de cuenta">
+          <input id="donationClabeInput" type="text" placeholder="CLABE">
+          <input id="donationCardNumberInput" type="text" placeholder="Número de tarjeta">
+          <input id="donationPhoneInput" type="text" placeholder="Teléfono">
+          <input id="donationLinkInput" type="url" placeholder="Link externo opcional">
+          <input id="donationOrderInput" type="number" placeholder="Orden, ejemplo: 1">
+
+          <label style="display:flex; align-items:center; gap:10px; color:var(--secondary); margin-top:12px;">
+            <input id="donationActiveInput" type="checkbox" checked>
+            Mostrar esta tarjeta en la página pública
+          </label>
+
+          <div style="margin-top:16px;">
+            <button class="song-btn" type="button" onclick="saveDonationCard && saveDonationCard()">
+              Guardar donación
+            </button>
+          </div>
+        </div>
+
+        <div class="song-card">
+          <h2>Tarjetas de donación guardadas</h2>
+          <div id="adminDonationList">
+            <p style="color:var(--secondary);">No hay tarjetas todavía.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
 
   </section>
 
