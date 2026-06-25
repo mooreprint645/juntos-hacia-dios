@@ -4071,3 +4071,136 @@ input.artist-form-url-hidden {
 .mesh-point {
   z-index: 20 !important;
 }
+/* =========================================================
+   AJUSTES ADMIN Y ARTISTAS RESPONSIVE
+========================================================= */
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.admin-list-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 22px;
+  padding: 18px;
+  margin-top: 14px;
+}
+
+.admin-list-item .song-btn {
+  width: auto;
+  min-width: 110px;
+  padding: 12px 18px;
+}
+
+.song-card input,
+.song-card textarea,
+.section input,
+.section textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#adminArtistList .admin-list-item > div:first-child {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+}
+
+#adminArtistList strong {
+  display: block;
+  font-size: 18px;
+}
+
+#artistList,
+#categoryList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+#artistList .song-card,
+#categoryList .song-card {
+  height: auto;
+}
+
+@media (max-width: 768px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .section {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .song-card {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  .admin-list-item {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .admin-list-item .song-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  #adminArtistList .admin-list-item > div:first-child {
+    align-items: flex-start !important;
+  }
+
+  #adminArtistList .admin-list-item > div:first-child > div:first-child {
+    width: 52px !important;
+    height: 52px !important;
+    min-width: 52px !important;
+  }
+
+  #adminArtistList strong {
+    font-size: 20px;
+  }
+
+  .navbar {
+    gap: 10px;
+  }
+
+  .nav-menu {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .nav-link {
+    font-size: 13px;
+    padding: 10px 14px;
+  }
+
+  #artistList,
+  #categoryList {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-content h1 {
+    font-size: 42px;
+  }
+
+  .hero-description {
+    font-size: 17px;
+  }
+
+  .song-btn {
+    width: 100%;
+  }
+
+  #artistList .song-card article,
+  #categoryList .song-card article {
+    width: 100%;
+  }
+}
