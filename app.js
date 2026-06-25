@@ -6436,3 +6436,646 @@ window.jhdUpdateSelectedPointOpacity = jhdUpdateSelectedPointOpacity;
 window.jhdDeleteSelectedPoint = jhdDeleteSelectedPoint;
 window.jhdResetPointGradient = jhdResetPointGradient;
 window.jhdSavePointGradient = jhdSavePointGradient;
+/* =========================================================
+   MESH GRADIENT - PORTADA DE ARTISTA
+   Tocar portada, mover puntos, color, tamaño e intensidad
+========================================================= */
+
+let jhdMeshPoints = [
+  { x: 18, y: 35, color: "#facc15", size: 75, opacity: 0.85 },
+  { x: 78, y: 30, color: "#38bdf8", size: 82, opacity: 0.70 },
+  { x: 45, y: 78, color: "#a855f7", size: 75, opacity: 0.65 }
+];
+
+let jhdSelectedMeshPoint = 0;
+let jhdDraggingMeshPoint = false;
+
+function jhdIsAdminPage() {
+  return window.location.pathname.includes("admin.html") ||
+    !!document.getElementById("adminPanel");
+}
+
+function jhdMarkAdminBody() {
+  if (jhdIsAdminPage()) {
+    document.body.classList.add("admin-page");
+  }
+}
+
+function jhdSafeHex(value, fallback = "#facc15") {
+  const hex = String(value || "").trim();
+
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    return hex.toLowerCase();
+  }
+
+  return fallback;
+}
+
+function jhdHexToRgbParts(hex) {
+  const clean = jhdSafeHex(hex).replace("#", "");
+
+  return {
+    r: parseInt(clean.substring(0, 2), 16),
+    g: parseInt(clean.substring(2, 4), 16),
+    b: parseInt(clean.substring(4, 6), 16)
+  };
+}
+
+function jhdHexToRgb(hex) {
+  const rgb = jhdHexToRgbParts(hex);
+  return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+}
+
+function jhdHexToRgba(hex, opacity) {
+  const rgb = jhdHexToRgbParts(hex);
+  const safeOpacity = Math.min(1, Math.max(0, Number(opacity) || 0.75));
+
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${safeOpacity})`;
+}
+
+function jhdClamp(value, fallback, min, max) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return fallback;
+
+  return Math.min(max, Math.max(min, number));
+}
+
+function jhdNormalizeMeshPoints(points) {
+  if (!Array.isArray(points) || points.length === 0) {
+    return [
+      { x: 18, y: 35, color: "#facc15", size: 75, opacity: 0.85 },
+      { x: 78, y: 30, color: "#38bdf8", size: 82, opacity: 0.70 },
+      { x: 45, y: 78, color: "#a855f7", size: 75, opacity: 0.65 }
+    ];
+  }
+
+  return points.map(point => ({
+    x: jhdClamp(point.x, 50, 0, 100),
+    y: jhdClamp(point.y, 50, 0, 100),
+    color: jhdSafeHex(point.color, "#facc15"),
+    size: jhdClamp(point.size, 75, 20, 140),
+    opacity: jhdClamp(point.opacity, 0.75, 0.05, 1)
+  }));
+}
+
+function jhdBuildMeshGradient(points) {
+  const safePoints = jhdNormalizeMeshPoints(points);
+
+  const layers = safePoints.map(point => {
+    const strong = jhdHexToRgba(point.color, point.opacity);
+    const mid = jhdHexToRgba(point.color, point.opacity * 0.45);
+    const soft = jhdHexToRgba(point.color, point.opacity * 0.15);
+
+    return `radial-gradient(circle at ${point.x}% ${point.y}%, ${strong} 0%, ${mid} 24%, ${soft} 44%, transparent ${point.size}%)`;
+  });
+
+  layers.push("linear-gradient(135deg, #0b1020, #111827)");
+
+  return layers.join(", ");
+}
+
+function jhdGetArtistInitials(name) {
+  const clean = String(name || "").trim().replace(/\s+/g, " ");
+
+  if (!clean) return "?";
+
+  const words = clean.split(" ");
+
+  if (words.length === 1) {
+    return words[0].substring(0, 2).toUpperCase();
+  }
+
+  return words.slice(0, 3).map(word => word.charAt(0)).join("").toUpperCase();
+}
+
+function jhdGetArtistMeshGradient(artist) {
+  const points = jhdNormalizeMeshPoints(artist.gradient_points);
+  return jhdBuildMeshGradient(points);
+}
+
+function jhdApplyArtistGradientToHero(artist) {
+  const hero = document.querySelector(".artist-profile-hero");
+
+  if (!hero) return;
+
+  hero.style.setProperty("--artist-mesh-gradient", jhdGetArtistMeshGradient(artist));
+}
+
+function jhdArtistInlineVars(artist) {
+  return `--artist-mesh-gradient:${jhdGetArtistMeshGradient(artist)};`;
+}
+
+/* =========================================================
+   PUBLICO - ARTISTAS
+========================================================= */
+
+async function loadPublicArtists() {
+  const artistList = document.getElementById("artistList");
+
+  if (!artistList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistList.innerHTML = `<div class="song-card"><h3>No se pudo conectar</h3></div>`;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    artistList.innerHTML = `<div class="song-card"><h3>Error cargando artistas</h3></div>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    artistList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay artistas todavía</h3>
+      </div>
+    `;
+    return;
+  }
+
+  artistList.innerHTML = "";
+
+  data.forEach(artist => {
+    const name = artist.name || "Sin nombre";
+
+    artistList.innerHTML += `
+      <article class="song-card artist-card" data-title="${escapeHTML(`${name} ${artist.description || ""}`.toLowerCase())}">
+        <div class="artist-avatar" style="${jhdArtistInlineVars(artist)}">
+          ${escapeHTML(jhdGetArtistInitials(name))}
+        </div>
+        <h3>${escapeHTML(name)}</h3>
+        <p>${escapeHTML(artist.description || "Sin descripción todavía.")}</p>
+        <a class="song-btn" href="artista.html?id=${encodeURIComponent(artist.slug)}">Ver perfil</a>
+      </article>
+    `;
+  });
+}
+
+async function loadArtistProfile() {
+  const artistName = document.getElementById("artistName");
+  const artistDescription = document.getElementById("artistDescription");
+  const artistTags = document.getElementById("artistTags");
+  const artistAvatar = document.getElementById("artistAvatar");
+  const artistSongsList = document.getElementById("artistSongsList");
+
+  if (!artistName || !artistSongsList) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    artistName.innerText = "No se pudo conectar";
+    return;
+  }
+
+  const slug = new URLSearchParams(window.location.search).get("id");
+
+  if (!slug) {
+    artistName.innerText = "Artista no encontrado";
+    return;
+  }
+
+  const { data: artist, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("slug", slug)
+    .single();
+
+  if (error || !artist) {
+    artistName.innerText = "Artista no encontrado";
+    artistDescription.innerText = "Este artista todavía no existe o fue eliminado.";
+    return;
+  }
+
+  jhdApplyArtistGradientToHero(artist);
+
+  artistName.innerText = artist.name || "Sin nombre";
+  artistDescription.innerText = artist.description || "Sin descripción todavía.";
+  artistTags.innerText = "ARTISTA / MINISTERIO";
+
+  if (artistAvatar) {
+    artistAvatar.style.cssText += jhdArtistInlineVars(artist);
+    artistAvatar.innerHTML = escapeHTML(jhdGetArtistInitials(artist.name));
+  }
+
+  const { data: songsData } = await client
+    .from("songs")
+    .select(`
+      *,
+      song_categories(
+        categories(id, name, slug)
+      )
+    `)
+    .eq("artist_id", artist.id)
+    .order("title");
+
+  artistSongsList.innerHTML = "";
+
+  if (!songsData || songsData.length === 0) {
+    artistSongsList.innerHTML = `
+      <div class="song-card">
+        <h3>No hay canciones todavía</h3>
+      </div>
+    `;
+    return;
+  }
+
+  songsData.forEach(song => {
+    const categoryNames = typeof jhdGetCategoryNamesFromSong === "function"
+      ? jhdGetCategoryNamesFromSong(song)
+      : "Sin categoría";
+
+    const typeLabel = typeof jhdGetSongTypeLabel === "function"
+      ? jhdGetSongTypeLabel(song.song_type)
+      : "Sin tipo";
+
+    artistSongsList.innerHTML += `
+      <article class="song-card">
+        <h3>🎵 ${escapeHTML(song.title || "Sin título")}</h3>
+        <p>🙏 ${escapeHTML(typeLabel)}</p>
+        <p>✝ ${escapeHTML(categoryNames)}</p>
+        <p>🎸 Tono: ${escapeHTML(safeText(song.tone, "No definido"))}</p>
+        <p>⭐ ${escapeHTML(safeText(song.difficulty, "Sin dificultad"))}</p>
+        <a class="song-btn" href="canto.html?id=${encodeURIComponent(song.slug)}">Ver canto</a>
+      </article>
+    `;
+  });
+}
+
+/* =========================================================
+   ADMIN - MESH EDITOR
+========================================================= */
+
+function jhdFindArtistFormCard() {
+  if (!jhdIsAdminPage()) return null;
+
+  const headings = Array.from(document.querySelectorAll("h2, h3"));
+
+  const artistHeading = headings.find(h => {
+    const text = h.innerText.toLowerCase();
+    return text.includes("agregar artista") || text.includes("editar artista");
+  });
+
+  if (!artistHeading) return null;
+
+  return artistHeading.closest(".song-card") || artistHeading.parentElement;
+}
+
+function jhdFindArtistNameInput() {
+  const card = jhdFindArtistFormCard();
+
+  if (!card) return null;
+
+  const inputs = Array.from(card.querySelectorAll("input"));
+
+  return inputs.find(input => {
+    const ph = String(input.placeholder || "").toLowerCase();
+    const type = String(input.type || "").toLowerCase();
+
+    return type !== "color" &&
+      !ph.includes("url") &&
+      !ph.includes("foto") &&
+      !ph.includes("portada") &&
+      !ph.includes("imagen");
+  }) || null;
+}
+
+function jhdArtistSlugFromAdmin() {
+  const nameInput = jhdFindArtistNameInput();
+
+  if (nameInput && nameInput.value.trim()) {
+    return jhdSlugifyText(nameInput.value.trim());
+  }
+
+  return "";
+}
+
+function jhdMeshPointClientPosition(event) {
+  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
+
+  if (!canvasWrap) return null;
+
+  const rect = canvasWrap.getBoundingClientRect();
+
+  const source = event.touches && event.touches[0]
+    ? event.touches[0]
+    : event;
+
+  const x = ((source.clientX - rect.left) / rect.width) * 100;
+  const y = ((source.clientY - rect.top) / rect.height) * 100;
+
+  return {
+    x: jhdClamp(Math.round(x), 50, 0, 100),
+    y: jhdClamp(Math.round(y), 50, 0, 100)
+  };
+}
+
+function jhdRenderMeshEditor() {
+  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
+
+  if (!canvasWrap) return;
+
+  jhdMeshPoints = jhdNormalizeMeshPoints(jhdMeshPoints);
+
+  canvasWrap.style.background = jhdBuildMeshGradient(jhdMeshPoints);
+
+  const dots = jhdMeshPoints.map((point, index) => `
+    <button
+      type="button"
+      class="mesh-point ${index === jhdSelectedMeshPoint ? "active" : ""}"
+      style="left:${point.x}%; top:${point.y}%; background:${point.color};"
+      onpointerdown="jhdStartDragMeshPoint(event, ${index})"
+      onclick="event.stopPropagation(); jhdSelectMeshPoint(${index});">
+    </button>
+  `).join("");
+
+  const canvas = canvasWrap.querySelector("#jhdMeshCanvas");
+
+  canvasWrap.innerHTML = `<canvas id="jhdMeshCanvas"></canvas>${dots}`;
+
+  jhdUpdateMeshControls();
+}
+
+function jhdSelectMeshPoint(index) {
+  jhdSelectedMeshPoint = index;
+  jhdRenderMeshEditor();
+}
+
+function jhdAddMeshPoint(event) {
+  if (event.target.classList.contains("mesh-point")) return;
+
+  const position = jhdMeshPointClientPosition(event);
+
+  if (!position) return;
+
+  jhdMeshPoints.push({
+    x: position.x,
+    y: position.y,
+    color: "#facc15",
+    size: 80,
+    opacity: 0.75
+  });
+
+  jhdSelectedMeshPoint = jhdMeshPoints.length - 1;
+
+  jhdRenderMeshEditor();
+}
+
+function jhdStartDragMeshPoint(event, index) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  jhdSelectedMeshPoint = index;
+  jhdDraggingMeshPoint = true;
+
+  window.addEventListener("pointermove", jhdMoveMeshPoint);
+  window.addEventListener("pointerup", jhdStopDragMeshPoint);
+
+  jhdRenderMeshEditor();
+}
+
+function jhdMoveMeshPoint(event) {
+  if (!jhdDraggingMeshPoint) return;
+
+  const position = jhdMeshPointClientPosition(event);
+
+  if (!position) return;
+
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) return;
+
+  point.x = position.x;
+  point.y = position.y;
+
+  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
+
+  if (canvasWrap) {
+    canvasWrap.style.background = jhdBuildMeshGradient(jhdMeshPoints);
+  }
+
+  const dot = document.querySelector(".mesh-point.active");
+
+  if (dot) {
+    dot.style.left = `${point.x}%`;
+    dot.style.top = `${point.y}%`;
+  }
+}
+
+function jhdStopDragMeshPoint() {
+  jhdDraggingMeshPoint = false;
+
+  window.removeEventListener("pointermove", jhdMoveMeshPoint);
+  window.removeEventListener("pointerup", jhdStopDragMeshPoint);
+
+  jhdRenderMeshEditor();
+}
+
+function jhdUpdateMeshControls() {
+  const panel = document.getElementById("jhdMeshControls");
+
+  if (!panel) return;
+
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) {
+    panel.innerHTML = `
+      <div class="mesh-panel">
+        Toca la portada para agregar un punto.
+      </div>
+    `;
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="mesh-panel">
+      <label>Color exacto</label>
+      <input type="color" value="${escapeHTML(point.color)}" oninput="jhdUpdateMeshPointColor(this.value)">
+      <input type="text" value="${escapeHTML(point.color)}" oninput="jhdUpdateMeshPointColor(this.value)" placeholder="#FACC15">
+      <p style="color:var(--secondary); margin-top:8px;">${jhdHexToRgb(point.color)}</p>
+    </div>
+
+    <div class="mesh-panel">
+      <label>Tamaño / mezcla <span id="jhdMeshSizeLabel">${point.size}%</span></label>
+      <input type="range" min="20" max="140" value="${point.size}" oninput="jhdUpdateMeshPointSize(this.value)">
+    </div>
+
+    <div class="mesh-panel">
+      <label>Intensidad <span id="jhdMeshOpacityLabel">${Math.round(point.opacity * 100)}%</span></label>
+      <input type="range" min="5" max="100" value="${Math.round(point.opacity * 100)}" oninput="jhdUpdateMeshPointOpacity(this.value)">
+    </div>
+
+    <div class="mesh-actions">
+      <button type="button" onclick="jhdSaveMeshGradient()">Guardar portada</button>
+      <button type="button" onclick="jhdResetMeshGradient()">Reiniciar</button>
+      <button type="button" class="danger" onclick="jhdDeleteMeshPoint()">Eliminar punto</button>
+    </div>
+  `;
+}
+
+function jhdUpdateMeshPointColor(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) return;
+
+  point.color = jhdSafeHex(value, point.color);
+
+  jhdRenderMeshEditor();
+}
+
+function jhdUpdateMeshPointSize(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) return;
+
+  point.size = jhdClamp(value, 80, 20, 140);
+
+  jhdRenderMeshEditor();
+}
+
+function jhdUpdateMeshPointOpacity(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) return;
+
+  point.opacity = jhdClamp(Number(value) / 100, 0.75, 0.05, 1);
+
+  jhdRenderMeshEditor();
+}
+
+function jhdDeleteMeshPoint() {
+  if (jhdMeshPoints.length <= 1) {
+    alert("Deja al menos un punto de color.");
+    return;
+  }
+
+  jhdMeshPoints.splice(jhdSelectedMeshPoint, 1);
+  jhdSelectedMeshPoint = 0;
+
+  jhdRenderMeshEditor();
+}
+
+function jhdResetMeshGradient() {
+  jhdMeshPoints = [
+    { x: 18, y: 35, color: "#facc15", size: 75, opacity: 0.85 },
+    { x: 78, y: 30, color: "#38bdf8", size: 82, opacity: 0.70 },
+    { x: 45, y: 78, color: "#a855f7", size: 75, opacity: 0.65 }
+  ];
+
+  jhdSelectedMeshPoint = 0;
+
+  jhdRenderMeshEditor();
+}
+
+async function jhdSaveMeshGradient() {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase");
+    return;
+  }
+
+  const slug = jhdArtistSlugFromAdmin();
+
+  if (!slug) {
+    alert("Primero escribe el nombre del artista.");
+    return;
+  }
+
+  const safePoints = jhdNormalizeMeshPoints(jhdMeshPoints);
+
+  const { error } = await client
+    .from("artists")
+    .update({
+      gradient_points: safePoints,
+      avatar_url: "",
+      cover_url: ""
+    })
+    .eq("slug", slug);
+
+  if (error) {
+    alert("No se pudo guardar la portada: " + error.message);
+    return;
+  }
+
+  alert("Portada guardada");
+}
+
+function jhdLoadMeshGradientEditor() {
+  if (!jhdIsAdminPage()) return;
+
+  const card = jhdFindArtistFormCard();
+
+  if (!card) return;
+
+  let box = document.getElementById("jhdArtistGradientBox");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "jhdArtistGradientBox";
+
+    const buttons = Array.from(card.querySelectorAll("button"));
+    const firstButton = buttons[0];
+
+    if (firstButton) {
+      card.insertBefore(box, firstButton);
+    } else {
+      card.appendChild(box);
+    }
+  }
+
+  box.innerHTML = `
+    <div class="mesh-editor-title">Portada tipo mesh</div>
+
+    <div class="mesh-editor-help">
+      Toca la portada para agregar un punto. Arrastra el punto para moverlo. Elige color, tamaño e intensidad para mezclar los tonos.
+    </div>
+
+    <div class="mesh-canvas-wrap" id="jhdMeshCanvasWrap" onclick="jhdAddMeshPoint(event)">
+      <canvas id="jhdMeshCanvas"></canvas>
+    </div>
+
+    <div class="mesh-controls" id="jhdMeshControls"></div>
+  `;
+
+  jhdRenderMeshEditor();
+}
+
+function jhdInitMeshGradientEditor() {
+  jhdMarkAdminBody();
+
+  if (!jhdIsAdminPage()) return;
+
+  jhdLoadMeshGradientEditor();
+
+  setTimeout(jhdLoadMeshGradientEditor, 800);
+  setTimeout(jhdLoadMeshGradientEditor, 1800);
+  setTimeout(jhdLoadMeshGradientEditor, 3000);
+}
+
+document.addEventListener("DOMContentLoaded", jhdInitMeshGradientEditor);
+
+runWhenReady(() => {
+  setTimeout(() => {
+    jhdInitMeshGradientEditor();
+    loadPublicArtists();
+    loadArtistProfile();
+  }, 900);
+});
+
+window.jhdAddMeshPoint = jhdAddMeshPoint;
+window.jhdSelectMeshPoint = jhdSelectMeshPoint;
+window.jhdStartDragMeshPoint = jhdStartDragMeshPoint;
+window.jhdUpdateMeshPointColor = jhdUpdateMeshPointColor;
+window.jhdUpdateMeshPointSize = jhdUpdateMeshPointSize;
+window.jhdUpdateMeshPointOpacity = jhdUpdateMeshPointOpacity;
+window.jhdDeleteMeshPoint = jhdDeleteMeshPoint;
+window.jhdResetMeshGradient = jhdResetMeshGradient;
+window.jhdSaveMeshGradient = jhdSaveMeshGradient;
