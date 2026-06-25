@@ -7079,3 +7079,235 @@ window.jhdUpdateMeshPointOpacity = jhdUpdateMeshPointOpacity;
 window.jhdDeleteMeshPoint = jhdDeleteMeshPoint;
 window.jhdResetMeshGradient = jhdResetMeshGradient;
 window.jhdSaveMeshGradient = jhdSaveMeshGradient;
+/* =========================================================
+   FIX MESH PREVIEW REAL + OCULTAR URL ARTISTA
+========================================================= */
+
+function jhdHideArtistUrlInputs() {
+  if (!jhdIsAdminPage || !jhdIsAdminPage()) return;
+
+  const card = typeof jhdFindArtistFormCard === "function"
+    ? jhdFindArtistFormCard()
+    : null;
+
+  if (!card) return;
+
+  const inputs = Array.from(card.querySelectorAll("input"));
+
+  inputs.forEach(input => {
+    const placeholder = String(input.placeholder || "").toLowerCase();
+
+    if (
+      placeholder.includes("url") ||
+      placeholder.includes("foto") ||
+      placeholder.includes("portada") ||
+      placeholder.includes("imagen")
+    ) {
+      input.style.display = "none";
+    }
+  });
+}
+
+function jhdDrawMeshCanvas() {
+  const canvas = document.getElementById("jhdMeshCanvas");
+  const wrap = document.getElementById("jhdMeshCanvasWrap");
+
+  if (!canvas || !wrap) return;
+
+  const rect = wrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+
+  canvas.style.width = rect.width + "px";
+  canvas.style.height = rect.height + "px";
+
+  const ctx = canvas.getContext("2d");
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  const base = ctx.createLinearGradient(0, 0, rect.width, rect.height);
+  base.addColorStop(0, "#0b1020");
+  base.addColorStop(1, "#111827");
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, rect.width, rect.height);
+
+  const points = typeof jhdNormalizeMeshPoints === "function"
+    ? jhdNormalizeMeshPoints(jhdMeshPoints)
+    : jhdMeshPoints;
+
+  points.forEach(point => {
+    const x = (point.x / 100) * rect.width;
+    const y = (point.y / 100) * rect.height;
+    const radius = (point.size / 100) * Math.max(rect.width, rect.height) * 0.75;
+
+    const rgb = jhdHexToRgbParts(point.color);
+    const opacity = Math.min(1, Math.max(0, Number(point.opacity) || 0.75));
+
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+
+    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
+    gradient.addColorStop(0.35, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.45})`);
+    gradient.addColorStop(0.7, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.16})`);
+    gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, rect.width, rect.height);
+  });
+}
+
+function jhdRenderMeshEditor() {
+  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
+
+  if (!canvasWrap) return;
+
+  jhdMeshPoints = jhdNormalizeMeshPoints(jhdMeshPoints);
+
+  const dots = jhdMeshPoints.map((point, index) => `
+    <button
+      type="button"
+      class="mesh-point ${index === jhdSelectedMeshPoint ? "active" : ""}"
+      style="left:${point.x}%; top:${point.y}%; background:${point.color};"
+      onpointerdown="jhdStartDragMeshPoint(event, ${index})"
+      onclick="event.stopPropagation(); jhdSelectMeshPoint(${index});">
+    </button>
+  `).join("");
+
+  canvasWrap.innerHTML = `<canvas id="jhdMeshCanvas"></canvas>${dots}`;
+
+  jhdDrawMeshCanvas();
+  jhdUpdateMeshControls();
+}
+
+function jhdMoveMeshPoint(event) {
+  if (!jhdDraggingMeshPoint) return;
+
+  const position = jhdMeshPointClientPosition(event);
+
+  if (!position) return;
+
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) return;
+
+  point.x = position.x;
+  point.y = position.y;
+
+  const dot = document.querySelector(".mesh-point.active");
+
+  if (dot) {
+    dot.style.left = `${point.x}%`;
+    dot.style.top = `${point.y}%`;
+  }
+
+  jhdDrawMeshCanvas();
+}
+
+function jhdUpdateMeshPointColor(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) return;
+
+  point.color = jhdSafeHex(value, point.color);
+
+  jhdRenderMeshEditor();
+}
+
+function jhdUpdateMeshPointSize(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) return;
+
+  point.size = jhdClamp(value, 80, 20, 160);
+
+  jhdRenderMeshEditor();
+}
+
+function jhdUpdateMeshPointOpacity(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+
+  if (!point) return;
+
+  point.opacity = jhdClamp(Number(value) / 100, 0.75, 0.05, 1);
+
+  jhdRenderMeshEditor();
+}
+
+function jhdBuildMeshGradient(points) {
+  const safePoints = jhdNormalizeMeshPoints(points);
+
+  const layers = safePoints.map(point => {
+    const strong = jhdHexToRgba(point.color, point.opacity);
+    const mid = jhdHexToRgba(point.color, point.opacity * 0.45);
+    const soft = jhdHexToRgba(point.color, point.opacity * 0.16);
+
+    return `radial-gradient(circle at ${point.x}% ${point.y}%, ${strong} 0%, ${mid} 32%, ${soft} 55%, transparent ${point.size}%)`;
+  });
+
+  layers.push("linear-gradient(135deg, #0b1020, #111827)");
+
+  return layers.join(", ");
+}
+
+function jhdLoadMeshGradientEditor() {
+  if (!jhdIsAdminPage()) return;
+
+  const card = jhdFindArtistFormCard();
+
+  if (!card) return;
+
+  jhdHideArtistUrlInputs();
+
+  let box = document.getElementById("jhdArtistGradientBox");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "jhdArtistGradientBox";
+
+    const buttons = Array.from(card.querySelectorAll("button"));
+    const firstButton = buttons[0];
+
+    if (firstButton) {
+      card.insertBefore(box, firstButton);
+    } else {
+      card.appendChild(box);
+    }
+  }
+
+  box.innerHTML = `
+    <div class="mesh-editor-title">Portada tipo mesh</div>
+
+    <div class="mesh-editor-help">
+      Toca la portada para agregar un punto. Arrastra el punto para moverlo. Cambia color, tamaño e intensidad y verás la mezcla en vivo.
+    </div>
+
+    <div class="mesh-canvas-wrap" id="jhdMeshCanvasWrap" onclick="jhdAddMeshPoint(event)">
+      <canvas id="jhdMeshCanvas"></canvas>
+    </div>
+
+    <div class="mesh-controls" id="jhdMeshControls"></div>
+  `;
+
+  jhdRenderMeshEditor();
+}
+
+setTimeout(() => {
+  jhdHideArtistUrlInputs();
+  jhdLoadMeshGradientEditor();
+}, 500);
+
+setTimeout(() => {
+  jhdHideArtistUrlInputs();
+  jhdLoadMeshGradientEditor();
+}, 1500);
+
+setTimeout(() => {
+  jhdHideArtistUrlInputs();
+  jhdLoadMeshGradientEditor();
+}, 3000);
+
+window.addEventListener("resize", () => {
+  setTimeout(jhdDrawMeshCanvas, 200);
+});
