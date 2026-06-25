@@ -1,12 +1,21 @@
 /* =========================================================
-   JUNTOS HACIA DIOS - APP MINIMA
-   Luna + login + categorias + artistas admin/publico
+   JUNTOS HACIA DIOS - RESCATE ADMIN
+   Funciona con:
+   - Luna / modo claro
+   - Login admin
+   - Categorías admin
+   - Artistas admin
+   - Carga básica pública de categorías y artistas
 ========================================================= */
 
 const ADMIN_EMAIL = "mooreprint645@gmail.com";
 
 let currentEditingCategoryId = null;
 let currentEditingArtistId = null;
+
+/* =========================================================
+   HELPERS
+========================================================= */
 
 function getSupabase() {
   return window.supabaseClient || null;
@@ -46,8 +55,16 @@ function getInitials(name) {
   }).join("").toUpperCase();
 }
 
+function showMessage(elementId, text) {
+  const element = document.getElementById(elementId);
+
+  if (element) {
+    element.innerText = text;
+  }
+}
+
 /* =========================================================
-   LUNA / TEMA
+   TEMA / LUNA
 ========================================================= */
 
 function initTheme() {
@@ -95,7 +112,7 @@ function initMenu() {
 }
 
 /* =========================================================
-   LOGIN
+   LOGIN ADMIN
 ========================================================= */
 
 async function loginAdmin() {
@@ -152,6 +169,9 @@ async function logoutAdmin() {
     await client.auth.signOut();
   }
 
+  currentEditingArtistId = null;
+  currentEditingCategoryId = null;
+
   await checkAdminSession();
 }
 
@@ -167,10 +187,19 @@ async function checkAdminSession() {
   if (!client) {
     loginSection.style.display = "block";
     adminPanel.style.display = "none";
+    showMessage("adminLoginMessage", "No se pudo conectar con Supabase.");
     return;
   }
 
-  const { data } = await client.auth.getSession();
+  const { data, error } = await client.auth.getSession();
+
+  if (error) {
+    loginSection.style.display = "block";
+    adminPanel.style.display = "none";
+    showMessage("adminLoginMessage", "Error leyendo sesión.");
+    return;
+  }
+
   const session = data ? data.session : null;
 
   if (!session || !session.user) {
@@ -187,11 +216,7 @@ async function checkAdminSession() {
     loginSection.style.display = "block";
     adminPanel.style.display = "none";
 
-    const message = document.getElementById("adminLoginMessage");
-    if (message) {
-      message.innerText = "Este correo no tiene permisos de administrador.";
-    }
-
+    showMessage("adminLoginMessage", "Este correo no tiene permisos de administrador.");
     return;
   }
 
@@ -202,10 +227,10 @@ async function checkAdminSession() {
     userText.innerText = "Sesión iniciada como: " + email;
   }
 
-  await loadAdminCategories();
   await loadAdminArtists();
-  await loadCategoryOptions();
+  await loadAdminCategories();
   await loadArtistOptions();
+  await loadCategoryOptions();
 }
 
 /* =========================================================
@@ -279,29 +304,25 @@ async function saveArtist() {
     return;
   }
 
+  const payload = {
+    name: name,
+    slug: slugify(name),
+    description: description,
+    avatar_url: "",
+    cover_url: ""
+  };
+
   let result;
 
   if (currentEditingArtistId) {
     result = await client
       .from("artists")
-      .update({
-        name: name,
-        slug: slugify(name),
-        description: description,
-        avatar_url: "",
-        cover_url: ""
-      })
+      .update(payload)
       .eq("id", currentEditingArtistId);
   } else {
     result = await client
       .from("artists")
-      .insert({
-        name: name,
-        slug: slugify(name),
-        description: description,
-        avatar_url: "",
-        cover_url: ""
-      });
+      .insert(payload);
   }
 
   if (result.error) {
@@ -314,8 +335,8 @@ async function saveArtist() {
   resetArtistForm();
 
   await loadAdminArtists();
-  await loadPublicArtists();
   await loadArtistOptions();
+  await loadPublicArtists();
 
   alert(wasEditing ? "Artista actualizado." : "Artista guardado.");
 }
@@ -338,8 +359,8 @@ async function deleteArtist(id) {
   }
 
   await loadAdminArtists();
-  await loadPublicArtists();
   await loadArtistOptions();
+  await loadPublicArtists();
 }
 
 async function loadAdminArtists() {
@@ -372,32 +393,35 @@ async function loadAdminArtists() {
   list.innerHTML = data.map(function (artist) {
     return `
       <div class="admin-list-item">
-        <div style="display:flex; align-items:center; gap:12px;">
+        <div style="display:flex; align-items:center; gap:14px; width:100%;">
           <div style="
-            width:46px;
-            height:46px;
-            min-width:46px;
-            border-radius:50%;
+            width:52px;
+            height:52px;
+            min-width:52px;
+            border-radius:999px;
             display:flex;
             align-items:center;
             justify-content:center;
             background:linear-gradient(135deg, #fac15f, #8557ff);
             color:#ffffff;
             font-weight:800;
-            font-size:15px;
+            font-size:16px;
+            box-shadow:0 10px 24px rgba(0,0,0,.25);
           ">
             ${escapeHTML(getInitials(artist.name || ""))}
           </div>
 
-          <div style="flex:1;">
-            <strong>${escapeHTML(artist.name || "Sin nombre")}</strong>
+          <div style="flex:1; min-width:0;">
+            <strong style="display:block; font-size:18px;">
+              ${escapeHTML(artist.name || "Sin nombre")}
+            </strong>
             <p style="color:var(--secondary); margin-top:6px;">
               ${escapeHTML(artist.description || "Sin descripción.")}
             </p>
           </div>
         </div>
 
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
           <button type="button" class="song-btn" onclick="editArtist('${artist.id}')">
             Editar
           </button>
@@ -435,153 +459,7 @@ async function loadArtistOptions() {
 }
 
 /* =========================================================
-   ARTISTAS PUBLICOS
-========================================================= */
-
-async function loadPublicArtists() {
-  const list =
-    document.getElementById("artistList") ||
-    document.getElementById("artistsList") ||
-    document.getElementById("publicArtistList");
-
-  if (!list) return;
-
-  const client = getSupabase();
-
-  if (!client) {
-    list.innerHTML = `
-      <div class="song-card">
-        <h3>No se pudo conectar con Supabase</h3>
-      </div>
-    `;
-    return;
-  }
-
-  const { data, error } = await client
-    .from("artists")
-    .select("*")
-    .order("name", { ascending: true });
-
-  if (error) {
-    list.innerHTML = `
-      <div class="song-card">
-        <h3>Error cargando artistas</h3>
-        <p>${escapeHTML(error.message)}</p>
-      </div>
-    `;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    list.innerHTML = `
-      <div class="song-card">
-        <h3>No hay artistas todavía</h3>
-        <p>Agrega artistas desde el panel de administración.</p>
-      </div>
-    `;
-    return;
-  }
-
-  list.dataset.allArtists = JSON.stringify(data);
-
-  renderPublicArtists(data);
-}
-
-function renderPublicArtists(artists) {
-  const list =
-    document.getElementById("artistList") ||
-    document.getElementById("artistsList") ||
-    document.getElementById("publicArtistList");
-
-  if (!list) return;
-
-  list.innerHTML = artists.map(function (artist) {
-    const name = artist.name || "Sin nombre";
-    const description = artist.description || "Ministerio o artista registrado.";
-
-    return `
-      <article class="song-card">
-        <div style="display:flex; align-items:center; gap:14px;">
-          <div style="
-            width:58px;
-            height:58px;
-            min-width:58px;
-            border-radius:50%;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:linear-gradient(135deg, #fac15f, #8557ff);
-            color:#ffffff;
-            font-weight:800;
-            font-size:18px;
-          ">
-            ${escapeHTML(getInitials(name))}
-          </div>
-
-          <div>
-            <h3 style="margin-bottom:6px;">${escapeHTML(name)}</h3>
-            <p>${escapeHTML(description)}</p>
-          </div>
-        </div>
-
-        <a class="song-btn" href="artista.html?slug=${encodeURIComponent(artist.slug || slugify(name))}" style="margin-top:14px;">
-          Ver artista
-        </a>
-      </article>
-    `;
-  }).join("");
-}
-
-function initArtistSearch() {
-  const input =
-    document.getElementById("artistSearch") ||
-    document.getElementById("artistSearchInput") ||
-    document.querySelector('input[placeholder*="artista"]');
-
-  const list =
-    document.getElementById("artistList") ||
-    document.getElementById("artistsList") ||
-    document.getElementById("publicArtistList");
-
-  if (!input || !list) return;
-
-  input.addEventListener("input", function () {
-    let artists = [];
-
-    try {
-      artists = JSON.parse(list.dataset.allArtists || "[]");
-    } catch (error) {
-      artists = [];
-    }
-
-    const search = input.value.trim().toLowerCase();
-
-    if (!search) {
-      renderPublicArtists(artists);
-      return;
-    }
-
-    const filtered = artists.filter(function (artist) {
-      const text = `${artist.name || ""} ${artist.description || ""}`.toLowerCase();
-      return text.includes(search);
-    });
-
-    if (filtered.length === 0) {
-      list.innerHTML = `
-        <div class="song-card">
-          <h3>No se encontraron artistas</h3>
-          <p>Prueba con otro nombre.</p>
-        </div>
-      `;
-      return;
-    }
-
-    renderPublicArtists(filtered);
-  });
-}
-
-/* =========================================================
-   CATEGORIAS ADMIN
+   CATEGORÍAS ADMIN
 ========================================================= */
 
 function resetCategoryForm() {
@@ -651,25 +529,23 @@ async function saveCategory() {
     return;
   }
 
+  const payload = {
+    name: name,
+    slug: slugify(name),
+    description: description
+  };
+
   let result;
 
   if (currentEditingCategoryId) {
     result = await client
       .from("categories")
-      .update({
-        name: name,
-        slug: slugify(name),
-        description: description
-      })
+      .update(payload)
       .eq("id", currentEditingCategoryId);
   } else {
     result = await client
       .from("categories")
-      .insert({
-        name: name,
-        slug: slugify(name),
-        description: description
-      });
+      .insert(payload);
   }
 
   if (result.error) {
@@ -740,13 +616,15 @@ async function loadAdminCategories() {
   list.innerHTML = data.map(function (category) {
     return `
       <div class="admin-list-item">
-        <strong>${escapeHTML(category.name || "Sin nombre")}</strong>
+        <strong style="display:block; font-size:18px;">
+          ${escapeHTML(category.name || "Sin nombre")}
+        </strong>
 
         <p style="color:var(--secondary); margin-top:6px;">
           ${escapeHTML(category.description || "Sin descripción.")}
         </p>
 
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
           <button type="button" class="song-btn" onclick="editCategory('${category.id}')">
             Editar
           </button>
@@ -784,7 +662,7 @@ async function loadCategoryOptions() {
 }
 
 /* =========================================================
-   CATEGORIAS PUBLICAS
+   PÁGINA PÚBLICA: CATEGORÍAS
 ========================================================= */
 
 async function loadPublicCategories() {
@@ -809,4 +687,230 @@ async function loadPublicCategories() {
     .order("name", { ascending: true });
 
   if (error) {
-  
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando categorías</h3>
+        <p>${escapeHTML(error.message)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>No hay categorías todavía</h3>
+        <p>Agrega categorías desde el panel de administración.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = data.map(function (category) {
+    return `
+      <article class="song-card">
+        <h3>${escapeHTML(category.name || "Sin nombre")}</h3>
+        <p>${escapeHTML(category.description || "Cantos de esta categoría.")}</p>
+        <a class="song-btn" href="canciones.html?buscar=${encodeURIComponent(category.name || "")}">
+          Ver cantos
+        </a>
+      </article>
+    `;
+  }).join("");
+}
+
+/* =========================================================
+   PÁGINA PÚBLICA: ARTISTAS
+========================================================= */
+
+async function loadPublicArtists() {
+  const list =
+    document.getElementById("artistList") ||
+    document.getElementById("artistsList") ||
+    document.getElementById("publicArtistList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>No se pudo conectar con Supabase</h3>
+      </div>
+    `;
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>Error cargando artistas</h3>
+        <p>${escapeHTML(error.message)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = `
+      <div class="song-card">
+        <h3>No hay artistas todavía</h3>
+        <p>Agrega artistas desde el panel de administración.</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.dataset.allArtists = JSON.stringify(data);
+
+  renderPublicArtists(data);
+}
+
+function renderPublicArtists(artists) {
+  const list =
+    document.getElementById("artistList") ||
+    document.getElementById("artistsList") ||
+    document.getElementById("publicArtistList");
+
+  if (!list) return;
+
+  list.innerHTML = artists.map(function (artist) {
+    const name = artist.name || "Sin nombre";
+    const description = artist.description || "Ministerio o artista registrado.";
+
+    return `
+      <article class="song-card">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="
+            width:58px;
+            height:58px;
+            min-width:58px;
+            border-radius:999px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:linear-gradient(135deg, #fac15f, #8557ff);
+            color:#ffffff;
+            font-weight:800;
+            font-size:18px;
+            box-shadow:0 10px 24px rgba(0,0,0,.25);
+          ">
+            ${escapeHTML(getInitials(name))}
+          </div>
+
+          <div style="flex:1; min-width:0;">
+            <h3 style="margin-bottom:6px;">${escapeHTML(name)}</h3>
+            <p>${escapeHTML(description)}</p>
+          </div>
+        </div>
+
+        <a class="song-btn" href="artista.html?slug=${encodeURIComponent(artist.slug || slugify(name))}" style="margin-top:14px;">
+          Ver artista
+        </a>
+      </article>
+    `;
+  }).join("");
+}
+
+function initArtistSearch() {
+  const input =
+    document.getElementById("artistSearchInput") ||
+    document.getElementById("artistSearch") ||
+    document.querySelector('input[placeholder*="artista"]') ||
+    document.querySelector('input[placeholder*="ministerio"]');
+
+  const list =
+    document.getElementById("artistList") ||
+    document.getElementById("artistsList") ||
+    document.getElementById("publicArtistList");
+
+  if (!input || !list) return;
+
+  input.addEventListener("input", function () {
+    let artists = [];
+
+    try {
+      artists = JSON.parse(list.dataset.allArtists || "[]");
+    } catch (error) {
+      artists = [];
+    }
+
+    const search = input.value.trim().toLowerCase();
+
+    if (!search) {
+      renderPublicArtists(artists);
+      return;
+    }
+
+    const filtered = artists.filter(function (artist) {
+      const text = `${artist.name || ""} ${artist.description || ""}`.toLowerCase();
+      return text.includes(search);
+    });
+
+    if (filtered.length === 0) {
+      list.innerHTML = `
+        <div class="song-card">
+          <h3>No se encontraron artistas</h3>
+          <p>Prueba con otro nombre.</p>
+        </div>
+      `;
+      return;
+    }
+
+    renderPublicArtists(filtered);
+  });
+}
+
+/* =========================================================
+   INIT
+========================================================= */
+
+document.addEventListener("DOMContentLoaded", async function () {
+  try {
+    initTheme();
+    initMenu();
+
+    const themeButton = document.getElementById("themeToggle");
+
+    if (themeButton) {
+      themeButton.addEventListener("click", toggleTheme);
+    }
+
+    await loadPublicCategories();
+    await loadPublicArtists();
+
+    initArtistSearch();
+
+    if (document.getElementById("adminPanel")) {
+      await checkAdminSession();
+    }
+  } catch (error) {
+    console.error("Error iniciando JHD:", error);
+  }
+});
+
+/* =========================================================
+   FUNCIONES DISPONIBLES PARA HTML
+========================================================= */
+
+window.loginAdmin = loginAdmin;
+window.logoutAdmin = logoutAdmin;
+
+window.saveArtist = saveArtist;
+window.editArtist = editArtist;
+window.deleteArtist = deleteArtist;
+window.cancelArtistEdit = resetArtistForm;
+
+window.saveCategory = saveCategory;
+window.editCategory = editCategory;
+window.deleteCategory = deleteCategory;
+window.cancelCategoryEdit = resetCategoryForm;
+
+window.loadPublicArtists = loadPublicArtists;
+window.loadPublicCategories = loadPublicCategories;
