@@ -1723,3 +1723,49 @@ window.insertSectionTitle = insertSectionTitle;
 window.insertFullTemplate = insertFullTemplate;
 window.searchHomeSongs = searchHomeSongs;
 window.filterSongCards = filterSongCards;
+
+/* =========================================================
+   FIX EXTRA LOGIN ADMIN
+========================================================= */
+
+window.loginAdmin = async function () {
+  const emailInput = document.getElementById("adminEmailInput");
+  const passwordInput = document.getElementById("adminPasswordInput");
+  const message = document.getElementById("adminLoginMessage");
+
+  const email = emailInput ? emailInput.value.trim() : "";
+  const password = passwordInput ? passwordInput.value : "";
+
+  if (message) message.innerText = "Iniciando sesión...";
+
+  if (!email || !password) {
+    if (message) message.innerText = "Escribe correo y contraseña.";
+    return;
+  }
+
+  const client = window.supabaseClient || (typeof getSupabase === "function" ? getSupabase() : null);
+
+  if (!client) {
+    if (message) message.innerText = "No se pudo conectar con Supabase.";
+    return;
+  }
+
+  const { error } = await client.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    console.error(error);
+    if (message) message.innerText = "No se pudo iniciar sesión: " + error.message;
+    return;
+  }
+
+  if (message) message.innerText = "Sesión iniciada.";
+
+  if (typeof checkAdminSession === "function") {
+    await checkAdminSession();
+  } else {
+    location.reload();
+  }
+};
