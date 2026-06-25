@@ -81,7 +81,6 @@
     <!-- ARTISTAS Y CATEGORÍAS -->
     <div class="admin-grid">
 
-      <!-- ARTISTA -->
       <div class="song-card" id="artistFormCard">
         <h2 id="artistFormTitle">Agregar artista</h2>
 
@@ -100,7 +99,6 @@
         </div>
       </div>
 
-      <!-- CATEGORÍA -->
       <div class="song-card" id="categoryFormCard">
         <h2 id="categoryFormTitle">Agregar categoría</h2>
 
@@ -121,7 +119,7 @@
 
     </div>
 
-    <!-- ÁLBUMES / CARPETAS -->
+    <!-- ÁLBUMES -->
     <div class="song-card" id="albumFormCard" style="margin-top:28px;">
       <h2 id="albumFormTitle">Agregar álbum / carpeta</h2>
 
@@ -147,7 +145,8 @@
         </button>
       </div>
     </div>
-<!-- CANCIÓN -->
+
+    <!-- CANCIÓN -->
     <div class="song-card" id="songFormCard" style="margin-top:28px;">
       <h2 id="songFormTitle">Agregar canción</h2>
 
@@ -277,21 +276,60 @@
         Escribe los acordes entre paréntesis: Aaaa(G)aaaa. En el diseño final el acorde subirá encima de esa posición.
       </p>
 
+      <!-- LINKS -->
       <h3 style="margin-top:18px;">Tutoriales y enlaces</h3>
 
       <p style="color:var(--secondary); font-size:13px;">
-        Puedes agregar varios links, uno por línea, usando este formato:
+        Agrega tutoriales o enlaces de YouTube, TikTok, Instagram, Facebook u otra plataforma.
       </p>
 
-      <pre style="white-space:pre-wrap; color:var(--secondary); background:rgba(255,255,255,0.04); padding:12px; border-radius:14px;">Tutorial guitarra | Tutorial | YouTube | https://...
-Tutorial piano | Tutorial | YouTube | https://...
-Video oficial | Video | YouTube | https://...
-Canal del artista | Canal | YouTube | https://...</pre>
+      <div class="song-card" style="margin-top:12px; background:rgba(255,255,255,0.035);">
+        <h4 style="margin-bottom:12px;">Agregar nuevo link</h4>
+
+        <input
+          id="newLinkTitleInput"
+          type="text"
+          placeholder="Título, ejemplo: Tutorial guitarra"
+        >
+
+        <select id="newLinkTypeInput">
+          <option value="Tutorial">Tutorial</option>
+          <option value="Video">Video</option>
+          <option value="Canal">Canal</option>
+          <option value="Cover">Cover</option>
+          <option value="Acordes">Acordes</option>
+          <option value="Letra">Letra</option>
+          <option value="Otro">Otro</option>
+        </select>
+
+        <select id="newLinkPlatformInput">
+          <option value="YouTube">YouTube</option>
+          <option value="TikTok">TikTok</option>
+          <option value="Instagram">Instagram</option>
+          <option value="Facebook">Facebook</option>
+          <option value="Spotify">Spotify</option>
+          <option value="Sitio web">Sitio web</option>
+          <option value="Otro">Otro</option>
+        </select>
+
+        <input
+          id="newLinkUrlInput"
+          type="url"
+          placeholder="Pega aquí el enlace"
+        >
+
+        <button class="song-btn" type="button" onclick="addAdminLinkFromFields()">
+          Agregar link
+        </button>
+      </div>
+
+      <div id="songLinksRows" style="margin-top:16px;">
+        <p style="color:var(--secondary);">Aún no hay links agregados.</p>
+      </div>
 
       <textarea
         id="songLinksInput"
-        placeholder="Tutorial guitarra | Tutorial | YouTube | https://..."
-        style="min-height:140px;"
+        style="display:none;"
         oninput="updateAdminPreview()"
       ></textarea>
 
@@ -322,7 +360,8 @@ Canal del artista | Canal | YouTube | https://...</pre>
         </div>
       </div>
     </div>
-   <!-- LISTAS -->
+
+    <!-- LISTAS -->
     <div class="admin-grid" style="margin-top:28px;">
 
       <div class="song-card">
@@ -377,9 +416,11 @@ Canal del artista | Canal | YouTube | https://...</pre>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js?v=final"></script>
-<script src="app.js?v=limpia12"></script>
+<script src="app.js?v=limpia13"></script>
 
 <script>
+  let adminLinkItems = [];
+
   function adminEscapeHTML(value) {
     return String(value || "")
       .replaceAll("&", "&amp;")
@@ -407,7 +448,7 @@ Canal del artista | Canal | YouTube | https://...</pre>
       .filter(Boolean);
   }
 
-  function adminParseLinksPreview(text) {
+  function adminParseLinksText(text) {
     return String(text || "")
       .split("\n")
       .map(function (line) {
@@ -422,10 +463,145 @@ Canal del artista | Canal | YouTube | https://...</pre>
         return {
           title: parts[0] || "Link",
           type: parts[1] || "Tutorial",
-          platform: parts[2] || "",
-          url: parts[3] || parts[2] || "#"
+          platform: parts[2] || "YouTube",
+          url: parts[3] || parts[2] || ""
         };
       });
+  }
+
+  function adminTypeOptions(selected) {
+    const options = ["Tutorial", "Video", "Canal", "Cover", "Acordes", "Letra", "Otro"];
+
+    return options.map(function (option) {
+      return '<option value="' + adminEscapeHTML(option) + '"' + (option === selected ? " selected" : "") + '>' + adminEscapeHTML(option) + '</option>';
+    }).join("");
+  }
+
+  function adminPlatformOptions(selected) {
+    const options = ["YouTube", "TikTok", "Instagram", "Facebook", "Spotify", "Sitio web", "Otro"];
+
+    return options.map(function (option) {
+      return '<option value="' + adminEscapeHTML(option) + '"' + (option === selected ? " selected" : "") + '>' + adminEscapeHTML(option) + '</option>';
+    }).join("");
+  }
+
+  function syncAdminLinksTextarea() {
+    const textarea = document.getElementById("songLinksInput");
+
+    if (!textarea) return;
+
+    textarea.value = adminLinkItems.map(function (link) {
+      return [
+        link.title || "Link",
+        link.type || "Tutorial",
+        link.platform || "YouTube",
+        link.url || ""
+      ].join(" | ");
+    }).join("\n");
+  }
+
+  function renderAdminLinksRows() {
+    const box = document.getElementById("songLinksRows");
+
+    if (!box) return;
+
+    if (!adminLinkItems.length) {
+      box.innerHTML = '<p style="color:var(--secondary);">Aún no hay links agregados.</p>';
+      syncAdminLinksTextarea();
+      updateAdminPreview();
+      return;
+    }
+
+    box.innerHTML = adminLinkItems.map(function (link, index) {
+      return `
+        <div class="song-card" style="margin-bottom:12px; background:rgba(255,255,255,0.035);">
+          <input
+            type="text"
+            value="${adminEscapeHTML(link.title || "")}"
+            placeholder="Título del link"
+            oninput="updateAdminLinkField(${index}, 'title', this.value)"
+          >
+
+          <select onchange="updateAdminLinkField(${index}, 'type', this.value)">
+            ${adminTypeOptions(link.type || "Tutorial")}
+          </select>
+
+          <select onchange="updateAdminLinkField(${index}, 'platform', this.value)">
+            ${adminPlatformOptions(link.platform || "YouTube")}
+          </select>
+
+          <input
+            type="url"
+            value="${adminEscapeHTML(link.url || "")}"
+            placeholder="URL"
+            oninput="updateAdminLinkField(${index}, 'url', this.value)"
+          >
+
+          <button class="song-btn small-btn" type="button" onclick="deleteAdminLink(${index})">
+            🗑️ Borrar link
+          </button>
+        </div>
+      `;
+    }).join("");
+
+    syncAdminLinksTextarea();
+    updateAdminPreview();
+  }
+
+  function updateAdminLinkField(index, field, value) {
+    if (!adminLinkItems[index]) return;
+
+    adminLinkItems[index][field] = value;
+
+    syncAdminLinksTextarea();
+    updateAdminPreview();
+  }
+
+  function addAdminLinkFromFields() {
+    const titleInput = document.getElementById("newLinkTitleInput");
+    const typeInput = document.getElementById("newLinkTypeInput");
+    const platformInput = document.getElementById("newLinkPlatformInput");
+    const urlInput = document.getElementById("newLinkUrlInput");
+
+    const title = titleInput ? titleInput.value.trim() : "";
+    const type = typeInput ? typeInput.value.trim() : "Tutorial";
+    const platform = platformInput ? platformInput.value.trim() : "YouTube";
+    const url = urlInput ? urlInput.value.trim() : "";
+
+    if (!url) {
+      alert("Pega el enlace antes de agregarlo.");
+      return;
+    }
+
+    adminLinkItems.push({
+      title: title || type + " en " + platform,
+      type: type,
+      platform: platform,
+      url: url
+    });
+
+    if (titleInput) titleInput.value = "";
+    if (urlInput) urlInput.value = "";
+
+    renderAdminLinksRows();
+  }
+
+  function deleteAdminLink(index) {
+    const confirmDelete = confirm("¿Borrar este link?");
+
+    if (!confirmDelete) return;
+
+    adminLinkItems.splice(index, 1);
+    renderAdminLinksRows();
+  }
+
+  function loadAdminLinksFromTextarea() {
+    const textarea = document.getElementById("songLinksInput");
+
+    if (!textarea) return;
+
+    adminLinkItems = adminParseLinksText(textarea.value);
+    renderAdminLinksRows();
   }
 
   function updateAdminPreview() {
@@ -442,7 +618,7 @@ Canal del artista | Canal | YouTube | https://...</pre>
     const linksText = document.getElementById("songLinksInput")?.value || "";
 
     const artists = adminGetSelectedTexts("songArtistsInput");
-    const links = adminParseLinksPreview(linksText);
+    const links = adminLinkItems.length ? adminLinkItems : adminParseLinksText(linksText);
 
     const capoText = Number(capo) > 0
       ? "Capo " + capo + (capoKey ? " · Figuras en " + capoKey : "")
@@ -463,41 +639,4 @@ Canal del artista | Canal | YouTube | https://...</pre>
 
         ${capoText ? `
           <div class="capo-box">
-            <span>Sin capo: ${adminEscapeHTML(tone || "Tono original")}</span>
-            <span>Con ${adminEscapeHTML(capoText)}</span>
-          </div>
-        ` : ""}
-
-        <pre class="lyrics-block">${adminRenderLyricsPreview(lyrics || "La letra aparecerá aquí...")}</pre>
-
-        ${links.length ? `
-          <section class="song-links-box">
-            <h2>Tutoriales y enlaces</h2>
-
-            <div class="song-links-list">
-              ${links.map(function (link) {
-                return `
-                  <div class="song-link-item">
-                    <span>🔗</span>
-                    <div>
-                      <strong>${adminEscapeHTML(link.title)}</strong>
-                      <small>${adminEscapeHTML([link.platform, link.type].filter(Boolean).join(" · "))}</small>
-                    </div>
-                  </div>
-                `;
-              }).join("")}
-            </div>
-          </section>
-        ` : ""}
-
-      </article>
-    `;
-  }
-
-  document.addEventListener("DOMContentLoaded", function () {
-    setTimeout(updateAdminPreview, 800);
-  });
-</script>
-
-</body>
-</html> 
+            <span>Sin capo: ${adm
