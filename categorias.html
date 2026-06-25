@@ -3,17 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Categorías | Juntos Hacia Dios</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="Explora categorías de cantos católicos y cristianos en Juntos Hacia Dios.">
+
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 
 <body>
 
 <header class="hero small-hero">
   <nav class="navbar">
-    <h2>JHD</h2>
+    <h2>Juntos Hacia Dios</h2>
 
-    <div class="nav-menu">
+    <button class="menu-toggle" id="menuToggle" aria-label="Abrir menú" type="button">
+      ☰ Menú
+    </button>
+
+    <div class="nav-menu" id="navMenu">
       <a href="index.html" class="nav-link">Inicio</a>
       <a href="canciones.html" class="nav-link">Canciones</a>
       <a href="artistas.html" class="nav-link">Artistas</a>
@@ -21,36 +28,32 @@
       <a href="donaciones.html" class="nav-link">Donaciones</a>
     </div>
 
-    <button id="themeToggle">🌙</button>
+    <button id="themeToggle" type="button">🌙</button>
   </nav>
 
   <div class="hero-content">
     <h1>Categorías</h1>
-    <p>Explora cantos por tema, uso o estilo</p>
-
-    <div class="search-box">
-      <input id="categorySearch" type="text" placeholder="Buscar categoría...">
-    </div>
+    <p class="hero-description">
+      Explora los cantos por tipo de uso, tema o momento.
+    </p>
   </div>
 </header>
 
-<section class="section">
-  <h2>Categorías</h2>
+<main>
+  <section class="section">
+    <h2>Explorar categorías</h2>
 
-  <div class="song-grid" id="categoryList">
-    <div class="song-card">
-      <p style="color:var(--secondary);">Cargando categorías...</p>
+    <div class="song-list" id="categoryList">
+      <div class="song-card">
+        <h3>Cargando categorías...</h3>
+      </div>
     </div>
-  </div>
-
-  <p id="noCategoryResults" style="display:none; color:var(--secondary); margin-top:25px;">
-    No se encontraron categorías.
-  </p>
-</section>
+  </section>
+</main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
-<script src="app.js"></script>
+<script src="supabase.js?v=10"></script>
+<script src="app.js?v=10"></script>
 
 </body>
 </html>
