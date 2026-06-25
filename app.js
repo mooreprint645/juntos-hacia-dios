@@ -408,3 +408,166 @@ window.logoutAdmin = logoutAdmin;
 window.saveCategory = saveCategory;
 window.deleteCategory = deleteCategory;
 window.loadPublicCategories = loadPublicCategories;
+
+/* =========================================================
+   EDITAR CATEGORÍAS - PARCHE SEGURO
+========================================================= */
+
+let currentEditingCategoryId = null;
+
+async function editCategory(id) {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase.");
+    return;
+  }
+
+  const { data, error } = await client
+    .from("categories")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    alert("No se pudo cargar la categoría.");
+    return;
+  }
+
+  currentEditingCategoryId = id;
+
+  const title = document.getElementById("categoryFormTitle");
+  const nameInput = document.getElementById("categoryNameInput");
+  const descriptionInput = document.getElementById("categoryDescriptionInput");
+
+  if (title) title.innerText = "Editar categoría";
+  if (nameInput) nameInput.value = data.name || "";
+  if (descriptionInput) descriptionInput.value = data.description || "";
+
+  const form = document.getElementById("categoryFormCard");
+
+  if (form) {
+    form.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function cancelCategoryEdit() {
+  currentEditingCategoryId = null;
+
+  const title = document.getElementById("categoryFormTitle");
+  const nameInput = document.getElementById("categoryNameInput");
+  const descriptionInput = document.getElementById("categoryDescriptionInput");
+
+  if (title) title.innerText = "Agregar categoría";
+  if (nameInput) nameInput.value = "";
+  if (descriptionInput) descriptionInput.value = "";
+}
+
+async function saveCategory() {
+  const nameInput = document.getElementById("categoryNameInput");
+  const descriptionInput = document.getElementById("categoryDescriptionInput");
+
+  const name = nameInput ? nameInput.value.trim() : "";
+  const description = descriptionInput ? descriptionInput.value.trim() : "";
+
+  if (!name) {
+    alert("Escribe el nombre de la categoría.");
+    return;
+  }
+
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase.");
+    return;
+  }
+
+  let result;
+
+  if (currentEditingCategoryId) {
+    result = await client
+      .from("categories")
+      .update({
+        name: name,
+        slug: slugify(name),
+        description: description
+      })
+      .eq("id", currentEditingCategoryId);
+  } else {
+    result = await client
+      .from("categories")
+      .insert({
+        name: name,
+        slug: slugify(name),
+        description: description
+      });
+  }
+
+  if (result.error) {
+    alert("No se pudo guardar categoría: " + result.error.message);
+    return;
+  }
+
+  cancelCategoryEdit();
+
+  await loadAdminCategories();
+  await loadCategoryOptions();
+  await loadPublicCategories();
+
+  alert(currentEditingCategoryId ? "Categoría actualizada." : "Categoría guardada.");
+}
+
+async function loadAdminCategories() {
+  const list = document.getElementById("adminCategoryList");
+
+  if (!list) return;
+
+  const client = getSupabase();
+
+  if (!client) {
+    list.innerHTML = "<p>No se pudo conectar con Supabase.</p>";
+    return;
+  }
+
+  const { data, error } = await client
+    .from("categories")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    list.innerHTML = "<p style='color:#ffb4b4;'>Error: " + escapeHTML(error.message) + "</p>";
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    list.innerHTML = "<p style='color:var(--secondary);'>No hay categorías todavía.</p>";
+    return;
+  }
+
+  list.innerHTML = data.map(function (category) {
+    return `
+      <div class="admin-list-item">
+        <strong>${escapeHTML(category.name || "Sin nombre")}</strong>
+
+        <p style="color:var(--secondary); margin-top:6px;">
+          ${escapeHTML(category.description || "Sin descripción.")}
+        </p>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button type="button" class="song-btn" onclick="editCategory('${category.id}')">
+            Editar
+          </button>
+
+          <button type="button" class="song-btn" onclick="deleteCategory('${category.id}')">
+            Eliminar
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+window.editCategory = editCategory;
+window.cancelCategoryEdit = cancelCategoryEdit;
+window.saveCategory = saveCategory;
+window.loadAdminCategories = loadAdminCategories;
