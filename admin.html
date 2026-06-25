@@ -34,7 +34,7 @@
   <div class="hero-content">
     <h1>Panel de administración</h1>
     <p class="hero-description">
-      Prueba de conexión, login y categorías.
+      Administración básica de artistas y categorías.
     </p>
   </div>
 </header>
@@ -76,30 +76,64 @@
       </button>
     </div>
 
-    <div class="song-card" id="categoryFormCard">
-      <h2 id="categoryFormTitle">Agregar categoría</h2>
+    <div class="admin-grid">
 
-      <input id="categoryNameInput" type="text" placeholder="Nombre de la categoría">
+      <div class="song-card" id="artistFormCard">
+        <h2 id="artistFormTitle">Agregar artista</h2>
 
-      <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría"></textarea>
+        <input id="artistNameInput" type="text" placeholder="Nombre del artista">
 
-      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
-        <button class="song-btn" type="button" onclick="saveCategory()">
-          Guardar categoría
-        </button>
+        <textarea id="artistDescriptionInput" placeholder="Descripción del artista"></textarea>
 
-        <button class="song-btn" type="button" onclick="cancelCategoryEdit()">
-          Cancelar edición
-        </button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+          <button class="song-btn" type="button" onclick="saveArtist()">
+            Guardar artista
+          </button>
+
+          <button class="song-btn" type="button" onclick="cancelArtistEdit()">
+            Cancelar edición
+          </button>
+        </div>
       </div>
+
+      <div class="song-card" id="categoryFormCard">
+        <h2 id="categoryFormTitle">Agregar categoría</h2>
+
+        <input id="categoryNameInput" type="text" placeholder="Nombre de la categoría">
+
+        <textarea id="categoryDescriptionInput" placeholder="Descripción de la categoría"></textarea>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+          <button class="song-btn" type="button" onclick="saveCategory()">
+            Guardar categoría
+          </button>
+
+          <button class="song-btn" type="button" onclick="cancelCategoryEdit()">
+            Cancelar edición
+          </button>
+        </div>
+      </div>
+
     </div>
 
-    <div class="song-card" style="margin-top:28px;">
-      <h2>Categorías registradas</h2>
+    <div class="admin-grid" style="margin-top:28px;">
 
-      <div id="adminCategoryList">
-        <p style="color:var(--secondary);">Cargando categorías...</p>
+      <div class="song-card">
+        <h2>Artistas registrados</h2>
+
+        <div id="adminArtistList">
+          <p style="color:var(--secondary);">Cargando artistas...</p>
+        </div>
       </div>
+
+      <div class="song-card">
+        <h2>Categorías registradas</h2>
+
+        <div id="adminCategoryList">
+          <p style="color:var(--secondary);">Cargando categorías...</p>
+        </div>
+      </div>
+
     </div>
 
   </section>
