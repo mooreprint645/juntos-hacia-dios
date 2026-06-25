@@ -7311,3 +7311,168 @@ setTimeout(() => {
 window.addEventListener("resize", () => {
   setTimeout(jhdDrawMeshCanvas, 200);
 });
+/* =========================================================
+   FIX FINAL - URL OCULTA + PREVIEW MESH CSS EN ADMIN
+========================================================= */
+
+function jhdHideArtistUrlInputsFinal() {
+  if (typeof jhdIsAdminPage === "function" && !jhdIsAdminPage()) return;
+
+  const card = typeof jhdFindArtistFormCard === "function"
+    ? jhdFindArtistFormCard()
+    : null;
+
+  if (!card) return;
+
+  const inputs = Array.from(card.querySelectorAll("input"));
+
+  inputs.forEach(input => {
+    const placeholder = String(input.placeholder || "").toLowerCase();
+
+    if (
+      placeholder.includes("url") ||
+      placeholder.includes("foto") ||
+      placeholder.includes("portada") ||
+      placeholder.includes("imagen")
+    ) {
+      input.classList.add("artist-form-url-hidden");
+      input.value = "";
+    }
+  });
+}
+
+function jhdBuildMeshGradient(points) {
+  const safePoints = jhdNormalizeMeshPoints(points);
+
+  const layers = safePoints.map(point => {
+    const strong = jhdHexToRgba(point.color, point.opacity);
+    const mid = jhdHexToRgba(point.color, point.opacity * 0.50);
+    const soft = jhdHexToRgba(point.color, point.opacity * 0.22);
+
+    return `radial-gradient(circle at ${point.x}% ${point.y}%, ${strong} 0%, ${mid} 30%, ${soft} 52%, transparent ${point.size}%)`;
+  });
+
+  layers.push("linear-gradient(135deg, #0b1020, #111827)");
+
+  return layers.join(", ");
+}
+
+function jhdRenderMeshEditor() {
+  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
+
+  if (!canvasWrap) return;
+
+  jhdMeshPoints = jhdNormalizeMeshPoints(jhdMeshPoints);
+
+  canvasWrap.style.background = jhdBuildMeshGradient(jhdMeshPoints);
+
+  const dots = jhdMeshPoints.map((point, index) => `
+    <button
+      type="button"
+      class="mesh-point ${index === jhdSelectedMeshPoint ? "active" : ""}"
+      style="left:${point.x}%; top:${point.y}%; background:${point.color};"
+      onpointerdown="jhdStartDragMeshPoint(event, ${index})"
+      onclick="event.stopPropagation(); jhdSelectMeshPoint(${index});">
+    </button>
+  `).join("");
+
+  canvasWrap.innerHTML = dots;
+
+  if (typeof jhdUpdateMeshControls === "function") {
+    jhdUpdateMeshControls();
+  }
+}
+
+function jhdMoveMeshPoint(event) {
+  if (!jhdDraggingMeshPoint) return;
+
+  const position = jhdMeshPointClientPosition(event);
+  if (!position) return;
+
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+  if (!point) return;
+
+  point.x = position.x;
+  point.y = position.y;
+
+  const canvasWrap = document.getElementById("jhdMeshCanvasWrap");
+  if (canvasWrap) {
+    canvasWrap.style.background = jhdBuildMeshGradient(jhdMeshPoints);
+  }
+
+  const dot = document.querySelector(".mesh-point.active");
+  if (dot) {
+    dot.style.left = `${point.x}%`;
+    dot.style.top = `${point.y}%`;
+  }
+}
+
+function jhdUpdateMeshPointColor(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+  if (!point) return;
+
+  point.color = jhdSafeHex(value, point.color);
+  jhdRenderMeshEditor();
+}
+
+function jhdUpdateMeshPointSize(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+  if (!point) return;
+
+  point.size = jhdClamp(value, 80, 20, 180);
+  jhdRenderMeshEditor();
+}
+
+function jhdUpdateMeshPointOpacity(value) {
+  const point = jhdMeshPoints[jhdSelectedMeshPoint];
+  if (!point) return;
+
+  point.opacity = jhdClamp(Number(value) / 100, 0.75, 0.05, 1);
+  jhdRenderMeshEditor();
+}
+
+async function jhdSaveMeshGradient() {
+  const client = getSupabase();
+
+  if (!client) {
+    alert("No se pudo conectar con Supabase");
+    return;
+  }
+
+  const slug = jhdArtistSlugFromAdmin();
+
+  if (!slug) {
+    alert("Primero escribe el nombre del artista.");
+    return;
+  }
+
+  const safePoints = jhdNormalizeMeshPoints(jhdMeshPoints);
+
+  const { error } = await client
+    .from("artists")
+    .update({
+      gradient_points: safePoints,
+      avatar_url: "",
+      cover_url: ""
+    })
+    .eq("slug", slug);
+
+  if (error) {
+    alert("No se pudo guardar la portada: " + error.message);
+    return;
+  }
+
+  jhdHideArtistUrlInputsFinal();
+  alert("Portada guardada");
+}
+
+setTimeout(jhdHideArtistUrlInputsFinal, 300);
+setTimeout(jhdHideArtistUrlInputsFinal, 1000);
+setTimeout(jhdHideArtistUrlInputsFinal, 2500);
+
+runWhenReady(() => {
+  setTimeout(() => {
+    jhdHideArtistUrlInputsFinal();
+    jhdRenderMeshEditor();
+  }, 1200);
+});
