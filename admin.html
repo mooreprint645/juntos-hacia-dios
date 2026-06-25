@@ -34,7 +34,7 @@
   <div class="hero-content">
     <h1>Panel de administración</h1>
     <p class="hero-description">
-      Administra artistas, categorías, álbumes y canciones.
+      Administra artistas, categorías, álbumes, canciones, capo, tutoriales y enlaces.
     </p>
   </div>
 </header>
@@ -63,7 +63,7 @@
     </div>
   </section>
 
-  <!-- PANEL -->
+  <!-- PANEL ADMIN -->
   <section class="section" id="adminPanel" style="display:none;">
 
     <div class="song-card" style="margin-bottom:28px;">
@@ -78,10 +78,10 @@
       </button>
     </div>
 
-    <!-- FORMULARIOS SUPERIORES -->
+    <!-- ARTISTAS Y CATEGORÍAS -->
     <div class="admin-grid">
 
-      <!-- ARTISTAS -->
+      <!-- ARTISTA -->
       <div class="song-card" id="artistFormCard">
         <h2 id="artistFormTitle">Agregar artista</h2>
 
@@ -100,7 +100,7 @@
         </div>
       </div>
 
-      <!-- CATEGORÍAS -->
+      <!-- CATEGORÍA -->
       <div class="song-card" id="categoryFormCard">
         <h2 id="categoryFormTitle">Agregar categoría</h2>
 
@@ -121,7 +121,7 @@
 
     </div>
 
-    <!-- ÁLBUMES -->
+    <!-- ÁLBUMES / CARPETAS -->
     <div class="song-card" id="albumFormCard" style="margin-top:28px;">
       <h2 id="albumFormTitle">Agregar álbum / carpeta</h2>
 
@@ -147,14 +147,22 @@
         </button>
       </div>
     </div>
-
-    <!-- CANCIONES -->
+<!-- CANCIÓN -->
     <div class="song-card" id="songFormCard" style="margin-top:28px;">
       <h2 id="songFormTitle">Agregar canción</h2>
 
-      <input id="songTitleInput" type="text" placeholder="Título de la canción">
+      <p style="color:var(--secondary); margin-bottom:14px;">
+        Aquí puedes agregar letra, acordes, artistas, álbum, capo, tutoriales y enlaces.
+      </p>
 
-      <select id="songTypeInput">
+      <input
+        id="songTitleInput"
+        type="text"
+        placeholder="Título de la canción"
+        oninput="updateAdminPreview()"
+      >
+
+      <select id="songTypeInput" onchange="updateAdminPreview()">
         <option value="catolico">Católico</option>
         <option value="cristiano">Cristiano</option>
       </select>
@@ -163,61 +171,167 @@
         Artistas de la canción
       </label>
 
-      <select id="songArtistsInput" multiple size="5">
+      <select id="songArtistsInput" multiple size="5" onchange="updateAdminPreview()">
       </select>
 
       <p style="color:var(--secondary); font-size:13px; margin-top:6px;">
-        Selecciona uno o varios artistas. En la página se verán separados así: Kairo Worship · Miel San Marcos.
+        Selecciona uno o varios artistas. En la página se verán separados así:
+        Kairo Worship · Miel San Marcos.
       </p>
 
-      <select id="songCategoryInput">
+      <select id="songCategoryInput" onchange="updateAdminPreview()">
         <option value="">Selecciona categoría</option>
       </select>
 
-      <select id="songAlbumInput">
+      <select id="songAlbumInput" onchange="updateAdminPreview()">
         <option value="">Sin álbum / carpeta</option>
       </select>
 
       <div class="admin-grid small-grid">
-        <input id="songToneInput" type="text" placeholder="Tono, ejemplo: G, D, C">
-        <input id="songDifficultyInput" type="text" placeholder="Dificultad, ejemplo: Fácil">
+        <input
+          id="songToneInput"
+          type="text"
+          placeholder="Tono original, ejemplo: Bm"
+          oninput="updateAdminPreview()"
+        >
+
+        <input
+          id="songDifficultyInput"
+          type="text"
+          placeholder="Dificultad, ejemplo: Fácil"
+          oninput="updateAdminPreview()"
+        >
       </div>
-
-      <textarea id="songLyricsInput" placeholder="Letra y acordes. Ejemplo: (G) Hermoso momento..." style="min-height:260px;"></textarea>
-
-      <h3 style="margin-top:18px;">Links opcionales</h3>
 
       <div class="admin-grid small-grid">
-        <input id="songGuitarUrlInput" type="url" placeholder="Tutorial guitarra">
-        <input id="songPianoUrlInput" type="url" placeholder="Tutorial piano">
+        <input
+          id="songCapoInput"
+          type="number"
+          min="0"
+          max="12"
+          placeholder="Capo, ejemplo: 2"
+          oninput="updateAdminPreview()"
+        >
+
+        <input
+          id="songCapoKeyInput"
+          type="text"
+          placeholder="Figuras con capo, ejemplo: Am"
+          oninput="updateAdminPreview()"
+        >
       </div>
 
-      <div class="admin-grid small-grid">
-        <input id="songYoutubeUrlInput" type="url" placeholder="YouTube">
-        <input id="songTiktokUrlInput" type="url" placeholder="TikTok">
+      <p style="color:var(--secondary); font-size:13px; margin-top:6px;">
+        Si no usa capo, deja el capo vacío o en 0.
+        Ejemplo: tono original Bm, capo 2, figuras Am.
+      </p>
+
+      <h3 style="margin-top:18px;">Ayudas para estructura</h3>
+
+      <p style="color:var(--secondary); font-size:13px;">
+        Estos botones solo insertan secciones en la letra. No agregan acordes.
+      </p>
+
+      <div class="editor-helper-buttons">
+        <button type="button" class="song-btn small-btn" onclick="insertSongSection('Intro'); updateAdminPreview();">
+          Intro
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="insertSongSection('Verso 1'); updateAdminPreview();">
+          Verso 1
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="insertSongSection('Verso 2'); updateAdminPreview();">
+          Verso 2
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="insertSongSection('Pre-Coro'); updateAdminPreview();">
+          Pre-Coro
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="insertSongSection('Coro'); updateAdminPreview();">
+          Coro
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="insertSongSection('Puente'); updateAdminPreview();">
+          Puente
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="insertSongSection('Intermedio'); updateAdminPreview();">
+          Intermedio
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="insertSongSection('Final'); updateAdminPreview();">
+          Final
+        </button>
       </div>
 
-      <input id="songInstagramUrlInput" type="url" placeholder="Instagram">
+      <textarea
+        id="songLyricsInput"
+        placeholder="Letra y acordes. Ejemplo: Aaaa(G)aaaa o (G) Hermoso momento..."
+        style="min-height:280px;"
+        oninput="updateAdminPreview()"
+      ></textarea>
+
+      <p style="color:var(--secondary); font-size:13px; margin-top:6px;">
+        Escribe los acordes entre paréntesis: Aaaa(G)aaaa. En el diseño final el acorde subirá encima de esa posición.
+      </p>
+
+      <h3 style="margin-top:18px;">Tutoriales y enlaces</h3>
+
+      <p style="color:var(--secondary); font-size:13px;">
+        Puedes agregar varios links, uno por línea, usando este formato:
+      </p>
+
+      <pre style="white-space:pre-wrap; color:var(--secondary); background:rgba(255,255,255,0.04); padding:12px; border-radius:14px;">Tutorial guitarra | Tutorial | YouTube | https://...
+Tutorial piano | Tutorial | YouTube | https://...
+Video oficial | Video | YouTube | https://...
+Canal del artista | Canal | YouTube | https://...</pre>
+
+      <textarea
+        id="songLinksInput"
+        placeholder="Tutorial guitarra | Tutorial | YouTube | https://..."
+        style="min-height:140px;"
+        oninput="updateAdminPreview()"
+      ></textarea>
 
       <div class="admin-actions">
         <button class="song-btn" type="button" onclick="saveSong()">
           Guardar canción
         </button>
 
-        <button class="song-btn" type="button" onclick="cancelSongEdit()">
+        <button class="song-btn" type="button" onclick="cancelSongEdit(); updateAdminPreview();">
           Cancelar edición
         </button>
       </div>
     </div>
 
-    <!-- LISTAS -->
+    <!-- VISTA PREVIA -->
+    <div class="song-card" style="margin-top:28px;">
+      <h2>Vista previa del canto</h2>
+
+      <p style="color:var(--secondary); margin-bottom:14px;">
+        Esta vista es para revisar antes de guardar. El diseño final se ajustará después con CSS.
+      </p>
+
+      <div id="adminPreviewBox" class="admin-preview-box">
+        <div class="shimmer-card">
+          <p style="color:var(--secondary);">
+            La vista previa aparecerá aquí mientras escribes.
+          </p>
+        </div>
+      </div>
+    </div>
+   <!-- LISTAS -->
     <div class="admin-grid" style="margin-top:28px;">
 
       <div class="song-card">
         <h2>Artistas registrados</h2>
 
         <div id="adminArtistList">
-          <p style="color:var(--secondary);">Cargando artistas...</p>
+          <div class="shimmer-card">
+            <p style="color:var(--secondary);">Cargando artistas...</p>
+          </div>
         </div>
       </div>
 
@@ -225,7 +339,9 @@
         <h2>Categorías registradas</h2>
 
         <div id="adminCategoryList">
-          <p style="color:var(--secondary);">Cargando categorías...</p>
+          <div class="shimmer-card">
+            <p style="color:var(--secondary);">Cargando categorías...</p>
+          </div>
         </div>
       </div>
 
@@ -237,7 +353,9 @@
         <h2>Álbumes / carpetas</h2>
 
         <div id="adminAlbumList">
-          <p style="color:var(--secondary);">Cargando álbumes...</p>
+          <div class="shimmer-card">
+            <p style="color:var(--secondary);">Cargando álbumes...</p>
+          </div>
         </div>
       </div>
 
@@ -245,7 +363,9 @@
         <h2>Canciones registradas</h2>
 
         <div id="adminSongList">
-          <p style="color:var(--secondary);">Cargando canciones...</p>
+          <div class="shimmer-card">
+            <p style="color:var(--secondary);">Cargando canciones...</p>
+          </div>
         </div>
       </div>
 
@@ -257,7 +377,127 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js?v=final"></script>
-<script src="app.js?v=final"></script>
+<script src="app.js?v=limpia12"></script>
+
+<script>
+  function adminEscapeHTML(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function adminRenderLyricsPreview(lyrics) {
+    return adminEscapeHTML(lyrics || "").replace(/\(([^)]+)\)/g, function (_, chord) {
+      return '<span class="chord-token">' + adminEscapeHTML(chord) + '</span>';
+    });
+  }
+
+  function adminGetSelectedTexts(selectId) {
+    const select = document.getElementById(selectId);
+
+    if (!select) return [];
+
+    return Array.from(select.selectedOptions || [])
+      .map(function (option) {
+        return option.textContent.trim();
+      })
+      .filter(Boolean);
+  }
+
+  function adminParseLinksPreview(text) {
+    return String(text || "")
+      .split("\n")
+      .map(function (line) {
+        return line.trim();
+      })
+      .filter(Boolean)
+      .map(function (line) {
+        const parts = line.split("|").map(function (part) {
+          return part.trim();
+        });
+
+        return {
+          title: parts[0] || "Link",
+          type: parts[1] || "Tutorial",
+          platform: parts[2] || "",
+          url: parts[3] || parts[2] || "#"
+        };
+      });
+  }
+
+  function updateAdminPreview() {
+    const box = document.getElementById("adminPreviewBox");
+
+    if (!box) return;
+
+    const title = document.getElementById("songTitleInput")?.value || "Título del canto";
+    const tone = document.getElementById("songToneInput")?.value || "";
+    const difficulty = document.getElementById("songDifficultyInput")?.value || "";
+    const capo = document.getElementById("songCapoInput")?.value || "";
+    const capoKey = document.getElementById("songCapoKeyInput")?.value || "";
+    const lyrics = document.getElementById("songLyricsInput")?.value || "";
+    const linksText = document.getElementById("songLinksInput")?.value || "";
+
+    const artists = adminGetSelectedTexts("songArtistsInput");
+    const links = adminParseLinksPreview(linksText);
+
+    const capoText = Number(capo) > 0
+      ? "Capo " + capo + (capoKey ? " · Figuras en " + capoKey : "")
+      : "";
+
+    box.innerHTML = `
+      <article class="song-detail-card preview-card">
+
+        <p class="artists-line">
+          ${artists.length ? adminEscapeHTML(artists.join(" · ")) : "Sin artista seleccionado"}
+        </p>
+
+        <h1>${adminEscapeHTML(title)}</h1>
+
+        <p class="song-meta-line">
+          ${adminEscapeHTML([tone, difficulty].filter(Boolean).join(" · "))}
+        </p>
+
+        ${capoText ? `
+          <div class="capo-box">
+            <span>Sin capo: ${adminEscapeHTML(tone || "Tono original")}</span>
+            <span>Con ${adminEscapeHTML(capoText)}</span>
+          </div>
+        ` : ""}
+
+        <pre class="lyrics-block">${adminRenderLyricsPreview(lyrics || "La letra aparecerá aquí...")}</pre>
+
+        ${links.length ? `
+          <section class="song-links-box">
+            <h2>Tutoriales y enlaces</h2>
+
+            <div class="song-links-list">
+              ${links.map(function (link) {
+                return `
+                  <div class="song-link-item">
+                    <span>🔗</span>
+                    <div>
+                      <strong>${adminEscapeHTML(link.title)}</strong>
+                      <small>${adminEscapeHTML([link.platform, link.type].filter(Boolean).join(" · "))}</small>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </section>
+        ` : ""}
+
+      </article>
+    `;
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    setTimeout(updateAdminPreview, 800);
+  });
+</script>
 
 </body>
-</html>
+</html> 
