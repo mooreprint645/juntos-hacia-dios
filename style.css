@@ -3613,3 +3613,32 @@ body:not(.admin-page) #jhdArtistGradientBox {
     width: 100%;
   }
 }
+/* =========================================================
+   FIX CLICS EN PERFIL DE ARTISTA
+   Permite tocar Inicio / Artistas / Canciones / modo oscuro
+========================================================= */
+
+.artist-profile-hero::before,
+.artist-cover-overlay,
+.artist-cover-image {
+  pointer-events: none !important;
+}
+
+.artist-profile-hero .navbar,
+.artist-profile-hero .nav-menu,
+.artist-profile-hero .nav-link,
+.artist-profile-hero #themeToggle,
+.artist-navbar,
+.artist-navbar .nav-menu,
+.artist-navbar .nav-link,
+.artist-navbar #themeToggle {
+  position: relative !important;
+  z-index: 50 !important;
+  pointer-events: auto !important;
+}
+
+.artist-profile-header {
+  position: relative !important;
+  z-index: 5 !important;
+  pointer-events: auto !important;
+}
