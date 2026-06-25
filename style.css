@@ -5373,4 +5373,26 @@ a:hover {
 
 /* =========================================================
    CACHE FINAL
+========================================================= *//* =========================================================
+   CORRECCIÓN BOTONES FILTRO CANCIONES
 ========================================================= */
+
+.song-filters {
+  margin-top: 18px !important;
+  margin-bottom: 26px !important;
+  display: flex !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+.song-filters .filter-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent) !important;
+  color: #17130a !important;
+  font-weight: 900 !important;
+  border-radius: 999px !important;
+  padding: 10px 16px !important;
+  opacity: 1 !important;
+  }
