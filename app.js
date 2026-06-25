@@ -1,6 +1,7 @@
 /* =========================================================
-   JUNTOS HACIA DIOS - APP LIMPIA 1.0
-   Categorías + artistas + álbumes + canciones + colaboraciones
+   JUNTOS HACIA DIOS - APP LIMPIA 1.1
+   Categorías + artistas + álbumes + canciones
+   Colaboraciones + links múltiples + transposición
 ========================================================= */
 
 const ADMIN_EMAIL = "mooreprint645@gmail.com";
@@ -9,6 +10,13 @@ let currentEditingArtistId = null;
 let currentEditingCategoryId = null;
 let currentEditingAlbumId = null;
 let currentEditingSongId = null;
+
+let currentSongForPage = null;
+let currentTransposeSteps = 0;
+
+/* =========================================================
+   HELPERS GENERALES
+========================================================= */
 
 function $(id) {
   return document.getElementById(id);
@@ -52,30 +60,6 @@ function getInitials(name) {
   }).join("").toUpperCase();
 }
 
-function getSelectedValues(selectId) {
-  const select = $(selectId);
-
-  if (!select) return [];
-
-  return Array.from(select.selectedOptions || [])
-    .map(function (option) {
-      return option.value;
-    })
-    .filter(Boolean);
-}
-
-function setSelectedValues(selectId, values) {
-  const select = $(selectId);
-
-  if (!select) return;
-
-  const selectedValues = new Set(values || []);
-
-  Array.from(select.options || []).forEach(function (option) {
-    option.selected = selectedValues.has(option.value);
-  });
-}
-
 function getInputValue(id) {
   const input = $(id);
 
@@ -102,6 +86,30 @@ function getUrlParam(name) {
   const params = new URLSearchParams(window.location.search);
 
   return params.get(name) || "";
+}
+
+function getSelectedValues(selectId) {
+  const select = $(selectId);
+
+  if (!select) return [];
+
+  return Array.from(select.selectedOptions || [])
+    .map(function (option) {
+      return option.value;
+    })
+    .filter(Boolean);
+}
+
+function setSelectedValues(selectId, values) {
+  const select = $(selectId);
+
+  if (!select) return;
+
+  const selectedValues = new Set(values || []);
+
+  Array.from(select.options || []).forEach(function (option) {
+    option.selected = selectedValues.has(option.value);
+  });
 }
 
 function setOptions(selectId, items, placeholder, valueKey, labelKey) {
@@ -153,14 +161,238 @@ function artistLinksHTML(artists) {
   }).join(`<span class="artist-dot"> · </span>`);
 }
 
-function renderChordedLyrics(lyrics) {
-  const escaped = escapeHTML(lyrics || "");
+/* =========================================================
+   LINKS MÚLTIPLES DE CANCIONES
+   Formato en admin:
+   Título | Tipo | Plataforma | URL
+========================================================= */
 
-  return escaped.replace(/\(([^)]+)\)/g, function (_, chord) {
-    return `<span class="chord-token">${escapeHTML(chord)}</span>`;
+function parseSongLinksText(text) {
+  const lines = String(text || "")
+    .split("\n")
+    .map(function (line) {
+      return line.trim();
+    })
+    .filter(Boolean);
+
+  return lines.map(function (line, index) {
+    const parts = line.split("|").map(function (part) {
+      return part.trim();
+    });
+
+    if (parts.length >= 4) {
+      return {
+        title: parts[0],
+        link_type: parts[1] || "tutorial",
+        platform: parts[2] || "",
+        url: parts.slice(3).join("|").trim(),
+        sort_order: index
+      };
+    }
+
+    if (parts.length === 3) {
+      return {
+        title: parts[0],
+        link_type: parts[1] || "tutorial",
+        platform: "",
+        url: parts[2],
+        sort_order: index
+      };
+    }
+
+    if (parts.length === 2) {
+      return {
+        title: parts[0],
+        link_type: "tutorial",
+        platform: "",
+        url: parts[1],
+        sort_order: index
+      };
+    }
+
+    return {
+      title: "Link " + (index + 1),
+      link_type: "tutorial",
+      platform: "",
+      url: parts[0],
+      sort_order: index
+    };
+  }).filter(function (link) {
+    return link.title && link.url;
   });
 }
 
+function linksToText(links) {
+  return (links || []).map(function (link) {
+    return [
+      link.title || "Link",
+      link.link_type || "tutorial",
+      link.platform || "",
+      link.url || ""
+    ].join(" | ");
+  }).join("\n");
+}
+
+function linkIcon(link) {
+  const text = `${link.platform || ""} ${link.link_type || ""} ${link.title || ""}`.toLowerCase();
+
+  if (text.includes("guitarra")) return "🎸";
+  if (text.includes("piano")) return "🎹";
+  if (text.includes("youtube")) return "▶️";
+  if (text.includes("tiktok")) return "🎵";
+  if (text.includes("instagram")) return "📷";
+  if (text.includes("canal")) return "📺";
+
+  return "🔗";
+}
+
+function renderSongLinksHTML(links) {
+  const safeLinks = links || [];
+
+  if (!safeLinks.length) return "";
+
+  return `
+    <section class="song-links-box">
+      <h2>Tutoriales y enlaces</h2>
+
+      <div class="song-links-list">
+        ${safeLinks.map(function (link) {
+          return `
+            <a class="song-link-item" href="${escapeHTML(link.url)}" target="_blank" rel="noopener noreferrer">
+              <span>${linkIcon(link)}</span>
+              <div>
+                <strong>${escapeHTML(link.title || "Link")}</strong>
+                <small>${escapeHTML([link.platform, link.link_type].filter(Boolean).join(" · "))}</small>
+              </div>
+            </a>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+/* =========================================================
+   TRANSPOSICIÓN DE ACORDES
+========================================================= */
+
+const CHORD_NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+const FLAT_TO_SHARP = {
+  "Db": "C#",
+  "Eb": "D#",
+  "Gb": "F#",
+  "Ab": "G#",
+  "Bb": "A#"
+};
+
+function normalizeNote(note) {
+  return FLAT_TO_SHARP[note] || note;
+}
+
+function transposeNote(note, steps) {
+  const normalized = normalizeNote(note);
+  const index = CHORD_NOTES.indexOf(normalized);
+
+  if (index === -1) return note;
+
+  const nextIndex = (index + steps + CHORD_NOTES.length * 10) % CHORD_NOTES.length;
+
+  return CHORD_NOTES[nextIndex];
+}
+
+function transposeSingleChord(chord, steps) {
+  const match = String(chord || "").match(/^([A-G](?:#|b)?)(.*)$/);
+
+  if (!match) return chord;
+
+  const root = match[1];
+  let rest = match[2] || "";
+
+  const transposedRoot = transposeNote(root, steps);
+
+  rest = rest.replace(/\/([A-G](?:#|b)?)/g, function (_, bassNote) {
+    return "/" + transposeNote(bassNote, steps);
+  });
+
+  return transposedRoot + rest;
+}
+
+function transposeChordGroup(chordGroup, steps) {
+  return String(chordGroup || "").replace(/[A-G](?:#|b)?[a-zA-Z0-9#b°+\-susmajdimaug/()]*/g, function (chord) {
+    return transposeSingleChord(chord, steps);
+  });
+}
+
+function renderChordedLyrics(lyrics, transposeSteps) {
+  const escaped = escapeHTML(lyrics || "");
+  const steps = Number(transposeSteps || 0);
+
+  return escaped.replace(/\(([^)]+)\)/g, function (_, chordGroup) {
+    const transposed = transposeChordGroup(chordGroup, steps);
+
+    return `<span class="chord-token">${escapeHTML(transposed)}</span>`;
+  });
+}
+
+function changeTranspose(amount) {
+  currentTransposeSteps += amount;
+  updateSongLyricsDisplay();
+}
+
+function resetTranspose() {
+  currentTransposeSteps = 0;
+  updateSongLyricsDisplay();
+}
+
+function updateSongLyricsDisplay() {
+  const lyricsBox = $("lyricsContent");
+  const label = $("transposeLabel");
+
+  if (!lyricsBox || !currentSongForPage) return;
+
+  lyricsBox.innerHTML = renderChordedLyrics(currentSongForPage.lyrics || "", currentTransposeSteps);
+
+  if (label) {
+    if (currentTransposeSteps === 0) {
+      label.innerText = "Tono original";
+    } else if (currentTransposeSteps > 0) {
+      label.innerText = "+" + currentTransposeSteps;
+    } else {
+      label.innerText = String(currentTransposeSteps);
+    }
+  }
+}
+
+/* =========================================================
+   AYUDAS DEL EDITOR
+========================================================= */
+
+function insertAtCursor(textareaId, text) {
+  const textarea = $(textareaId);
+
+  if (!textarea) return;
+
+  const start = textarea.selectionStart || 0;
+  const end = textarea.selectionEnd || 0;
+  const before = textarea.value.substring(0, start);
+  const after = textarea.value.substring(end);
+
+  textarea.value = before + text + after;
+
+  const newPosition = start + text.length;
+
+  textarea.focus();
+  textarea.setSelectionRange(newPosition, newPosition);
+}
+
+function insertSongSection(sectionName) {
+  const cleanName = String(sectionName || "").trim();
+
+  if (!cleanName) return;
+
+  insertAtCursor("songLyricsInput", "\n[" + cleanName + "]\n");
+    }
 /* =========================================================
    TEMA / MENÚ
 ========================================================= */
@@ -324,6 +556,7 @@ async function loadAdminData() {
     loadAlbumOptions()
   ]);
 }
+
 /* =========================================================
    DATA HELPERS
 ========================================================= */
@@ -425,6 +658,23 @@ async function fetchSongsBase(ids) {
   return await query;
 }
 
+async function fetchSongLinksBySongIds(songIds) {
+  const client = getSupabase();
+
+  if (!client || !songIds || !songIds.length) {
+    return {
+      data: [],
+      error: null
+    };
+  }
+
+  return await client
+    .from("song_links")
+    .select("*")
+    .in("song_id", songIds)
+    .order("sort_order", { ascending: true });
+}
+
 async function fetchSongsWithRelations(ids) {
   const client = getSupabase();
 
@@ -475,9 +725,12 @@ async function fetchSongsWithRelations(ids) {
     .select("song_id, albums(id, title, slug, description, artist_id)")
     .in("song_id", songIds);
 
+  const linksRes = await fetchSongLinksBySongIds(songIds);
+
   const artistsBySong = new Map();
   const categoriesBySong = new Map();
   const albumsBySong = new Map();
+  const linksBySong = new Map();
 
   (artistRes.data || []).forEach(function (row) {
     if (!artistsBySong.has(row.song_id)) {
@@ -509,11 +762,20 @@ async function fetchSongsWithRelations(ids) {
     }
   });
 
+  (linksRes.data || []).forEach(function (row) {
+    if (!linksBySong.has(row.song_id)) {
+      linksBySong.set(row.song_id, []);
+    }
+
+    linksBySong.get(row.song_id).push(row);
+  });
+
   const merged = safeSongs.map(function (song) {
     return Object.assign({}, song, {
       _artists: artistsBySong.get(song.id) || [],
       _categories: categoriesBySong.get(song.id) || [],
-      _albums: albumsBySong.get(song.id) || []
+      _albums: albumsBySong.get(song.id) || [],
+      _links: linksBySong.get(song.id) || []
     });
   });
 
@@ -522,7 +784,6 @@ async function fetchSongsWithRelations(ids) {
     error: null
   };
 }
-
 /* =========================================================
    ARTISTAS ADMIN
 ========================================================= */
@@ -866,6 +1127,7 @@ async function loadCategoryOptions() {
 
   setOptions("songCategoryInput", data || [], "Selecciona categoría", "id", "name");
 }
+
 /* =========================================================
    ÁLBUMES ADMIN
 ========================================================= */
@@ -1046,7 +1308,6 @@ async function loadAlbumOptions() {
     `;
   });
 }
-
 /* =========================================================
    CANCIONES ADMIN
 ========================================================= */
@@ -1065,11 +1326,7 @@ function resetSongForm() {
     "songToneInput",
     "songDifficultyInput",
     "songLyricsInput",
-    "songGuitarUrlInput",
-    "songPianoUrlInput",
-    "songYoutubeUrlInput",
-    "songTiktokUrlInput",
-    "songInstagramUrlInput"
+    "songLinksInput"
   ].forEach(function (id) {
     setInputValue(id, "");
   });
@@ -1089,6 +1346,8 @@ async function saveSong() {
   const categoryId = getInputValue("songCategoryInput");
   const albumId = getInputValue("songAlbumInput");
   const artistIds = getSelectedValues("songArtistsInput");
+  const linksText = getInputValue("songLinksInput");
+  const links = parseSongLinksText(linksText);
 
   if (!title) {
     alert("Escribe el título de la canción.");
@@ -1102,7 +1361,10 @@ async function saveSong() {
 
   const client = getSupabase();
 
-  if (!client) return;
+  if (!client) {
+    alert("No se pudo conectar con Supabase.");
+    return;
+  }
 
   const payload = {
     title: title,
@@ -1139,6 +1401,7 @@ async function saveSong() {
 
   savedSongId = result.data ? result.data.id : savedSongId;
 
+  /* Artistas de la canción */
   await client
     .from("song_artists")
     .delete()
@@ -1164,6 +1427,7 @@ async function saveSong() {
     }
   }
 
+  /* Categoría */
   await client
     .from("song_categories")
     .delete()
@@ -1183,6 +1447,7 @@ async function saveSong() {
     }
   }
 
+  /* Álbum / carpeta */
   await client
     .from("album_songs")
     .delete()
@@ -1198,6 +1463,34 @@ async function saveSong() {
 
     if (albumResult.error) {
       alert("La canción se guardó, pero falló el álbum: " + albumResult.error.message);
+      return;
+    }
+  }
+
+  /* Links múltiples */
+  await client
+    .from("song_links")
+    .delete()
+    .eq("song_id", savedSongId);
+
+  if (links.length) {
+    const linkRows = links.map(function (link, index) {
+      return {
+        song_id: savedSongId,
+        title: link.title,
+        link_type: link.link_type || "tutorial",
+        platform: link.platform || "",
+        url: link.url,
+        sort_order: index
+      };
+    });
+
+    const linksResult = await client
+      .from("song_links")
+      .insert(linkRows);
+
+    if (linksResult.error) {
+      alert("La canción se guardó, pero fallaron los links: " + linksResult.error.message);
       return;
     }
   }
@@ -1237,6 +1530,7 @@ async function editSong(id) {
   setInputValue("songToneInput", song.tone || "");
   setInputValue("songDifficultyInput", song.difficulty || "");
   setInputValue("songLyricsInput", song.lyrics || "");
+  setInputValue("songLinksInput", linksToText(song._links || []));
 
   setSelectedValues(
     "songArtistsInput",
@@ -1306,6 +1600,8 @@ async function loadAdminSongs() {
   }
 
   list.innerHTML = data.map(function (song) {
+    const linkCount = (song._links || []).length;
+
     return `
       <div class="admin-list-item">
         <strong>${escapeHTML(song.title || "Sin título")}</strong>
@@ -1317,6 +1613,7 @@ async function loadAdminSongs() {
         <p>
           ${escapeHTML(song.song_type || "")}
           ${song.tone ? " · " + escapeHTML(song.tone) : ""}
+          ${linkCount ? " · " + linkCount + " link(s)" : ""}
         </p>
 
         <div class="admin-actions">
@@ -1332,8 +1629,9 @@ async function loadAdminSongs() {
     `;
   }).join("");
 }
+
 /* =========================================================
-   PÚBLICO: ARTISTAS / CATEGORÍAS / CANCIONES
+   PÚBLICO: ARTISTAS
 ========================================================= */
 
 async function loadPublicArtists() {
@@ -1436,6 +1734,10 @@ function initArtistSearch() {
   });
 }
 
+/* =========================================================
+   PÚBLICO: CATEGORÍAS
+========================================================= */
+
 async function loadPublicCategories() {
   const list = $("categoryList");
 
@@ -1466,7 +1768,9 @@ async function loadPublicCategories() {
     return `
       <article class="song-card">
         <h3>${escapeHTML(category.name || "Sin nombre")}</h3>
+
         <p>${escapeHTML(category.description || "Cantos de esta categoría.")}</p>
+
         <a class="song-btn" href="canciones.html?buscar=${encodeURIComponent(category.name || "")}">
           Ver cantos
         </a>
@@ -1474,6 +1778,10 @@ async function loadPublicCategories() {
     `;
   }).join("");
 }
+
+/* =========================================================
+   PÚBLICO: CANCIONES
+========================================================= */
 
 async function loadPublicSongs() {
   const list = $("songList") || $("songsList") || $("publicSongList");
@@ -1595,9 +1903,8 @@ function initSongSearch() {
     renderPublicSongs(filtered);
   });
 }
-
 /* =========================================================
-   PÚBLICO: PERFIL DE ARTISTA Y CANTO
+   PÚBLICO: PERFIL DE ARTISTA
 ========================================================= */
 
 async function loadArtistProfile() {
@@ -1664,6 +1971,7 @@ async function loadArtistProfile() {
     return `
       <section class="artist-folder">
         <h3>📁 ${escapeHTML(album.title || "Álbum")}</h3>
+
         <div class="song-list compact-list">
           ${albumSongs.map(renderMiniSongCard).join("")}
         </div>
@@ -1700,6 +2008,7 @@ async function loadArtistProfile() {
     ${songsWithoutArtistAlbum.length ? `
       <section class="artist-folder">
         <h3>Cantos</h3>
+
         <div class="song-list compact-list">
           ${songsWithoutArtistAlbum.map(renderMiniSongCard).join("")}
         </div>
@@ -1709,6 +2018,7 @@ async function loadArtistProfile() {
     ${collaborationSongs.length ? `
       <section class="artist-folder">
         <h3>Colaboraciones</h3>
+
         <div class="song-list compact-list">
           ${collaborationSongs.map(renderMiniSongCard).join("")}
         </div>
@@ -1732,6 +2042,10 @@ function renderMiniSongCard(song) {
     </article>
   `;
 }
+
+/* =========================================================
+   PÚBLICO: PÁGINA DE CANTO
+========================================================= */
 
 async function loadSongPage() {
   const box = $("songPage") || $("songDetail") || $("cantoContent");
@@ -1772,8 +2086,12 @@ async function loadSongPage() {
     : Object.assign({}, song, {
         _artists: [],
         _categories: [],
-        _albums: []
+        _albums: [],
+        _links: []
       });
+
+  currentSongForPage = fullSong;
+  currentTransposeSteps = 0;
 
   box.innerHTML = `
     <article class="song-detail-card">
@@ -1783,12 +2101,30 @@ async function loadSongPage() {
 
       <h1>${escapeHTML(fullSong.title || "Sin título")}</h1>
 
-      <p>
+      <p class="song-meta-line">
         ${escapeHTML(fullSong.tone || "")}
         ${fullSong.difficulty ? " · " + escapeHTML(fullSong.difficulty) : ""}
       </p>
 
-      <pre class="lyrics-block">${renderChordedLyrics(fullSong.lyrics || "")}</pre>
+      <div class="transpose-box">
+        <button type="button" class="song-btn small-btn" onclick="changeTranspose(-1)">
+          Bajar tono
+        </button>
+
+        <span id="transposeLabel">Tono original</span>
+
+        <button type="button" class="song-btn small-btn" onclick="changeTranspose(1)">
+          Subir tono
+        </button>
+
+        <button type="button" class="song-btn small-btn" onclick="resetTranspose()">
+          Original
+        </button>
+      </div>
+
+      <pre class="lyrics-block" id="lyricsContent">${renderChordedLyrics(fullSong.lyrics || "", 0)}</pre>
+
+      ${renderSongLinksHTML(fullSong._links || [])}
     </article>
   `;
 }
@@ -1853,6 +2189,11 @@ window.saveSong = saveSong;
 window.editSong = editSong;
 window.deleteSong = deleteSong;
 window.cancelSongEdit = resetSongForm;
+
+window.insertSongSection = insertSongSection;
+
+window.changeTranspose = changeTranspose;
+window.resetTranspose = resetTranspose;
 
 window.loadPublicArtists = loadPublicArtists;
 window.loadPublicCategories = loadPublicCategories;
