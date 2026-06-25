@@ -3642,3 +3642,169 @@ body:not(.admin-page) #jhdArtistGradientBox {
   z-index: 5 !important;
   pointer-events: auto !important;
 }
+/* =========================================================
+   PORTADA POR PUNTOS - ARTISTAS
+========================================================= */
+
+#jhdArtistGradientBox {
+  margin: 16px 0 18px !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  background: rgba(255,255,255,.05) !important;
+}
+
+.artist-gradient-admin-title {
+  font-weight: 900 !important;
+  margin-bottom: 8px !important;
+  color: var(--gold) !important;
+}
+
+.artist-gradient-admin-help {
+  color: var(--secondary) !important;
+  font-size: .9rem !important;
+  line-height: 1.5 !important;
+  margin-bottom: 14px !important;
+}
+
+.point-gradient-canvas {
+  position: relative !important;
+  height: 170px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  background: #0b1020 !important;
+  cursor: crosshair !important;
+  margin-bottom: 14px !important;
+  touch-action: manipulation !important;
+}
+
+.point-gradient-dot {
+  position: absolute !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: 3px solid #fff !important;
+  transform: translate(-50%, -50%) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45) !important;
+  cursor: pointer !important;
+  z-index: 3 !important;
+}
+
+.point-gradient-dot.active {
+  outline: 3px solid var(--gold) !important;
+  outline-offset: 3px !important;
+}
+
+.point-gradient-controls {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+.point-gradient-panel {
+  padding: 12px !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+}
+
+.point-gradient-panel label {
+  display: block !important;
+  color: var(--secondary) !important;
+  font-size: .84rem !important;
+  margin-bottom: 7px !important;
+}
+
+.point-gradient-panel input[type="color"] {
+  width: 100% !important;
+  height: 44px !important;
+  border: none !important;
+  background: transparent !important;
+  cursor: pointer !important;
+}
+
+.point-gradient-panel input[type="text"] {
+  width: 100% !important;
+  padding: 9px !important;
+  border-radius: 10px !important;
+  margin-top: 8px !important;
+}
+
+.point-gradient-panel input[type="range"] {
+  width: 100% !important;
+}
+
+.point-gradient-actions {
+  display: flex !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  margin-top: 12px !important;
+}
+
+.point-gradient-actions button {
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 10px 15px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  background: var(--gold) !important;
+  color: #111 !important;
+}
+
+.point-gradient-actions button.danger {
+  background: rgba(255,80,80,.2) !important;
+  color: #ffb4b4 !important;
+}
+
+.point-gradient-empty {
+  color: rgba(255,255,255,.72) !important;
+  font-size: .9rem !important;
+  text-align: center !important;
+  padding-top: 65px !important;
+  pointer-events: none !important;
+}
+
+.artist-profile-hero {
+  --artist-point-gradient:
+    radial-gradient(circle at 25% 35%, rgba(250, 204, 21, .75) 0%, transparent 45%),
+    radial-gradient(circle at 80% 25%, rgba(29, 78, 216, .60) 0%, transparent 55%),
+    linear-gradient(135deg, #0b1020, #111827);
+
+  background: var(--artist-point-gradient) !important;
+}
+
+.artist-profile-hero::before {
+  pointer-events: none !important;
+  background:
+    linear-gradient(90deg, rgba(5,8,15,.35), rgba(5,8,15,.08)),
+    linear-gradient(180deg, rgba(0,0,0,.03), rgba(0,0,0,.35)) !important;
+}
+
+.artist-profile-avatar,
+.artist-avatar {
+  background: var(--artist-point-gradient) !important;
+  color: #fff !important;
+  font-weight: 900 !important;
+  text-shadow: 0 3px 10px rgba(0,0,0,.45) !important;
+}
+
+.artist-profile-avatar img,
+.artist-avatar img,
+.artist-cover-image,
+.artist-cover-overlay,
+#artistAvatarInput,
+#artistCoverInput,
+input[placeholder="URL foto de perfil"],
+input[placeholder="URL imagen de portada"] {
+  display: none !important;
+}
+
+body:not(.admin-page) #jhdArtistGradientBox {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  .point-gradient-canvas {
+    height: 150px !important;
+  }
+}
