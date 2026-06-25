@@ -7620,3 +7620,420 @@ setTimeout(checkAdminSession, 800);
 window.loginAdmin = loginAdmin;
 window.logoutAdmin = logoutAdmin;
 window.checkAdminSession = checkAdminSession;
+/* =========================================================
+   PARCHE DE RESCATE ADMIN
+   Carga listas, selectores y editor mesh
+========================================================= */
+
+function jhdAdminClient() {
+  if (typeof getSupabase === "function") {
+    return getSupabase();
+  }
+
+  return window.supabaseClient || null;
+}
+
+function jhdEscape(value) {
+  if (typeof escapeHTML === "function") return escapeHTML(value);
+
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function jhdSlugifyAdmin(text) {
+  if (typeof jhdSlugifyText === "function") return jhdSlugifyText(text);
+
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function jhdEnsureAdminPageClass() {
+  if (window.location.pathname.includes("admin.html") || document.getElementById("adminPanel")) {
+    document.body.classList.add("admin-page");
+  }
+}
+
+function jhdHideArtistUrlsNow() {
+  const card =
+    document.getElementById("artistFormCard") ||
+    (typeof jhdFindArtistFormCard === "function" ? jhdFindArtistFormCard() : null);
+
+  if (!card) return;
+
+  Array.from(card.querySelectorAll("input")).forEach(input => {
+    const placeholder = String(input.placeholder || "").toLowerCase();
+    const id = String(input.id || "").toLowerCase();
+
+    if (
+      placeholder.includes("url") ||
+      placeholder.includes("foto") ||
+      placeholder.includes("portada") ||
+      placeholder.includes("imagen") ||
+      id.includes("avatar") ||
+      id.includes("cover")
+    ) {
+      input.type = "hidden";
+      input.value = "";
+      input.style.display = "none";
+    }
+  });
+}
+
+/* ---------- Cargar listas del admin ---------- */
+
+async function loadAdminArtists() {
+  const box = document.getElementById("adminArtistList");
+  if (!box) return;
+
+  const client = jhdAdminClient();
+  if (!client) {
+    box.innerHTML = "No se pudo conectar.";
+    return;
+  }
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    box.innerHTML = `<p style="color:#ffb4b4;">Error: ${jhdEscape(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = `<p style="color:var(--secondary);">No hay artistas todavía.</p>`;
+    return;
+  }
+
+  box.innerHTML = data.map(artist => `
+    <div class="admin-list-item">
+      <strong>${jhdEscape(artist.name || "Sin nombre")}</strong>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button type="button" class="song-btn" onclick="editArtist('${artist.id}')">Editar</button>
+        <button type="button" class="song-btn" onclick="deleteArtist('${artist.id}')">Eliminar</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadAdminCategories() {
+  const box = document.getElementById("adminCategoryList");
+  if (!box) return;
+
+  const client = jhdAdminClient();
+  if (!client) {
+    box.innerHTML = "No se pudo conectar.";
+    return;
+  }
+
+  const { data, error } = await client
+    .from("categories")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    box.innerHTML = `<p style="color:#ffb4b4;">Error: ${jhdEscape(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = `<p style="color:var(--secondary);">No hay categorías todavía.</p>`;
+    return;
+  }
+
+  box.innerHTML = data.map(category => `
+    <div class="admin-list-item">
+      <strong>${jhdEscape(category.name || "Sin nombre")}</strong>
+      <p style="color:var(--secondary); margin-top:6px;">${jhdEscape(category.description || "")}</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button type="button" class="song-btn" onclick="deleteCategory('${category.id}')">Eliminar</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadAdminSongs() {
+  const box = document.getElementById("adminSongList");
+  if (!box) return;
+
+  const client = jhdAdminClient();
+  if (!client) {
+    box.innerHTML = "No se pudo conectar.";
+    return;
+  }
+
+  const { data, error } = await client
+    .from("songs")
+    .select(`
+      *,
+      artists(name)
+    `)
+    .order("title");
+
+  if (error) {
+    box.innerHTML = `<p style="color:#ffb4b4;">Error: ${jhdEscape(error.message)}</p>`;
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = `<p style="color:var(--secondary);">No hay canciones todavía.</p>`;
+    return;
+  }
+
+  box.innerHTML = data.map(song => `
+    <div class="admin-list-item">
+      <strong>${jhdEscape(song.title || "Sin título")}</strong>
+      <p style="color:var(--secondary); margin-top:6px;">
+        ${jhdEscape(song.artists?.name || "Sin artista")} · ${jhdEscape(song.tone || "Sin tono")}
+      </p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+        <button type="button" class="song-btn" onclick="editSong('${song.id}')">Editar</button>
+        <button type="button" class="song-btn" onclick="deleteSong('${song.id}')">Eliminar</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+/* ---------- Selectores de artista y categoría ---------- */
+
+async function loadArtistOptions() {
+  const select = document.getElementById("songArtistInput");
+  if (!select) return;
+
+  const client = jhdAdminClient();
+  if (!client) return;
+
+  const current = select.value;
+
+  const { data, error } = await client
+    .from("artists")
+    .select("id, name")
+    .order("name");
+
+  if (error) return;
+
+  select.innerHTML = `<option value="">Selecciona artista</option>`;
+
+  (data || []).forEach(artist => {
+    select.innerHTML += `<option value="${artist.id}">${jhdEscape(artist.name)}</option>`;
+  });
+
+  if (current) select.value = current;
+}
+
+async function loadCategoryOptions() {
+  const select = document.getElementById("songCategoryInput");
+  if (!select) return;
+
+  const client = jhdAdminClient();
+  if (!client) return;
+
+  const current = select.value;
+
+  const { data, error } = await client
+    .from("categories")
+    .select("id, name")
+    .order("name");
+
+  if (error) return;
+
+  select.innerHTML = `<option value="">Selecciona categoría</option>`;
+
+  (data || []).forEach(category => {
+    select.innerHTML += `<option value="${category.id}">${jhdEscape(category.name)}</option>`;
+  });
+
+  if (current) select.value = current;
+}
+
+/* ---------- Guardar / editar artista ---------- */
+
+window.currentEditingArtistId = window.currentEditingArtistId || null;
+
+async function saveArtist() {
+  const client = jhdAdminClient();
+  if (!client) {
+    alert("No se pudo conectar.");
+    return;
+  }
+
+  const nameInput = document.getElementById("artistNameInput");
+  const descriptionInput = document.getElementById("artistDescriptionInput");
+
+  const name = nameInput ? nameInput.value.trim() : "";
+  const description = descriptionInput ? descriptionInput.value.trim() : "";
+
+  if (!name) {
+    alert("Escribe el nombre del artista.");
+    return;
+  }
+
+  const slug = jhdSlugifyAdmin(name);
+
+  const payload = {
+    name,
+    slug,
+    description,
+    avatar_url: "",
+    cover_url: ""
+  };
+
+  let result;
+
+  if (window.currentEditingArtistId) {
+    result = await client
+      .from("artists")
+      .update(payload)
+      .eq("id", window.currentEditingArtistId);
+  } else {
+    result = await client
+      .from("artists")
+      .insert(payload);
+  }
+
+  if (result.error) {
+    alert("No se pudo guardar artista: " + result.error.message);
+    return;
+  }
+
+  await loadAdminArtists();
+  await loadArtistOptions();
+
+  if (typeof jhdSaveMeshGradient === "function") {
+    await jhdSaveMeshGradient();
+  }
+
+  cancelArtistEdit();
+
+  alert("Artista guardado.");
+}
+
+async function editArtist(id) {
+  const client = jhdAdminClient();
+  if (!client) return;
+
+  const { data, error } = await client
+    .from("artists")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) {
+    alert("No se pudo cargar el artista.");
+    return;
+  }
+
+  window.currentEditingArtistId = id;
+
+  const title = document.getElementById("artistFormTitle");
+  const nameInput = document.getElementById("artistNameInput");
+  const descriptionInput = document.getElementById("artistDescriptionInput");
+
+  if (title) title.innerText = "Editar artista";
+  if (nameInput) nameInput.value = data.name || "";
+  if (descriptionInput) descriptionInput.value = data.description || "";
+
+  if (Array.isArray(data.gradient_points)) {
+    window.jhdMeshPoints = data.gradient_points;
+    if (typeof jhdMeshPoints !== "undefined") {
+      jhdMeshPoints = data.gradient_points;
+    }
+  }
+
+  if (typeof jhdLoadMeshGradientEditor === "function") {
+    jhdLoadMeshGradientEditor();
+  }
+
+  if (typeof jhdRenderMeshEditor === "function") {
+    jhdRenderMeshEditor();
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function cancelArtistEdit() {
+  window.currentEditingArtistId = null;
+
+  const title = document.getElementById("artistFormTitle");
+  const nameInput = document.getElementById("artistNameInput");
+  const descriptionInput = document.getElementById("artistDescriptionInput");
+
+  if (title) title.innerText = "Agregar artista";
+  if (nameInput) nameInput.value = "";
+  if (descriptionInput) descriptionInput.value = "";
+
+  if (typeof jhdResetMeshGradient === "function") {
+    jhdResetMeshGradient();
+  }
+}
+
+async function deleteArtist(id) {
+  if (!confirm("¿Eliminar este artista?")) return;
+
+  const client = jhdAdminClient();
+  if (!client) return;
+
+  const { error } = await client
+    .from("artists")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("No se pudo eliminar: " + error.message);
+    return;
+  }
+
+  await loadAdminArtists();
+  await loadArtistOptions();
+}
+
+/* ---------- Init admin ---------- */
+
+async function jhdAdminRescueInit() {
+  jhdEnsureAdminPageClass();
+
+  const panel = document.getElementById("adminPanel");
+  if (!panel || panel.style.display === "none") return;
+
+  jhdHideArtistUrlsNow();
+
+  await loadAdminArtists();
+  await loadAdminCategories();
+  await loadAdminSongs();
+  await loadArtistOptions();
+  await loadCategoryOptions();
+
+  if (typeof jhdLoadMeshGradientEditor === "function") {
+    jhdLoadMeshGradientEditor();
+  }
+
+  if (typeof jhdRenderMeshEditor === "function") {
+    jhdRenderMeshEditor();
+  }
+
+  jhdHideArtistUrlsNow();
+}
+
+setTimeout(jhdAdminRescueInit, 700);
+setTimeout(jhdAdminRescueInit, 1800);
+setTimeout(jhdAdminRescueInit, 3500);
+
+window.loadAdminArtists = loadAdminArtists;
+window.loadAdminCategories = loadAdminCategories;
+window.loadAdminSongs = loadAdminSongs;
+window.loadArtistOptions = loadArtistOptions;
+window.loadCategoryOptions = loadCategoryOptions;
+window.saveArtist = saveArtist;
+window.editArtist = editArtist;
+window.cancelArtistEdit = cancelArtistEdit;
+window.deleteArtist = deleteArtist;
+window.jhdAdminRescueInit = jhdAdminRescueInit;
