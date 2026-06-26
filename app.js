@@ -3187,3 +3187,48 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }, 1000);
 });
+/* =========================================================
+   APP 1.7 - CORRECCIÓN LINKS DE ARTISTAS
+========================================================= */
+
+function safeArtistSlug(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
+
+function artistProfileUrlFixed(artist) {
+  if (!artist) return "artistas.html";
+
+  if (artist.slug) {
+    return "artista.html?slug=" + encodeURIComponent(artist.slug);
+  }
+
+  if (artist.id) {
+    return "artista.html?id=" + encodeURIComponent(artist.id);
+  }
+
+  if (artist.name) {
+    return "artista.html?slug=" + encodeURIComponent(safeArtistSlug(artist.name));
+  }
+
+  return "artistas.html";
+}
+
+function artistLinksHTML(artists) {
+  if (!artists || !artists.length) {
+    return "";
+  }
+
+  return artists.map(function (artist) {
+    const name = artist && artist.name ? artist.name : "Artista";
+    const url = artistProfileUrlFixed(artist);
+
+    return '<a href="' + url + '">' + escapeHTML(name) + '</a>';
+  }).join(" · ");
+}
+
+window.artistLinksHTML = artistLinksHTML;
