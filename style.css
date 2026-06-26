@@ -5396,3 +5396,34 @@ a:hover {
   padding: 10px 16px !important;
   opacity: 1 !important;
   }
+/* =========================================================
+   CORRECCIÓN BOTONES HERO INICIO
+========================================================= */
+
+.home-page .hero-content {
+  text-align: center !important;
+  max-width: 980px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.home-page .hero-content > div {
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.home-page .hero-content .song-btn {
+  min-width: 190px;
+}
+
+@media (max-width: 700px) {
+  .home-page .hero-content > div {
+    justify-content: center !important;
+  }
+
+  .home-page .hero-content .song-btn {
+    min-width: auto;
+    width: 100%;
+    max-width: 260px;
+  }
+}
